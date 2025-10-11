@@ -13,9 +13,11 @@ const config: HardhatUserConfig = {
       production: {
         version: "0.8.28",
         settings: {
+          evmVersion: "london",
+          viaIR: true,
           optimizer: {
             enabled: true,
-            runs: 200,
+            runs: 1,
           },
         },
       },

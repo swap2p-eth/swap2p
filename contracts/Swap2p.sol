@@ -18,8 +18,8 @@ contract Swap2p {
 
     // ────────────────────────────────────────────────────────────────────────
     // Constants and types
-    uint32 public constant FEE_BPS      = 10;    // 0.10%
-    uint32 public constant AFF_SHARE_BP = 2000;  // 20% of protocol fee goes to affiliate
+    uint32 private constant FEE_BPS      = 50;    // 0.50%
+    uint32 private constant AFF_SHARE_BP = 5000;  // 50% of protocol fee goes to affiliate
     type   FiatCode is uint24;
 
     enum Side { BUY, SELL }
@@ -64,7 +64,7 @@ contract Swap2p {
 
     // ────────────────────────────────────────────────────────────────────────
     // Immutable params
-    address public immutable author; // protocol fee receiver
+    address private immutable author; // protocol fee receiver
     uint96  private   _dealSeq;
 
     // offers[token][maker][side][fiat]
