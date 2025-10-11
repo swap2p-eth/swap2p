@@ -58,9 +58,8 @@ contract Swap2p is ReentrancyGuard {
 
     /// @notice Maker's online status and working hours (UTC).
     struct MakerProfile {
-        bool  online;
-        uint8 startHourUTC;
-        uint8 endHourUTC;             // equal → 24/7
+        bool   online;
+        uint40 lastActivity;          // last interaction timestamp
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -94,11 +93,9 @@ contract Swap2p is ReentrancyGuard {
     error OfferNotFound();
     error AmountOutOfBounds();
     error InsufficientDeposit();
-    error InvalidHour();
     error SelfPartnerNotAllowed();
     error NotFiatPayer();
     error MakerOffline();
-    error MakerOutOfHours();
     error WorsePrice();
     error InsufficientReserve();
     error FeeOnTransferTokenNotSupported();
@@ -140,7 +137,7 @@ contract Swap2p is ReentrancyGuard {
     );
     event PartnerBound(address indexed taker, address indexed partner);
     event MakerOnline(address indexed maker, bool online);
-    event WorkingHoursSet(address indexed maker, uint8 startUTC, uint8 endUTC);
+    // removed working hours
 
     // ────────────────────────────────────────────────────────────────────────
     constructor() {
@@ -155,6 +152,12 @@ contract Swap2p is ReentrancyGuard {
     }
     modifier onlyTaker(uint96 id) {
         if (msg.sender != deals[id].taker) revert WrongCaller();
+        _;
+    }
+
+    modifier touchActivity() {
+        // update last activity for caller
+        makerInfo[msg.sender].lastActivity = uint40(block.timestamp);
         _;
     }
 
@@ -226,7 +229,7 @@ contract Swap2p is ReentrancyGuard {
 
     function _payWithFee(uint96 id, address token, address taker, address to, uint128 amt) internal {
         uint128 fee = uint128((uint256(amt) * FEE_BPS) / 10_000);
-        unchecked { _push(token, to, amt - fee); }
+        _push(token, to, amt - fee);
         address p = affiliates[taker];
         if (p != address(0)) {
             uint128 share = uint128((uint256(fee) * AFF_SHARE_BP) / 10_000);
@@ -241,16 +244,9 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Maker profile
-    function setOnline(bool on) external {
+    function setOnline(bool on) external touchActivity {
         makerInfo[msg.sender].online = on;
         emit MakerOnline(msg.sender, on);
-    }
-
-    function setWorkingHours(uint8 s, uint8 e) external {
-        if (s >= 24 || e >= 24) revert InvalidHour();
-        makerInfo[msg.sender].startHourUTC = s;
-        makerInfo[msg.sender].endHourUTC   = e;
-        emit WorkingHoursSet(msg.sender, s, e);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -302,12 +298,12 @@ contract Swap2p is ReentrancyGuard {
         uint96   expectedPrice,
         string calldata details,
         address  partner
-    ) external nonReentrant {
+    ) external nonReentrant touchActivity {
         Offer storage off = offers[token][maker][s][f];
         if (off.maxAmt == 0) revert OfferNotFound();
 
         // availability (no locals kept)
-        if (!_makerAvailable(maker)) revert MakerOutOfHours();
+        if (!makerInfo[maker].online) revert MakerOffline();
 
         // price guards
         if (s == Side.BUY) {
@@ -354,7 +350,7 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Cancel before accept (maker or taker)
-    function cancelRequest(uint96 id, string calldata reason) external nonReentrant {
+    function cancelRequest(uint96 id, string calldata reason) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
@@ -370,7 +366,7 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Accept / Chat
-    function maker_acceptRequest(uint96 id, string calldata msg_) external onlyMaker(id) nonReentrant {
+    function maker_acceptRequest(uint96 id, string calldata msg_) external onlyMaker(id) nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.REQUESTED) revert WrongState();
         uint128 need = d.side == Side.BUY ? d.amount : d.amount * 2;
@@ -380,12 +376,12 @@ contract Swap2p is ReentrancyGuard {
         emit DealAccepted(id, msg_);
     }
 
-    function maker_sendMessage(uint96 id, string calldata t) external onlyMaker(id) {
+    function maker_sendMessage(uint96 id, string calldata t) external onlyMaker(id) touchActivity {
         DealState st = deals[id].state;
         if (st != DealState.ACCEPTED && st != DealState.PAID) revert WrongState();
         emit Chat(id, msg.sender, t);
     }
-    function taker_sendMessage(uint96 id, string calldata t) external onlyTaker(id) {
+    function taker_sendMessage(uint96 id, string calldata t) external onlyTaker(id) touchActivity {
         DealState st = deals[id].state;
         if (st != DealState.ACCEPTED && st != DealState.PAID) revert WrongState();
         emit Chat(id, msg.sender, t);
@@ -393,7 +389,7 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Cancel after accept (restricted by side)
-    function cancelDeal(uint96 id, string calldata reason) external nonReentrant {
+    function cancelDeal(uint96 id, string calldata reason) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
         // maker can cancel only when Side.BUY; taker only when Side.SELL
@@ -424,7 +420,7 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Mark paid / Release
-    function markFiatPaid(uint96 id, string calldata msg_) external {
+    function markFiatPaid(uint96 id, string calldata msg_) external touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
         if ((d.side == Side.BUY  && msg.sender != d.maker) ||
@@ -434,7 +430,7 @@ contract Swap2p is ReentrancyGuard {
         emit DealPaid(id, msg_);
     }
 
-    function release(uint96 id) external nonReentrant {
+    function release(uint96 id) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.PAID) revert WrongState();
         if ((d.side == Side.BUY  && msg.sender != d.taker
@@ -474,9 +470,8 @@ contract Swap2p is ReentrancyGuard {
         uint end = off + lim;
         if (end > len) end = len;
         out = new address[](end - off);
-        for (uint i = off; i < end; ) {
+        for (uint i = off; i < end; i++) {
             out[i - off] = arr[i];
-            unchecked { ++i; }
         }
     }
 
@@ -495,9 +490,8 @@ contract Swap2p is ReentrancyGuard {
         uint end = off + lim;
         if (end > len) end = len;
         out = new uint96[](end - off);
-        for (uint i = off; i < end; ) {
+        for (uint i = off; i < end; i++) {
             out[i - off] = arr[i];
-            unchecked { ++i; }
         }
     }
 
@@ -505,29 +499,10 @@ contract Swap2p is ReentrancyGuard {
     function areMakersAvailable(address[] calldata m) external view returns (bool[] memory a) {
         uint len = m.length;
         a = new bool[](len);
-        uint8 h = uint8((block.timestamp / 1 hours) % 24);
-        for (uint i; i < len; ) {
+        for (uint i; i < len; i++) {
             MakerProfile storage p = makerInfo[m[i]];
-            if (p.online) {
-                if (p.startHourUTC == p.endHourUTC) {
-                    a[i] = true; // 24/7
-                } else if (p.startHourUTC < p.endHourUTC) {
-                    a[i] = (h >= p.startHourUTC && h <= p.endHourUTC);
-                } else {
-                    a[i] = (h >= p.startHourUTC || h <= p.endHourUTC);
-                }
-            }
-            unchecked { ++i; }
+            a[i] = p.online;
         }
     }
 
-    // Add this helper somewhere near other helpers
-    function _makerAvailable(address maker) internal view returns (bool) {
-        MakerProfile storage p = makerInfo[maker];
-        if (!p.online) return false;
-        uint8 h = uint8((block.timestamp / 1 hours) % 24);
-        if (p.startHourUTC == p.endHourUTC) return true;              // 24/7
-        if (p.startHourUTC < p.endHourUTC) return (h >= p.startHourUTC && h <= p.endHourUTC);
-        return (h >= p.startHourUTC || h <= p.endHourUTC);            // wraps over midnight
-    }
 }
