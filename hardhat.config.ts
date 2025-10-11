@@ -5,6 +5,13 @@ import { configVariable } from "hardhat/config";
 
 const config: HardhatUserConfig = {
   plugins: [hardhatToolboxViemPlugin],
+  coverage: {
+    // Skip instrumenting Solidity test contracts to avoid coverage parser issues
+    skipFiles: [
+      "contracts/tests",
+      "contracts/tests/**",
+    ],
+  } as any,
   solidity: {
     profiles: {
       default: {

@@ -15,7 +15,7 @@ contract Swap2p_ViewsAvailabilityTest is Swap2p_TestBase {
         assertEq(keys[0], maker);
     }
 
-    function test_Availability_OnlineAndHours() public {
+    function test_Availability_Online() public {
         // offline by default
         address[] memory arr = new address[](1);
         arr[0] = maker;
@@ -27,11 +27,6 @@ contract Swap2p_ViewsAvailabilityTest is Swap2p_TestBase {
         a = swap.areMakersAvailable(arr);
         assertEq(a[0], true);
 
-        // set narrow hours that likely exclude current hour
-        vm.prank(maker);
-        swap.setWorkingHours(0, 0); // 24/7
-        a = swap.areMakersAvailable(arr);
-        assertEq(a[0], true);
+        // no working hours anymore; availability equals online state
     }
 }
-
