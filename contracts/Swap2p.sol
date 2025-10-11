@@ -353,7 +353,7 @@ contract Swap2p {
     // Cancel before accept (maker or taker)
     function cancelRequest(uint96 id, string calldata reason) external {
         Deal storage d = deals[id];
-        if (msg.sender != d.maker || msg.sender != d.taker) revert WrongCaller();
+        if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
@@ -389,27 +389,29 @@ contract Swap2p {
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // Cancel after accept
-    function maker_cancelDeal(uint96 id, string calldata reason) external onlyMaker(id) {
+    // Cancel after accept (restricted by side)
+    function cancelDeal(uint96 id, string calldata reason) external {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
-        if (d.side != Side.BUY) revert WrongSide();
-        d.state  = DealState.CANCELED;
-        d.tsLast = uint40(block.timestamp);
-        _push(d.token, d.taker, d.amount * 2);
-        _push(d.token, d.maker, d.amount);
-        _closeBoth(d.maker, d.taker, id);
-        emit DealCanceled(id, reason);
-    }
+        // maker can cancel only when Side.BUY; taker only when Side.SELL
+        if (msg.sender == d.maker) {
+            if (d.side != Side.BUY) revert WrongSide();
+        } else if (msg.sender == d.taker) {
+            if (d.side != Side.SELL) revert WrongSide();
+        } else {
+            // neither maker nor taker
+            revert WrongCaller();
+        }
 
-    function taker_cancelDeal(uint96 id, string calldata reason) external onlyTaker(id) {
-        Deal storage d = deals[id];
-        if (d.state != DealState.ACCEPTED) revert WrongState();
-        if (d.side != Side.SELL) revert WrongSide();
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
-        _push(d.token, d.taker, d.amount);
-        _push(d.token, d.maker, d.amount * 2);
+        if (d.side == Side.BUY) {
+            _push(d.token, d.taker, d.amount * 2);
+            _push(d.token, d.maker, d.amount);
+        } else {
+            _push(d.token, d.taker, d.amount);
+            _push(d.token, d.maker, d.amount * 2);
+        }
         _closeBoth(d.maker, d.taker, id);
         emit DealCanceled(id, reason);
     }
