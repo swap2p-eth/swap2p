@@ -87,8 +87,7 @@ contract Swap2p {
 
     // ────────────────────────────────────────────────────────────────────────
     // Errors
-    error NotMaker();
-    error NotTaker();
+    error WrongCaller();
     error WrongState();
     error WrongSide();
     error OfferNotFound();
@@ -150,11 +149,11 @@ contract Swap2p {
     // ────────────────────────────────────────────────────────────────────────
     // Modifiers
     modifier onlyMaker(uint96 id) {
-        if (msg.sender != deals[id].maker) revert NotMaker();
+        if (msg.sender != deals[id].maker) revert WrongCaller();
         _;
     }
     modifier onlyTaker(uint96 id) {
-        if (msg.sender != deals[id].taker) revert NotTaker();
+        if (msg.sender != deals[id].taker) revert WrongCaller();
         _;
     }
 
@@ -351,22 +350,10 @@ contract Swap2p {
 
 
     // ────────────────────────────────────────────────────────────────────────
-    // Cancel before accept
-    function taker_cancelRequest(uint96 id, string calldata reason) external onlyTaker(id) {
+    // Cancel before accept (maker or taker)
+    function cancelRequest(uint96 id, string calldata reason) external {
         Deal storage d = deals[id];
-        if (d.state != DealState.REQUESTED) revert WrongState();
-        d.state  = DealState.CANCELED;
-        d.tsLast = uint40(block.timestamp);
-        Offer storage off = offers[d.token][d.maker][d.side][d.fiat];
-        if (off.maxAmt != 0) off.reserve += uint96(d.amount);
-        uint128 back = d.side == Side.BUY ? d.amount * 2 : d.amount;
-        _push(d.token, d.taker, back);
-        _closeBoth(d.maker, d.taker, id);
-        emit DealCanceled(id, reason);
-    }
-
-    function maker_cancelRequest(uint96 id, string calldata reason) external onlyMaker(id) {
-        Deal storage d = deals[id];
+        if (msg.sender != d.maker || msg.sender != d.taker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
@@ -444,7 +431,7 @@ contract Swap2p {
         if (d.state != DealState.PAID) revert WrongState();
         if ((d.side == Side.BUY  && msg.sender != d.taker
         ) || (d.side == Side.SELL && msg.sender != d.maker)) {
-            revert NotTaker();
+            revert WrongCaller();
         }
 
         d.state  = DealState.RELEASED;
