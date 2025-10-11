@@ -1,0 +1,37 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.28;
+
+import {Swap2p} from "../Swap2p.sol";
+import {Swap2p_TestBase} from "./Swap2p_TestBase.t.sol";
+
+contract Swap2p_ViewsAvailabilityTest is Swap2p_TestBase {
+    function test_OfferKeysAndCounts() public {
+        vm.prank(maker);
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1e18, 500e18, "wire", "");
+        uint count = swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
+        assertEq(count, 1);
+        address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        assertEq(keys.length, 1);
+        assertEq(keys[0], maker);
+    }
+
+    function test_Availability_OnlineAndHours() public {
+        // offline by default
+        address[] memory arr = new address[](1);
+        arr[0] = maker;
+        bool[] memory a = swap.areMakersAvailable(arr);
+        assertEq(a[0], false);
+
+        vm.prank(maker);
+        swap.setOnline(true);
+        a = swap.areMakersAvailable(arr);
+        assertEq(a[0], true);
+
+        // set narrow hours that likely exclude current hour
+        vm.prank(maker);
+        swap.setWorkingHours(0, 0); // 24/7
+        a = swap.areMakersAvailable(arr);
+        assertEq(a[0], true);
+    }
+}
+
