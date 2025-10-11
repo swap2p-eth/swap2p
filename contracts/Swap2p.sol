@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import {IERC20}    from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title Swap2pERC20 – ERC20-to-fiat P2P Market with Double-Collateral Escrow
 /// @notice Fully immutable non-custodial P2P marketplace for exchanging ERC20 tokens for fiat off-chain.
@@ -13,7 +14,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 /// - Fee-on-transfer or deflationary tokens revert on inbound transfer.
 /// - UI should list only verified safe tokens.
 /// - Logic: Maker posts offer → Taker requests → Maker accepts → Fiat payment off-chain → Release on-chain.
-contract Swap2p {
+contract Swap2p is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     // ────────────────────────────────────────────────────────────────────────
@@ -157,6 +158,8 @@ contract Swap2p {
         _;
     }
 
+    // Non-reentrancy is provided by OpenZeppelin ReentrancyGuard
+
     // ────────────────────────────────────────────────────────────────────────
     // Offer-key helpers
     function _addOfferKey(address token, address m, Side s, FiatCode f) private {
@@ -299,7 +302,7 @@ contract Swap2p {
         uint96   expectedPrice,
         string calldata details,
         address  partner
-    ) external {
+    ) external nonReentrant {
         Offer storage off = offers[token][maker][s][f];
         if (off.maxAmt == 0) revert OfferNotFound();
 
@@ -351,7 +354,7 @@ contract Swap2p {
 
     // ────────────────────────────────────────────────────────────────────────
     // Cancel before accept (maker or taker)
-    function cancelRequest(uint96 id, string calldata reason) external {
+    function cancelRequest(uint96 id, string calldata reason) external nonReentrant {
         Deal storage d = deals[id];
         if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
@@ -367,7 +370,7 @@ contract Swap2p {
 
     // ────────────────────────────────────────────────────────────────────────
     // Accept / Chat
-    function maker_acceptRequest(uint96 id, string calldata msg_) external onlyMaker(id) {
+    function maker_acceptRequest(uint96 id, string calldata msg_) external onlyMaker(id) nonReentrant {
         Deal storage d = deals[id];
         if (d.state != DealState.REQUESTED) revert WrongState();
         uint128 need = d.side == Side.BUY ? d.amount : d.amount * 2;
@@ -390,7 +393,7 @@ contract Swap2p {
 
     // ────────────────────────────────────────────────────────────────────────
     // Cancel after accept (restricted by side)
-    function cancelDeal(uint96 id, string calldata reason) external {
+    function cancelDeal(uint96 id, string calldata reason) external nonReentrant {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
         // maker can cancel only when Side.BUY; taker only when Side.SELL
@@ -405,6 +408,9 @@ contract Swap2p {
 
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
+        // restore maker offer reserve
+        Offer storage off = offers[d.token][d.maker][d.side][d.fiat];
+        if (off.maxAmt != 0) off.reserve += uint96(d.amount);
         if (d.side == Side.BUY) {
             _push(d.token, d.taker, d.amount * 2);
             _push(d.token, d.maker, d.amount);
@@ -428,7 +434,7 @@ contract Swap2p {
         emit DealPaid(id, msg_);
     }
 
-    function release(uint96 id) external {
+    function release(uint96 id) external nonReentrant {
         Deal storage d = deals[id];
         if (d.state != DealState.PAID) revert WrongState();
         if ((d.side == Side.BUY  && msg.sender != d.taker
@@ -441,7 +447,7 @@ contract Swap2p {
         _closeBoth(d.maker, d.taker, id);
 
         // main payout (crypto recipient)
-        address payoutTo = (d.side == Side.BUY) ? d.taker : d.maker;
+        address payoutTo = (d.side == Side.BUY) ? d.maker : d.taker;
         _payWithFee(id, d.token, d.taker, payoutTo, d.amount);
 
         // return both deposits
