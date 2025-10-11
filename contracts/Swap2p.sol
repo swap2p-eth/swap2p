@@ -85,6 +85,10 @@ contract Swap2p is ReentrancyGuard {
     mapping(address => uint96[]) private _openDeals;
     mapping(address => mapping(uint96 => uint)) private _openPos; // +1
 
+    // recent closed deals (RELEASED or CANCELED)
+    mapping(address => uint96[]) private _recentDeals;
+    mapping(address => mapping(uint96 => uint)) private _recentPos; // +1
+
     // ────────────────────────────────────────────────────────────────────────
     // Errors
     error WrongCaller();
@@ -138,6 +142,7 @@ contract Swap2p is ReentrancyGuard {
     event PartnerBound(address indexed taker, address indexed partner);
     event MakerOnline(address indexed maker, bool online);
     // removed working hours
+    event DealDeleted(uint96 indexed id);
 
     // ────────────────────────────────────────────────────────────────────────
     constructor() {
@@ -210,6 +215,29 @@ contract Swap2p is ReentrancyGuard {
     function _closeBoth(address m, address t, uint96 id) private {
         _removeOpen(m, id);
         _removeOpen(t, id);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Recent-deal helpers
+    function _addRecent(address u, uint96 id) private {
+        if (_recentPos[u][id] == 0) {
+            _recentPos[u][id] = _recentDeals[u].length + 1;
+            _recentDeals[u].push(id);
+        }
+    }
+    function _removeRecent(address u, uint96 id) private {
+        uint pos = _recentPos[u][id];
+        if (pos == 0) return;
+        uint idx = pos - 1;
+        uint96[] storage arr = _recentDeals[u];
+        uint last = arr.length - 1;
+        if (idx != last) {
+            uint96 lastId = arr[last];
+            arr[idx] = lastId;
+            _recentPos[u][lastId] = pos;
+        }
+        arr.pop();
+        delete _recentPos[u][id];
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -356,6 +384,8 @@ contract Swap2p is ReentrancyGuard {
         if (d.state != DealState.REQUESTED) revert WrongState();
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
+        _addRecent(d.maker, id);
+        _addRecent(d.taker, id);
         Offer storage off = offers[d.token][d.maker][d.side][d.fiat];
         if (off.maxAmt != 0) off.reserve += uint96(d.amount);
         uint128 back = d.side == Side.BUY ? d.amount * 2 : d.amount;
@@ -407,6 +437,8 @@ contract Swap2p is ReentrancyGuard {
         // restore maker offer reserve
         Offer storage off = offers[d.token][d.maker][d.side][d.fiat];
         if (off.maxAmt != 0) off.reserve += uint96(d.amount);
+        _addRecent(d.maker, id);
+        _addRecent(d.taker, id);
         if (d.side == Side.BUY) {
             _push(d.token, d.taker, d.amount * 2);
             _push(d.token, d.maker, d.amount);
@@ -440,6 +472,8 @@ contract Swap2p is ReentrancyGuard {
 
         d.state  = DealState.RELEASED;
         d.tsLast = uint40(block.timestamp);
+        _addRecent(d.maker, id);
+        _addRecent(d.taker, id);
         _closeBoth(d.maker, d.taker, id);
 
         // main payout (crypto recipient)
@@ -502,6 +536,50 @@ contract Swap2p is ReentrancyGuard {
         for (uint i; i < len; i++) {
             MakerProfile storage p = makerInfo[m[i]];
             a[i] = p.online;
+        }
+    }
+
+    /// @notice Returns number of recent (closed) deals for a user.
+    function getRecentDealCount(address u) external view returns (uint) {
+        return _recentDeals[u].length;
+    }
+
+    /// @notice Returns paginated list of recent (closed) deal IDs for a user.
+    function getRecentDeals(address u, uint off, uint lim)
+    external view returns (uint96[] memory out)
+    {
+        uint96[] storage arr = _recentDeals[u];
+        uint len = arr.length;
+        if (off >= len) return out;
+        uint end = off + lim;
+        if (end > len) end = len;
+        out = new uint96[](end - off);
+        for (uint i = off; i < end; i++) {
+            out[i - off] = arr[i];
+        }
+    }
+
+    /// @notice Deletes closed deals older than the provided age in hours (min 48h).
+    function cleanupDeals(uint96[] calldata ids, uint256 minAgeHours) external {
+        if (minAgeHours < 48) revert WrongState();
+        uint256 minAge = minAgeHours * 1 hours;
+        uint len = ids.length;
+        for (uint i; i < len; i++) {
+            uint96 id = ids[i];
+            Deal storage d = deals[id];
+            DealState st = d.state;
+            if (st != DealState.RELEASED && st != DealState.CANCELED) {
+                continue;
+            }
+            if (block.timestamp - uint256(d.tsLast) < minAge) {
+                continue;
+            }
+            address maker = d.maker;
+            address taker = d.taker;
+            delete deals[id];
+            _removeRecent(maker, id);
+            _removeRecent(taker, id);
+            emit DealDeleted(id);
         }
     }
 
