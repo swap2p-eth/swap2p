@@ -31,11 +31,13 @@ contract Swap2p_ChatEventsTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.sendMessage(1, "t");
 
-        // After released, chat is not allowed
+        // After paid, release with message is allowed and sends Chat before state change
         vm.prank(taker);
-        swap.markFiatPaid(1, "");
+        swap.markFiatPaid(1, "paid msg");
         vm.prank(maker);
-        swap.release(1, "");
+        swap.release(1, "release msg");
+        
+        // After released, chat is not allowed
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
         swap.sendMessage(1, "x");

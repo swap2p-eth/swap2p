@@ -477,14 +477,16 @@ contract Swap2p is ReentrancyGuard {
     }
 
     function release(uint96 id, string calldata msg_) external nonReentrant touchActivity {
-        if (bytes(msg_).length != 0) {
-            _sendChat(id, msg_);
-        }
         Deal storage d = deals[id];
         if (d.state != DealState.PAID) revert WrongState();
         if ((d.side == Side.BUY  && msg.sender != d.taker
         ) || (d.side == Side.SELL && msg.sender != d.maker)) {
             revert WrongCaller();
+        }
+
+        // Send optional message before changing state
+        if (bytes(msg_).length != 0) {
+            _sendChat(id, msg_);
         }
 
         d.state  = DealState.RELEASED;
