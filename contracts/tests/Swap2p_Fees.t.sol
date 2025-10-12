@@ -24,7 +24,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
 
         uint256 authorBefore = token.balanceOf(author);
         vm.prank(maker);
-        swap.release(1);
+        swap.release(1, "");
         uint256 fee = (amount * 50) / 10_000;
         assertEq(token.balanceOf(author) - authorBefore, fee, "author gets fee when no partner");
     }
@@ -43,7 +43,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
         uint256 authorBefore = token.balanceOf(author);
         uint256 partnerBefore = token.balanceOf(partner);
         vm.prank(taker);
-        swap.release(1);
+        swap.release(1, "");
         uint256 fee = (amount * 50) / 10_000;
         uint256 share = (fee * 5000) / 10_000;
         assertEq(token.balanceOf(partner) - partnerBefore, share);

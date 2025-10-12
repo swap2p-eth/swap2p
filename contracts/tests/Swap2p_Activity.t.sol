@@ -60,7 +60,7 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
-        swap.release(1);
+        swap.release(1, "");
         (, tsM) = swap.makerInfo(maker);
         assertEq(tsM, uint40(block.timestamp));
     }

@@ -34,7 +34,7 @@ contract Swap2p_FlowSellTest is Swap2p_TestBase {
 
         // release (maker confirms fiat)
         vm.prank(maker);
-        swap.release(1);
+        swap.release(1, "");
 
         // fee = 0.5%
         uint256 fee = (amount * 50) / 10_000;

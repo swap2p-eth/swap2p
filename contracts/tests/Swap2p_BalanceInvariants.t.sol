@@ -24,7 +24,7 @@ contract Swap2p_BalanceInvariantsTest is Swap2p_TestBase {
 
         uint256 balBefore = token.balanceOf(address(swap));
         vm.prank(maker);
-        swap.release(1);
+        swap.release(1, "");
         uint256 balAfter = token.balanceOf(address(swap));
 
         // В ACCEPTED контракт держит депозиты: 3x amount. В release он выплачивает payout (amount - fee),

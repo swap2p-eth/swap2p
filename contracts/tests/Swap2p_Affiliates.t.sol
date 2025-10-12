@@ -36,10 +36,9 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.markFiatPaid(1, "");
         vm.prank(taker);
-        swap.release(1);
+        swap.release(1, "");
         // FeeDistributed should have used 'partner'
         // Balance checks already covered elsewhere; here assert mapping keeps first partner
         assertEq(swap.affiliates(taker), partner);
     }
 }
-

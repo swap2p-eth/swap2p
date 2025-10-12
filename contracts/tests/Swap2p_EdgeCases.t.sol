@@ -78,7 +78,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.markFiatPaid(1, "");
         vm.prank(maker);
-        swap.release(1);
+        swap.release(1, "");
     }
 
     // Covers taker cancelDeal WrongSide in BUY (line ~399)

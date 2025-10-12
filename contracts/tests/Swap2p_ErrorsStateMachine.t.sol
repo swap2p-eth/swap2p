@@ -28,7 +28,7 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
         // release without paid
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
-        swap.release(1);
+        swap.release(1, "");
     }
 
     function test_WrongCaller_CancelRequest_Release() public {
@@ -44,7 +44,7 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
         swap.markFiatPaid(1, "");
         vm.prank(taker);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.release(1);
+        swap.release(1, "");
     }
 
     function test_NotFiatPayer_SELL() public {

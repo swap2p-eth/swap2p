@@ -35,7 +35,7 @@ contract Swap2p_ChatEventsTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.markFiatPaid(1, "");
         vm.prank(maker);
-        swap.release(1);
+        swap.release(1, "");
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
         swap.sendMessage(1, "x");

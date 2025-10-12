@@ -35,7 +35,7 @@ contract Swap2p_FlowBuyTest is Swap2p_TestBase {
 
         // release (taker confirms receipt of fiat)
         vm.prank(taker);
-        swap.release(1);
+        swap.release(1, "");
 
         // fee = 0.5%, share=50%
         uint256 fee = (amount * 50) / 10_000;

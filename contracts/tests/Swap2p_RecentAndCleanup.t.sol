@@ -67,7 +67,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.markFiatPaid(1, "");
         vm.prank(maker);
-        swap.release(1);
+        swap.release(1, "");
         assertEq(swap.getRecentDealCount(maker), 1);
         assertEq(swap.getRecentDealCount(taker), 1);
         uint96[] memory rm = swap.getRecentDeals(maker, 0, 10);
@@ -109,7 +109,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.markFiatPaid(2, "");
         vm.prank(maker);
-        swap.release(2);
+        swap.release(2, "");
         // make it younger than 48h by not warping further
 
         // C: accepted (wrong state) -> should be ignored
@@ -160,4 +160,3 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         assertEq(uint(st), uint(Swap2p.DealState.NONE));
     }
 }
-
