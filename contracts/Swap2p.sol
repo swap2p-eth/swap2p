@@ -151,14 +151,6 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Modifiers
-    modifier onlyMaker(uint96 id) {
-        if (msg.sender != deals[id].maker) revert WrongCaller();
-        _;
-    }
-    modifier onlyTaker(uint96 id) {
-        if (msg.sender != deals[id].taker) revert WrongCaller();
-        _;
-    }
 
     modifier touchActivity() {
         // update last activity for caller
@@ -400,8 +392,9 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Accept / Chat
-    function maker_acceptRequest(uint96 id, string calldata msg_) external onlyMaker(id) nonReentrant touchActivity {
+    function maker_acceptRequest(uint96 id, string calldata msg_) external nonReentrant touchActivity {
         Deal storage d = deals[id];
+        if (msg.sender != d.maker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
         uint128 need = d.side == Side.BUY ? d.amount : d.amount * 2;
         _pull(d.token, msg.sender, need);

@@ -156,6 +156,9 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         swap.cleanupDeals(ids, 48);
         // recent cleared and deal deleted
         assertEq(swap.getRecentDealCount(maker), 0);
+        // off >= len branch returns empty
+        uint96[] memory emptySlice = swap.getRecentDeals(maker, 5, 10);
+        assertEq(emptySlice.length, 0);
         (,,Swap2p.DealState st,,,,,,,) = swap.deals(1);
         assertEq(uint(st), uint(Swap2p.DealState.NONE));
     }
