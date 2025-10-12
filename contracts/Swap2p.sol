@@ -406,14 +406,11 @@ contract Swap2p is ReentrancyGuard {
         emit DealAccepted(id, msg_);
     }
 
-    function maker_sendMessage(uint96 id, string calldata t) external onlyMaker(id) touchActivity {
-        DealState st = deals[id].state;
-        if (st != DealState.ACCEPTED && st != DealState.PAID) revert WrongState();
-        emit Chat(id, msg.sender, t);
-    }
-    function taker_sendMessage(uint96 id, string calldata t) external onlyTaker(id) touchActivity {
-        DealState st = deals[id].state;
-        if (st != DealState.ACCEPTED && st != DealState.PAID) revert WrongState();
+    function sendMessage(uint96 id, string calldata t) external touchActivity {
+        Deal storage d = deals[id];
+        if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
+        DealState st = d.state;
+        if (st != DealState.REQUESTED && st != DealState.ACCEPTED && st != DealState.PAID) revert WrongState();
         emit Chat(id, msg.sender, t);
     }
 

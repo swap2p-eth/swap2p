@@ -42,7 +42,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         address stranger = makeAddr("str2");
         vm.prank(stranger);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.taker_sendMessage(1, "x");
+        swap.sendMessage(1, "x");
     }
 
     // Covers _removeOfferKey pos==0 early return (line ~177)
@@ -101,4 +101,3 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         require(out.length == 0, "should be empty");
     }
 }
-

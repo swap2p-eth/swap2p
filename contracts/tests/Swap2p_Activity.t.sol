@@ -42,13 +42,13 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
-        swap.maker_sendMessage(1, "m");
+        swap.sendMessage(1, "m");
         (, tsM) = swap.makerInfo(maker);
         assertEq(tsM, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(taker);
-        swap.taker_sendMessage(1, "t");
+        swap.sendMessage(1, "t");
         (, uint40 tsT) = swap.makerInfo(taker);
         assertEq(tsT, uint40(block.timestamp));
 
