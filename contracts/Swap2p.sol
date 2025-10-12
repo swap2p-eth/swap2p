@@ -6,14 +6,41 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title Swap2pERC20 – ERC20-to-fiat P2P Market with Double-Collateral Escrow
-/// @notice Fully immutable non-custodial P2P marketplace for exchanging ERC20 tokens for fiat off-chain.
-///         Each trade uses a double-collateral model: both participants lock collateral on-chain to ensure honesty.
-///         No admin, no upgrades, and no owner — only economic incentives.
+/// @notice A non‑custodial P2P marketplace for exchanging ERC20 tokens for off‑chain fiat using a double‑collateral model.
 /// @dev
-/// - Supports any ERC20 that transfers the full amount (non-taxed tokens).
-/// - Fee-on-transfer or deflationary tokens revert on inbound transfer.
-/// - UI should list only verified safe tokens.
-/// - Logic: Maker posts offer → Taker requests → Maker accepts → Fiat payment off-chain → Release on-chain.
+/// Overview
+/// - Roles: maker (publishes offers) and taker (requests/executes offers).
+/// - Double‑collateral: both parties escrow tokens on‑chain, aligning incentives for honest fiat settlement off‑chain.
+/// - No admin/owner: protocol economics are encoded; fees are distributed automatically.
+///
+/// Core flow
+/// 1) Maker publishes an offer (token, side BUY/SELL, price, reserve, amount bounds).
+/// 2) Taker requests: deposit is pulled (BUY: 2×amount, SELL: 1×amount). Offer reserve is reduced by `amount`.
+/// 3) Maker accepts: maker deposit is pulled (BUY: 1×amount, SELL: 2×amount). State → ACCEPTED.
+/// 4) Fiat payer calls markFiatPaid (BUY: maker; SELL: taker). State → PAID.
+/// 5) Counterparty calls release: main payout (amount minus fee) is paid, and both deposits (1× each) are refunded. State → RELEASED.
+///
+/// Fees & Affiliates
+/// - Protocol fee `FEE_BPS` (default 0.5%) is deducted from the main payout.
+/// - Affiliate share `AFF_SHARE_BP` (default 50% of fee) is paid to taker’s bound partner; remainder goes to `author`.
+///
+/// States & Permissions
+/// - REQUESTED: created by taker_requestOffer; cancellable by maker or taker; chat allowed.
+/// - ACCEPTED: after maker_acceptRequest; cancellable by one side (BUY: maker; SELL: taker); chat allowed.
+/// - PAID: after markFiatPaid by the fiat payer; release is performed by the counterparty; chat allowed.
+/// - RELEASED/CANCELED: terminal. Deal id is moved from the open index to the recent index (for both maker and taker).
+///
+/// Recent & Cleanup
+/// - Recent lists show closed deals (RELEASED/CANCELED) for each party. cleanupDeals deletes old deals (min age 48h) and prunes recent indices.
+///
+/// Security
+/// - ReentrancyGuard protects functions that transfer tokens.
+/// - Fee‑on‑transfer tokens are rejected using a balance delta check in `_pull`.
+/// - Explicit access checks (WrongCaller) are used for clarity instead of modifiers.
+///
+/// Notes
+/// - Pagination helpers copy slices from storage into memory (gas‑aware, intended for off‑chain calls).
+/// - Timestamps are compact; `lastActivity` is updated via `touchActivity` on user interactions.
 contract Swap2p is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -145,6 +172,7 @@ contract Swap2p is ReentrancyGuard {
     event DealDeleted(uint96 indexed id);
 
     // ────────────────────────────────────────────────────────────────────────
+    /// @notice Initializes fee receiver (`author`) as the deployer.
     constructor() {
         author = msg.sender;
     }
@@ -162,6 +190,7 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Offer-key helpers
+    /// @dev Adds a maker address into the offer keys index if absent.
     function _addOfferKey(address token, address m, Side s, FiatCode f) private {
         if (_offerPos[token][m][s][f] == 0) {
             _offerPos[token][m][s][f] = _offerKeys[token][s][f].length + 1;
@@ -169,6 +198,7 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
+    /// @dev Removes a maker address from the offer keys index if present.
     function _removeOfferKey(address token, address m, Side s, FiatCode f) private {
         uint pos = _offerPos[token][m][s][f];
         if (pos == 0) return;
@@ -186,10 +216,12 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Open-deal helpers
+    /// @dev Adds a deal into user's open list.
     function _addOpen(address u, uint96 id) private {
         _openPos[u][id] = _openDeals[u].length + 1;
         _openDeals[u].push(id);
     }
+    /// @dev Removes a deal from user's open list if present.
     function _removeOpen(address u, uint96 id) private {
         uint pos = _openPos[u][id];
         if (pos == 0) return;
@@ -204,6 +236,7 @@ contract Swap2p is ReentrancyGuard {
         arr.pop();
         delete _openPos[u][id];
     }
+    /// @dev Removes a deal from both maker and taker open lists.
     function _closeBoth(address m, address t, uint96 id) private {
         _removeOpen(m, id);
         _removeOpen(t, id);
@@ -211,12 +244,14 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Recent-deal helpers
+    /// @dev Adds a deal into user's recent (closed) list.
     function _addRecent(address u, uint96 id) private {
         if (_recentPos[u][id] == 0) {
             _recentPos[u][id] = _recentDeals[u].length + 1;
             _recentDeals[u].push(id);
         }
     }
+    /// @dev Removes a deal from user's recent (closed) list if present.
     function _removeRecent(address u, uint96 id) private {
         uint pos = _recentPos[u][id];
         if (pos == 0) return;
@@ -234,6 +269,7 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Token transfer helpers
+    /// @dev Pulls `amt` tokens from `from` and rejects fee-on-transfer tokens.
     function _pull(address token, address from, uint128 amt) internal {
         if (amt == 0) return;
         uint256 beforeBal = IERC20(token).balanceOf(address(this));
@@ -242,11 +278,13 @@ contract Swap2p is ReentrancyGuard {
         if (afterBal - beforeBal != amt) revert FeeOnTransferTokenNotSupported();
     }
 
+    /// @dev Pushes `amt` tokens to `to`.
     function _push(address token, address to, uint128 amt) internal {
         if (amt == 0) return;
         IERC20(token).safeTransfer(to, amt);
     }
 
+    /// @dev Pays `amt` to `to`, charges protocol fee and splits affiliate share.
     function _payWithFee(uint96 id, address token, address taker, address to, uint128 amt) internal {
         uint128 fee = uint128((uint256(amt) * FEE_BPS) / 10_000);
         _push(token, to, amt - fee);
@@ -264,6 +302,8 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Maker profile
+    /// @notice Sets caller's online status for availability checks.
+    /// @param on New online flag.
     function setOnline(bool on) external touchActivity {
         makerInfo[msg.sender].online = on;
         emit MakerOnline(msg.sender, on);
@@ -271,6 +311,16 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Offer management
+    /// @notice Creates/updates an offer for the caller (maker).
+    /// @param token ERC20 token address.
+    /// @param s Side (BUY/SELL).
+    /// @param f Fiat code (uint24).
+    /// @param price Fiat per token price (unit is UI-defined).
+    /// @param reserve Amount of tokens reserved for this offer.
+    /// @param minAmt Minimum per-request amount.
+    /// @param maxAmt Maximum per-request amount.
+    /// @param paymentMethods Free-form list/description of fiat rails.
+    /// @param comment Optional comment emitted in OfferUpsert.
     function maker_makeOffer(
         address  token,
         Side     s,
@@ -298,6 +348,7 @@ contract Swap2p is ReentrancyGuard {
         emit OfferUpsert(token, msg.sender, s, f, o, comment);
     }
 
+    /// @notice Deletes caller's offer for (token, side, fiat).
     function maker_deleteOffer(address token, Side s, FiatCode f) external {
         delete offers[token][msg.sender][s][f];
         _removeOfferKey(token, msg.sender, s, f);
@@ -309,6 +360,15 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Request (taker)
+    /// @notice Requests an offer and escrows taker deposit (BUY: 2×, SELL: 1×).
+    /// @param token ERC20 token address.
+    /// @param s Side.
+    /// @param maker Maker address.
+    /// @param amount Trade amount.
+    /// @param f Fiat code.
+    /// @param expectedPrice Price guard (BUY: offer >= expected; SELL: offer <= expected).
+    /// @param details Free-form details emitted in DealRequested.
+    /// @param partner Optional affiliate to bind (first non-zero value wins).
     function taker_requestOffer(
         address  token,
         Side     s,
@@ -370,6 +430,9 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Cancel before accept (maker or taker)
+    /// @notice Cancels a REQUESTED deal by maker or taker, restores reserve and refunds taker.
+    /// @param id Deal id.
+    /// @param reason Optional message (sent via Chat before state change).
     function cancelRequest(uint96 id, string calldata reason) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
@@ -392,6 +455,9 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Accept / Chat
+    /// @notice Accepts a REQUESTED deal, escrows maker deposit (BUY:1×, SELL:2×).
+    /// @param id Deal id.
+    /// @param msg_ Optional message (sent via Chat after state change).
     function maker_acceptRequest(uint96 id, string calldata msg_) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (msg.sender != d.maker) revert WrongCaller();
@@ -406,6 +472,7 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
+    /// @dev Emits a chat message for REQUESTED/ACCEPTED/PAID if caller is maker or taker.
     function _sendChat(uint96 id, string calldata t) private {
         Deal storage d = deals[id];
         if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
@@ -414,12 +481,18 @@ contract Swap2p is ReentrancyGuard {
         emit Chat(id, msg.sender, t);
     }
 
+    /// @notice Sends a chat message in REQUESTED/ACCEPTED/PAID.
+    /// @param id Deal id.
+    /// @param t Message text.
     function sendMessage(uint96 id, string calldata t) external touchActivity {
         _sendChat(id, t);
     }
 
     // ────────────────────────────────────────────────────────────────────────
     // Cancel after accept (restricted by side)
+    /// @notice Cancels an ACCEPTED deal (SELL: taker; BUY: maker). Restores reserve and refunds.
+    /// @param id Deal id.
+    /// @param reason Optional message (sent via Chat before state change).
     function cancelDeal(uint96 id, string calldata reason) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
@@ -456,6 +529,9 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Mark paid / Release
+    /// @notice Marks fiat as paid by the payer (BUY: maker; SELL: taker). Moves to PAID.
+    /// @param id Deal id.
+    /// @param msg_ Optional message (sent via Chat after state change).
     function markFiatPaid(uint96 id, string calldata msg_) external touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
@@ -469,6 +545,10 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
+    /// @notice Releases the deal after PAID by the counterparty (BUY: taker; SELL: maker).
+    /// @dev Pays main amount minus fee and refunds deposits. Adds to recent lists and emits DealReleased.
+    /// @param id Deal id.
+    /// @param msg_ Optional message (sent via Chat before state change).
     function release(uint96 id, string calldata msg_) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.PAID) revert WrongState();
@@ -502,14 +582,17 @@ contract Swap2p is ReentrancyGuard {
     // ────────────────────────────────────────────────────────────────────────
     // View helpers
     /// @notice Returns number of offers for given token/side/fiat.
+    /// @notice Returns the number of makers with an offer for (token, side, fiat).
     function getOfferCount(address token, Side s, FiatCode f) external view returns (uint) {
         return _offerKeys[token][s][f].length;
     }
 
     /// @notice Returns subset of offer maker addresses for pagination.
+    /// @notice Returns a paginated slice of maker addresses for (token, side, fiat).
+    /// @param off Offset in the index.
+    /// @param lim Max number of items to return.
     function getOfferKeys(address token, Side s, FiatCode f, uint off, uint lim)
-    external view returns (address[] memory out)
-    {
+    external view returns (address[] memory out) {
         address[] storage arr = _offerKeys[token][s][f];
         uint len = arr.length;
         if (off >= len) return out;
@@ -522,14 +605,17 @@ contract Swap2p is ReentrancyGuard {
     }
 
     /// @notice Returns number of open deals for a user.
+    /// @notice Returns the count of open (non-closed) deals for a user.
     function getOpenDealCount(address u) external view returns (uint) {
         return _openDeals[u].length;
     }
 
     /// @notice Returns paginated list of open deal IDs for a user.
+    /// @notice Returns a paginated slice of open deal IDs for a user.
+    /// @param off Offset.
+    /// @param lim Limit.
     function getOpenDeals(address u, uint off, uint lim)
-    external view returns (uint96[] memory out)
-    {
+    external view returns (uint96[] memory out) {
         uint96[] storage arr = _openDeals[u];
         uint len = arr.length;
         if (off >= len) return out;
@@ -542,6 +628,7 @@ contract Swap2p is ReentrancyGuard {
     }
 
     /// @notice Checks maker availability for current UTC hour.
+    /// @notice Returns online flags for the given maker addresses.
     function areMakersAvailable(address[] calldata m) external view returns (bool[] memory a) {
         uint len = m.length;
         a = new bool[](len);
@@ -552,14 +639,17 @@ contract Swap2p is ReentrancyGuard {
     }
 
     /// @notice Returns number of recent (closed) deals for a user.
+    /// @notice Returns the count of recent (closed) deals for a user.
     function getRecentDealCount(address u) external view returns (uint) {
         return _recentDeals[u].length;
     }
 
     /// @notice Returns paginated list of recent (closed) deal IDs for a user.
+    /// @notice Returns a paginated slice of recent (closed) deal IDs for a user.
+    /// @param off Offset.
+    /// @param lim Limit.
     function getRecentDeals(address u, uint off, uint lim)
-    external view returns (uint96[] memory out)
-    {
+    external view returns (uint96[] memory out) {
         uint96[] storage arr = _recentDeals[u];
         uint len = arr.length;
         if (off >= len) return out;
@@ -572,6 +662,10 @@ contract Swap2p is ReentrancyGuard {
     }
 
     /// @notice Deletes closed deals older than the provided age in hours (min 48h).
+    /// @notice Deletes closed (RELEASED/CANCELED) deals older than `minAgeHours` and prunes recent indices.
+    /// @dev Requires `minAgeHours >= 48`. Best used with small batches.
+    /// @param ids Deal ids to consider for deletion.
+    /// @param minAgeHours Minimal age threshold in hours.
     function cleanupDeals(uint96[] calldata ids, uint256 minAgeHours) external {
         if (minAgeHours < 48) revert WrongState();
         uint256 minAge = minAgeHours * 1 hours;
