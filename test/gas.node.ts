@@ -134,8 +134,10 @@ test("Gas report (Node test runner, TS)", async () => {
   }
   footer();
 
-  // Save baseline
-  fs.writeFileSync(BASELINE_PATH, JSON.stringify(latest, null, 2) + "\n");
+  // Save baseline when explicitly requested
+  if (process.env.UPDATE_GAS_BASELINE === '1') {
+    fs.writeFileSync(BASELINE_PATH, JSON.stringify(latest, null, 2) + "\n");
+  }
 
   // Basic assertion to finish the test successfully
   assert.equal(true, true);
