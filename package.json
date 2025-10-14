@@ -9,6 +9,7 @@
     "@solidstate/hardhat-contract-sizer": "^3.0.0",
     "@solidstate/hardhat-selector-uploader": "^2.0.0",
     "@types/node": "^22.18.8",
+    "dotenv": "^17.2.3",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.0.7",
     "typescript": "~5.8.0",
@@ -20,7 +21,9 @@
     "test": "npx hardhat test",
     "test-gas": "npx hardhat test nodejs test/gas.node.ts",
     "test-gas:sol": "npx hardhat test solidity contracts/tests/Swap2p_Gas.t.sol",
-    "coverage": "rm -rf coverage && npx hardhat test --coverage"
+    "coverage": "rm -rf coverage && npx hardhat test --coverage",
+    "deploy:hardhat": "npx hardhat run --network hardhat scripts/deploy-swap2p.ts",
+    "deploy:sepolia": "npx hardhat run --network sepolia scripts/deploy-swap2p.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0"

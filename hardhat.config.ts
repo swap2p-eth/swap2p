@@ -1,8 +1,13 @@
 import type { HardhatUserConfig } from "hardhat/config";
-
 import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import HardhatContractSizer from '@solidstate/hardhat-contract-sizer';
-import { configVariable } from "hardhat/config";
+import "@nomicfoundation/hardhat-verify";
+import "dotenv/config";
+
+if (!process.env.PRIVATE_KEY) {
+  throw new Error("PRIVATE_KEY environment variable not set");
+}
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 const config: HardhatUserConfig = {
   plugins: [hardhatToolboxViemPlugin, HardhatContractSizer],
@@ -25,7 +30,7 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    hardhatMainnet: {
+    hardhat: {
       type: "edr-simulated",
       chainType: "l1",
     },
@@ -36,8 +41,13 @@ const config: HardhatUserConfig = {
     sepolia: {
       type: "http",
       chainType: "l1",
-      url: configVariable("SEPOLIA_RPC_URL"),
-      accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
+      url: 'https://0xrpc.io/sep',
+      accounts: [PRIVATE_KEY],
+    },
+  },
+  etherscan: {
+    apiKey: {
+      sepolia: process.env.ETHERSCAN_API_KEY,
     },
   },
 };
