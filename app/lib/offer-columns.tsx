@@ -1,6 +1,7 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { OfferRow } from "@/lib/mock-offers";
 import { Badge } from "@/components/ui/badge";
+import { TokenIcon } from "@/components/token-icon";
 
 export const offerColumns: ColumnDef<OfferRow>[] = [
   {
@@ -23,7 +24,15 @@ export const offerColumns: ColumnDef<OfferRow>[] = [
   {
     accessorKey: "token",
     header: "Token",
-    cell: ({ row }) => <span className="text-sm font-medium">{row.getValue("token")}</span>,
+    cell: ({ row }) => {
+      const token = row.getValue<string>("token");
+      return (
+        <span className="flex items-center gap-2 text-sm font-medium">
+          <TokenIcon symbol={token} size={20} />
+          {token}
+        </span>
+      );
+    },
     size: 80
   },
   {

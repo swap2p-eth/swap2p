@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { cn } from "@/lib/utils";
+import { TokenIcon } from "@/components/token-icon";
 
 interface DealPageProps {
   params: {
@@ -65,6 +66,7 @@ export default function DealDetailPage({ params }: DealPageProps) {
             <span className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-primary">
               <Coins className="h-4 w-4" />
               {deal.amount.toLocaleString("en-US")}
+              <TokenIcon symbol={deal.token} size={18} className="rounded-full bg-white" />
               <span className="text-xs uppercase">{deal.token}</span>
             </span>
             <span className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-secondary-foreground">

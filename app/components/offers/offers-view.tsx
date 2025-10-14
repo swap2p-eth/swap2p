@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DataTable } from "@/components/data-table";
 import { offerColumns } from "@/lib/offer-columns";
 import { mockOffers } from "@/lib/mock-offers";
+import { TokenIcon } from "@/components/token-icon";
 
 const tokenOptions = ["USDT", "ETH", "BTC", "USDC", "DAI"];
 const fiatOptions = ["USD", "EUR", "CNY", "GBP", "BRL", "TRY", "AED", "INR"];
@@ -58,7 +59,10 @@ export function OffersView() {
                 <SelectContent>
                   {tokenOptions.map(option => (
                     <SelectItem key={option} value={option}>
-                      {option}
+                      <span className="flex items-center gap-2">
+                        <TokenIcon symbol={option} size={20} />
+                        {option}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

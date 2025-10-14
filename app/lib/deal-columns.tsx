@@ -3,6 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { DealRow } from "@/lib/mock-data";
+import { TokenIcon } from "@/components/token-icon";
 
 export const dealColumns: ColumnDef<DealRow>[] = [
   {
@@ -41,12 +42,15 @@ export const dealColumns: ColumnDef<DealRow>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <span className="font-medium">
+      <span className="flex items-center gap-2 font-medium">
+        <TokenIcon symbol={(row.original as DealRow).token} size={18} />
         {Number(row.getValue("amount")).toLocaleString("en-US", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
-        })}{" "}
-        {(row.original as DealRow).token}
+        })}
+        <span className="text-xs uppercase text-muted-foreground/80">
+          {(row.original as DealRow).token}
+        </span>
       </span>
     )
   },
