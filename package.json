@@ -5,6 +5,9 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-ignition": "^3.0.3",
     "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^3.0.3",
+    "@solidstate/hardhat-contract-sizer": "^3.0.0",
+    "@solidstate/hardhat-selector-uploader": "^2.0.0",
     "@types/node": "^22.18.8",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.0.7",
@@ -13,6 +16,7 @@
   },
   "scripts": {
     "compile": "npx hardhat compile --force",
+    "size": "npx hardhat size-contracts",
     "test": "npx hardhat test",
     "coverage": "rm -rf coverage && npx hardhat test --coverage"
   },
