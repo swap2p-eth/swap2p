@@ -11,6 +11,9 @@ export interface DealRow {
   partner: string | null;
   state: DealState;
   updatedAt: Date;
+  maker: string;
+  taker: string;
+  token: string;
 }
 
 const now = new Date();
@@ -18,6 +21,7 @@ const now = new Date();
 export const mockDeals: DealRow[] = Array.from({ length: 24 }).map((_, index) => {
   const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
   const stateCycle: DealState[] = ["REQUESTED", "ACCEPTED", "PAID"];
+  const tokens = ["USDT", "ETH", "BTC", "USDC"];
   return {
     id: index + 1,
     side,
@@ -25,6 +29,9 @@ export const mockDeals: DealRow[] = Array.from({ length: 24 }).map((_, index) =>
     fiatCode: side === "SELL" ? "USD" : "EUR",
     partner: index % 3 === 0 ? "0xPartner" : null,
     state: stateCycle[index % stateCycle.length],
-    updatedAt: addMinutes(subHours(now, index), index * 3)
+    updatedAt: addMinutes(subHours(now, index), index * 3),
+    maker: `0xMaker${(index + 16).toString(16).padStart(2, "0")}`,
+    taker: `0xTaker${(index + 42).toString(16).padStart(2, "0")}`,
+    token: tokens[index % tokens.length]
   };
 });

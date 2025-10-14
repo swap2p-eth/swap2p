@@ -47,7 +47,7 @@ export const dealColumns: ColumnDef<DealRow>[] = [
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         })}{" "}
-        TOKEN
+        {(row.original as DealRow).token}
       </span>
     )
   },
