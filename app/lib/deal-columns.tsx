@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { DealRow } from "@/lib/mock-data";
 import { TokenIcon } from "@/components/token-icon";
+import { FiatFlag } from "@/components/fiat-flag";
 
 export const dealColumns: ColumnDef<DealRow>[] = [
   {
@@ -57,7 +58,15 @@ export const dealColumns: ColumnDef<DealRow>[] = [
   {
     accessorKey: "fiatCode",
     header: "Fiat",
-    cell: ({ row }) => <span className="text-sm">{row.getValue("fiatCode")}</span>
+    cell: ({ row }) => {
+      const fiat = row.getValue<string>("fiatCode");
+      return (
+        <span className="flex items-center gap-2 text-sm">
+          <FiatFlag fiat={fiat} size={18} />
+          {fiat}
+        </span>
+      );
+    }
   },
   {
     accessorKey: "state",

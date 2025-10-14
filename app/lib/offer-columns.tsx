@@ -2,6 +2,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import type { OfferRow } from "@/lib/mock-offers";
 import { Badge } from "@/components/ui/badge";
 import { TokenIcon } from "@/components/token-icon";
+import { FiatFlag } from "@/components/fiat-flag";
 
 export const offerColumns: ColumnDef<OfferRow>[] = [
   {
@@ -38,7 +39,15 @@ export const offerColumns: ColumnDef<OfferRow>[] = [
   {
     accessorKey: "fiat",
     header: "Fiat",
-    cell: ({ row }) => <span className="text-sm">{row.getValue("fiat")}</span>,
+    cell: ({ row }) => {
+      const fiat = row.getValue<string>("fiat");
+      return (
+        <span className="flex items-center gap-2 text-sm">
+          <FiatFlag fiat={fiat} size={20} />
+          {fiat}
+        </span>
+      );
+    },
     size: 80
   },
   {

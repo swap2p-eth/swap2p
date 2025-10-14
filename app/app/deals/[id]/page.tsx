@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { cn } from "@/lib/utils";
 import { TokenIcon } from "@/components/token-icon";
+import { FiatFlag } from "@/components/fiat-flag";
 
 interface DealPageProps {
   params: {
@@ -88,7 +89,10 @@ export default function DealDetailPage({ params }: DealPageProps) {
           </div>
           <div className="rounded-2xl bg-card/60 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.6)]">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Fiat</p>
-            <p className="mt-2 text-sm font-medium">{deal.fiatCode}</p>
+            <p className="mt-2 flex items-center gap-2 text-sm font-medium">
+              <FiatFlag fiat={deal.fiatCode} size={18} />
+              {deal.fiatCode}
+            </p>
           </div>
           <div className="rounded-2xl bg-card/60 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.6)]">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Last update</p>

@@ -9,6 +9,7 @@ import { DataTable } from "@/components/data-table";
 import { offerColumns } from "@/lib/offer-columns";
 import { mockOffers } from "@/lib/mock-offers";
 import { TokenIcon } from "@/components/token-icon";
+import { FiatFlag } from "@/components/fiat-flag";
 
 const tokenOptions = ["USDT", "ETH", "BTC", "USDC", "DAI"];
 const fiatOptions = ["USD", "EUR", "CNY", "GBP", "BRL", "TRY", "AED", "INR"];
@@ -77,7 +78,10 @@ export function OffersView() {
                 <SelectContent>
                   {fiatOptions.map(option => (
                     <SelectItem key={option} value={option}>
-                      {option}
+                      <span className="flex items-center gap-2">
+                        <FiatFlag fiat={option} size={20} />
+                        {option}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
