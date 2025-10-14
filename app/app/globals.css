@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 215 52% 96%;
+  --foreground: 222 47% 12%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 12%;
+
+  --primary: 226 73% 55%;
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 215 45% 92%;
+  --secondary-foreground: 222 47% 18%;
+
+  --muted: 214 45% 94%;
+  --muted-foreground: 222 16% 36%;
+
+  --accent: 215 63% 88%;
+  --accent-foreground: 222 47% 18%;
+
+  --destructive: 358 75% 59%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 215 41% 88%;
+  --input: 215 41% 88%;
+  --ring: 226 73% 55%;
+
+  --radius: 0.875rem;
+}
+
+.dark {
+  --background: 230 60% 7%;
+  --foreground: 213 55% 88%;
+
+  --card: 226 52% 10%;
+  --card-foreground: 213 55% 88%;
+
+  --popover: 226 52% 10%;
+  --popover-foreground: 213 55% 88%;
+
+  --primary: 199 89% 61%;
+  --primary-foreground: 222 47% 10%;
+
+  --secondary: 223 45% 16%;
+  --secondary-foreground: 210 40% 90%;
+
+  --muted: 223 32% 18%;
+  --muted-foreground: 218 15% 65%;
+
+  --accent: 198 90% 18%;
+  --accent-foreground: 210 40% 90%;
+
+  --destructive: 348 80% 52%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 223 40% 18%;
+  --input: 223 40% 18%;
+  --ring: 199 89% 61%;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(148, 163, 255, 0.3) 0%, transparent 55%),
+    radial-gradient(120% 120% at 100% 0%, rgba(125, 211, 252, 0.25) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(241, 245, 249, 0.9), rgba(255, 255, 255, 0.95));
+  color: hsl(var(--foreground));
+  font-feature-settings: "rlig" 1, "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+}
+
+.dark body {
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(56, 189, 248, 0.25) 0%, transparent 60%),
+    radial-gradient(120% 120% at 100% 0%, rgba(129, 140, 248, 0.2) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(17, 24, 39, 0.98));
+  color-scheme: dark;
+}

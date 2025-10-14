@@ -1,0 +1,23 @@
+# Dependencies
+node_modules
+
+# Builds
+.next
+out
+build
+.vercel
+
+# Env
+.env*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.DS_Store
+.idea
+*.swp
+*.swo
