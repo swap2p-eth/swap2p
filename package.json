@@ -18,8 +18,8 @@
     "compile": "npx hardhat compile --force",
     "size": "npx hardhat size-contracts",
     "test": "npx hardhat test",
-    "test-gas": "node --test test/gas.test.mjs",
-    "test-gas:sol": "node scripts/test-gas.cjs",
+    "test-gas": "npx hardhat test nodejs test/gas.node.ts",
+    "test-gas:sol": "npx hardhat test solidity contracts/tests/Swap2p_Gas.t.sol",
     "coverage": "rm -rf coverage && npx hardhat test --coverage"
   },
   "dependencies": {
