@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { ArrowUpDown, MessageCircle } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
@@ -79,16 +78,11 @@ export const dealColumns: ColumnDef<DealRow>[] = [
     }
   },
   {
-    accessorKey: "updatedAt",
+    accessorKey: "updatedLabel",
     header: "Updated",
-    cell: ({ row }) => {
-      const updatedAt: Date = row.getValue("updatedAt");
-      return (
-        <span className="text-sm text-muted-foreground">
-          {format(updatedAt, "dd MMM HH:mm")}
-        </span>
-      );
-    }
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground">{row.getValue("updatedLabel")}</span>
+    )
   },
   {
     id: "actions",

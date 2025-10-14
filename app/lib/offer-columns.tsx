@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { OfferRow } from "@/lib/mock-offers";
 import { Badge } from "@/components/ui/badge";
@@ -71,15 +70,10 @@ export const offerColumns: ColumnDef<OfferRow>[] = [
     )
   },
   {
-    accessorKey: "updatedAt",
+    accessorKey: "updatedLabel",
     header: "Updated",
-    cell: ({ row }) => {
-      const updated: Date = row.getValue("updatedAt");
-      return (
-        <span className="text-sm text-muted-foreground">
-          {format(updated, "dd MMM • HH:mm")}
-        </span>
-      );
-    }
+    cell: ({ row }) => (
+      <span className="text-sm text-muted-foreground">{row.getValue("updatedLabel")}</span>
+    )
   }
 ];

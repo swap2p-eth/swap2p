@@ -90,14 +90,7 @@ export default function DealDetailPage({ params }: DealPageProps) {
           </div>
           <div className="rounded-2xl bg-card/60 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.6)]">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Last update</p>
-            <p className="mt-2 text-sm font-medium">
-              {new Intl.DateTimeFormat(undefined, {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit"
-              }).format(deal.updatedAt)}
-            </p>
+            <p className="mt-2 text-sm font-medium">{deal.updatedLabel}</p>
           </div>
         </CardContent>
       </Card>

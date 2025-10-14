@@ -17,6 +17,27 @@ const options: { value: ThemeMode; icon: React.ComponentType<{ className?: strin
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
   const current = (theme ?? "system") as ThemeMode;
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div
+        className={cn(
+          "inline-flex items-center rounded-full bg-background/80 p-1 opacity-0",
+          className
+        )}
+        aria-hidden="true"
+      >
+        {options.map(option => (
+          <span key={option.value} className="h-9 w-9 rounded-full" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div

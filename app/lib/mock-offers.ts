@@ -1,4 +1,3 @@
-import { addMinutes, subMinutes } from "date-fns";
 import type { DealSide } from "@/lib/mock-data";
 
 export interface OfferRow {
@@ -11,27 +10,34 @@ export interface OfferRow {
   minAmount: number;
   maxAmount: number;
   paymentMethods: string;
-  updatedAt: Date;
+  updatedLabel: string;
 }
 
-const now = new Date();
+const tokenList = ["USDT", "ETH", "BTC", "DAI", "USDC"];
+const fiatList = ["USD", "EUR", "CNY", "GBP", "BRL"];
+const paymentMethods = [
+  "SEPA · Revolut",
+  "Swift wire",
+  "Pix",
+  "Faster Payments",
+  "Wise",
+  "UPI",
+  "AliPay"
+];
+const updatedLabels = [
+  "Apr 08 • 10:22",
+  "Apr 08 • 11:05",
+  "Apr 08 • 12:44",
+  "Apr 08 • 13:18",
+  "Apr 08 • 14:52",
+  "Apr 08 • 15:37",
+  "Apr 08 • 16:11"
+];
 
 export const mockOffers: OfferRow[] = Array.from({ length: 18 }).map((_, index) => {
   const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
-  const tokenList = ["USDT", "ETH", "BTC", "DAI", "USDC"];
-  const fiatList = ["USD", "EUR", "CNY", "GBP", "BRL"];
-  const paymentMethods = [
-    "SEPA, Revolut",
-    "Swift wire",
-    "Pix",
-    "Faster Payments",
-    "Wise",
-    "UPI",
-    "AliPay"
-  ];
-
-  const min = 500 + index * 50;
-  const max = min + 2500;
+  const min = 500 + index * 60;
+  const max = min + 2200;
 
   return {
     id: index + 1,
@@ -43,6 +49,6 @@ export const mockOffers: OfferRow[] = Array.from({ length: 18 }).map((_, index) 
     minAmount: min,
     maxAmount: max,
     paymentMethods: paymentMethods[index % paymentMethods.length],
-    updatedAt: addMinutes(subMinutes(now, index * 11), index * 2)
+    updatedLabel: updatedLabels[index % updatedLabels.length]
   };
 });
