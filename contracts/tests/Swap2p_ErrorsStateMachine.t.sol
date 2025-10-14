@@ -21,14 +21,14 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
     function test_WrongState_AcceptTwice_ReleaseWrongStates() public {
         _reqSell();
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         // release without paid
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
     }
 
     function test_WrongCaller_CancelRequest_Release() public {
@@ -36,34 +36,34 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
         address stranger = makeAddr("xx");
         vm.prank(stranger);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
         // After paid, wrong party release
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(taker);
-        swap.markFiatPaid(1, "");
+        swap.markFiatPaid(1, bytes(""));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
     }
 
     function test_NotFiatPayer_SELL() public {
         _reqSell();
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(maker);
         vm.expectRevert(Swap2p.NotFiatPayer.selector);
-        swap.markFiatPaid(1, "");
+        swap.markFiatPaid(1, bytes(""));
     }
 
     function test_WrongSide_CancelDeal() public {
         _reqSell();
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         // maker cannot cancel in SELL
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongSide.selector);
-        swap.cancelDeal(1, "");
+        swap.cancelDeal(1, bytes(""));
     }
 
     function test_OfferNotFound_AmountBounds_InsufficientReserve() public {

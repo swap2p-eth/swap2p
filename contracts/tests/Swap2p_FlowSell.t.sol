@@ -21,11 +21,11 @@ contract Swap2p_FlowSellTest is Swap2p_TestBase {
 
         // accept (maker deposits 2x)
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "ok");
+        swap.maker_acceptRequest(1, bytes("ok"));
 
         // mark fiat paid (taker pays fiat in SELL)
         vm.prank(taker);
-        swap.markFiatPaid(1, "paid");
+        swap.markFiatPaid(1, bytes("paid"));
 
         // capture balances before release
         uint256 makerBefore = token.balanceOf(maker);
@@ -34,7 +34,7 @@ contract Swap2p_FlowSellTest is Swap2p_TestBase {
 
         // release (maker confirms fiat)
         vm.prank(maker);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
 
         // fee = 0.5%
         uint256 fee = (amount * 50) / 10_000;

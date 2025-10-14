@@ -18,13 +18,13 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, amount, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "ok");
+        swap.maker_acceptRequest(1, bytes("ok"));
         vm.prank(taker);
-        swap.markFiatPaid(1, "paid");
+        swap.markFiatPaid(1, bytes("paid"));
 
         uint256 authorBefore = token.balanceOf(author);
         vm.prank(maker);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
         uint256 fee = (amount * 50) / 10_000;
         assertEq(token.balanceOf(author) - authorBefore, fee, "author gets fee when no partner");
     }
@@ -36,14 +36,14 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, amount, Swap2p.FiatCode.wrap(978), 100e18, "", partner);
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "ok");
+        swap.maker_acceptRequest(1, bytes("ok"));
         vm.prank(maker);
-        swap.markFiatPaid(1, "paid");
+        swap.markFiatPaid(1, bytes("paid"));
 
         uint256 authorBefore = token.balanceOf(author);
         uint256 partnerBefore = token.balanceOf(partner);
         vm.prank(taker);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
         uint256 fee = (amount * 50) / 10_000;
         uint256 share = (fee * 5000) / 10_000;
         assertEq(token.balanceOf(partner) - partnerBefore, share);

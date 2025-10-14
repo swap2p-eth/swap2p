@@ -26,10 +26,10 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WrongState.selector);
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
     }
 
     function test_WrongState_CancelDeal_BeforeAccepted() public {
@@ -42,7 +42,7 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
         // maker is the one who can cancel in BUY, but state is REQUESTED
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
-        swap.cancelDeal(1, "");
+        swap.cancelDeal(1, bytes(""));
     }
 
     function test_WrongState_MarkPaid_BeforeAccepted() public {
@@ -55,7 +55,7 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
         // payer in BUY is maker, but status is REQUESTED
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
-        swap.markFiatPaid(1, "");
+        swap.markFiatPaid(1, bytes(""));
     }
 
     function test_RemoveOffer_LastIndex_Path() public {

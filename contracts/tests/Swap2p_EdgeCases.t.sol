@@ -31,7 +31,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         address stranger = makeAddr("stranger");
         vm.prank(stranger);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
     }
 
     // Covers modifier onlyTaker revert (line ~154)
@@ -42,7 +42,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         address stranger = makeAddr("str2");
         vm.prank(stranger);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.sendMessage(1, "x");
+        swap.sendMessage(1, bytes("x"));
     }
 
     // Covers _removeOfferKey pos==0 early return (line ~177)
@@ -65,7 +65,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 1e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         // maker cancels; second _removeOpen sees pos==0
         vm.prank(maker);
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
     }
 
     // Covers _pull amt==0 early return (line ~218) and _push amt==0 (line ~226)
@@ -74,11 +74,11 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 0, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(taker);
-        swap.markFiatPaid(1, "");
+        swap.markFiatPaid(1, bytes(""));
         vm.prank(maker);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
     }
 
     // Covers taker cancelDeal WrongSide in BUY (line ~399)
@@ -87,10 +87,10 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WrongSide.selector);
-        swap.cancelDeal(1, "");
+        swap.cancelDeal(1, bytes(""));
     }
 
     // Covers getOpenDeals(off>=len) early return (line ~489)

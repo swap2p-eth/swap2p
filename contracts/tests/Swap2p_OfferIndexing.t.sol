@@ -59,7 +59,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
         // cancel request
         vm.prank(taker);
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
         // new offer and request same amount: reserve should not be auto-restored from old offer
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 0, 10e18, 500e18, "wire", "");

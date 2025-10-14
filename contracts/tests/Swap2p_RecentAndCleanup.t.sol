@@ -22,7 +22,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(taker);
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 1);
         assertEq(swap.getRecentDealCount(taker), 1);
         uint96[] memory rm = swap.getRecentDeals(maker, 0, 10);
@@ -38,9 +38,9 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 5e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(taker);
-        swap.cancelDeal(1, "");
+        swap.cancelDeal(1, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 1);
         assertEq(swap.getRecentDealCount(taker), 1);
 
@@ -50,9 +50,9 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 6e18, Swap2p.FiatCode.wrap(978), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(2, "");
+        swap.maker_acceptRequest(2, bytes(""));
         vm.prank(maker);
-        swap.cancelDeal(2, "");
+        swap.cancelDeal(2, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 2);
         assertEq(swap.getRecentDealCount(taker), 2);
     }
@@ -63,11 +63,11 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 7e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(taker);
-        swap.markFiatPaid(1, "");
+        swap.markFiatPaid(1, bytes(""));
         vm.prank(maker);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 1);
         assertEq(swap.getRecentDealCount(taker), 1);
         uint96[] memory rm = swap.getRecentDeals(maker, 0, 10);
@@ -82,7 +82,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 8e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(taker);
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
         uint96[] memory ids = new uint96[](1);
         ids[0] = 1;
         vm.expectRevert(Swap2p.WrongState.selector);
@@ -96,7 +96,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 9e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(taker);
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
         vm.warp(block.timestamp + 49 hours);
 
         // B: released, but not old enough -> should stay
@@ -105,11 +105,11 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(2, "");
+        swap.maker_acceptRequest(2, bytes(""));
         vm.prank(taker);
-        swap.markFiatPaid(2, "");
+        swap.markFiatPaid(2, bytes(""));
         vm.prank(maker);
-        swap.release(2, "");
+        swap.release(2, bytes(""));
         // make it younger than 48h by not warping further
 
         // C: accepted (wrong state) -> should be ignored
@@ -118,7 +118,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 11e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(3, "");
+        swap.maker_acceptRequest(3, bytes(""));
 
         // cleanup with 48 hours
         uint96[] memory ids = new uint96[](3);
@@ -149,7 +149,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 0, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(maker);
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
         vm.warp(block.timestamp + 49 hours);
         uint96[] memory ids = new uint96[](1);
         ids[0] = 1;

@@ -29,7 +29,7 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
         _setupSell(100e18);
         // cancel by maker
         vm.prank(maker);
-        swap.cancelRequest(1, "cancel");
+        swap.cancelRequest(1, bytes("cancel"));
         // request again to ensure reserve restored
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 100e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
@@ -38,10 +38,10 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
     function test_CancelDeal_Sell_ByTaker_ReserveRestored() public {
         _setupSell(100e18);
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "ok");
+        swap.maker_acceptRequest(1, bytes("ok"));
         // cancel by taker (SELL)
         vm.prank(taker);
-        swap.cancelDeal(1, "later");
+        swap.cancelDeal(1, bytes("later"));
         // request again to ensure reserve restored
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 100e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
@@ -50,10 +50,10 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
     function test_CancelDeal_Buy_ByMaker_ReserveRestored() public {
         _setupBuy(50e18);
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "ok");
+        swap.maker_acceptRequest(1, bytes("ok"));
         // cancel by maker (BUY)
         vm.prank(maker);
-        swap.cancelDeal(1, "later");
+        swap.cancelDeal(1, bytes("later"));
         // request again to ensure reserve restored
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 50e18, Swap2p.FiatCode.wrap(978), 100e18, "", address(0));
@@ -62,11 +62,11 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
     function test_Revert_CancelDeal_WrongCaller() public {
         _setupSell(100e18);
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "ok");
+        swap.maker_acceptRequest(1, bytes("ok"));
         address stranger = makeAddr("stranger");
         vm.prank(stranger);
         vm.expectRevert();
-        swap.cancelDeal(1, "");
+        swap.cancelDeal(1, bytes(""));
     }
 }
 

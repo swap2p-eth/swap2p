@@ -157,7 +157,7 @@ contract Swap2p is ReentrancyGuard {
     event DealPaid(uint96 indexed id);
     event DealReleased(uint96 indexed id);
 
-    event Chat(uint96 indexed id, address indexed from, string text);
+    event Chat(uint96 indexed id, address indexed from, bytes text);
 
     event FeeDistributed(
         uint96 indexed id,
@@ -433,12 +433,12 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Cancels a REQUESTED deal by maker or taker, restores reserve and refunds taker.
     /// @param id Deal id.
     /// @param reason Optional message (sent via Chat before state change).
-    function cancelRequest(uint96 id, string calldata reason) external nonReentrant touchActivity {
+    function cancelRequest(uint96 id, bytes calldata reason) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
         // send reason before changing state to keep chat in allowed states
-        if (bytes(reason).length != 0) {
+        if (reason.length != 0) {
             _sendChat(id, reason);
         }
         d.state  = DealState.CANCELED;
@@ -458,7 +458,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Accepts a REQUESTED deal, escrows maker deposit (BUY:1×, SELL:2×).
     /// @param id Deal id.
     /// @param msg_ Optional message (sent via Chat after state change).
-    function maker_acceptRequest(uint96 id, string calldata msg_) external nonReentrant touchActivity {
+    function maker_acceptRequest(uint96 id, bytes calldata msg_) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (msg.sender != d.maker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
@@ -467,13 +467,13 @@ contract Swap2p is ReentrancyGuard {
         d.state  = DealState.ACCEPTED;
         d.tsLast = uint40(block.timestamp);
         emit DealAccepted(id);
-        if (bytes(msg_).length != 0) {
+        if (msg_.length != 0) {
             _sendChat(id, msg_);
         }
     }
 
     /// @dev Emits a chat message for REQUESTED/ACCEPTED/PAID if caller is maker or taker.
-    function _sendChat(uint96 id, string calldata t) private {
+    function _sendChat(uint96 id, bytes calldata t) private {
         Deal storage d = deals[id];
         if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
         DealState st = d.state;
@@ -484,7 +484,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Sends a chat message in REQUESTED/ACCEPTED/PAID.
     /// @param id Deal id.
     /// @param t Message text.
-    function sendMessage(uint96 id, string calldata t) external touchActivity {
+    function sendMessage(uint96 id, bytes calldata t) external touchActivity {
         _sendChat(id, t);
     }
 
@@ -493,7 +493,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Cancels an ACCEPTED deal (SELL: taker; BUY: maker). Restores reserve and refunds.
     /// @param id Deal id.
     /// @param reason Optional message (sent via Chat before state change).
-    function cancelDeal(uint96 id, string calldata reason) external nonReentrant touchActivity {
+    function cancelDeal(uint96 id, bytes calldata reason) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
         // maker can cancel only when Side.BUY; taker only when Side.SELL
@@ -506,7 +506,7 @@ contract Swap2p is ReentrancyGuard {
             revert WrongCaller();
         }
 
-        if (bytes(reason).length != 0) {
+        if (reason.length != 0) {
             _sendChat(id, reason);
         }
         d.state  = DealState.CANCELED;
@@ -532,7 +532,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Marks fiat as paid by the payer (BUY: maker; SELL: taker). Moves to PAID.
     /// @param id Deal id.
     /// @param msg_ Optional message (sent via Chat after state change).
-    function markFiatPaid(uint96 id, string calldata msg_) external touchActivity {
+    function markFiatPaid(uint96 id, bytes calldata msg_) external touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
         if ((d.side == Side.BUY  && msg.sender != d.maker) ||
@@ -540,7 +540,7 @@ contract Swap2p is ReentrancyGuard {
         d.state  = DealState.PAID;
         d.tsLast = uint40(block.timestamp);
         emit DealPaid(id);
-        if (bytes(msg_).length != 0) {
+        if (msg_.length != 0) {
             _sendChat(id, msg_);
         }
     }
@@ -549,7 +549,7 @@ contract Swap2p is ReentrancyGuard {
     /// @dev Pays main amount minus fee and refunds deposits. Adds to recent lists and emits DealReleased.
     /// @param id Deal id.
     /// @param msg_ Optional message (sent via Chat before state change).
-    function release(uint96 id, string calldata msg_) external nonReentrant touchActivity {
+    function release(uint96 id, bytes calldata msg_) external nonReentrant touchActivity {
         Deal storage d = deals[id];
         if (d.state != DealState.PAID) revert WrongState();
         if ((d.side == Side.BUY  && msg.sender != d.taker
@@ -558,7 +558,7 @@ contract Swap2p is ReentrancyGuard {
         }
 
         // Send optional message before changing state
-        if (bytes(msg_).length != 0) {
+        if (msg_.length != 0) {
             _sendChat(id, msg_);
         }
 

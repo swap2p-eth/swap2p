@@ -36,31 +36,31 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "hi");
+        swap.maker_acceptRequest(1, bytes("hi"));
         (, uint40 tsM) = swap.makerInfo(maker);
         assertEq(tsM, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
-        swap.sendMessage(1, "m");
+        swap.sendMessage(1, bytes("m"));
         (, tsM) = swap.makerInfo(maker);
         assertEq(tsM, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(taker);
-        swap.sendMessage(1, "t");
+        swap.sendMessage(1, bytes("t"));
         (, uint40 tsT) = swap.makerInfo(taker);
         assertEq(tsT, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(taker);
-        swap.markFiatPaid(1, "paid");
+        swap.markFiatPaid(1, bytes("paid"));
         (, tsT) = swap.makerInfo(taker);
         assertEq(tsT, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
         (, tsM) = swap.makerInfo(maker);
         assertEq(tsM, uint40(block.timestamp));
     }

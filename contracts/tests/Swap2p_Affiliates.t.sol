@@ -32,11 +32,11 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 100e18, "", partner2);
         // accept and finish one of them
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(maker);
-        swap.markFiatPaid(1, "");
+        swap.markFiatPaid(1, bytes(""));
         vm.prank(taker);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
         // FeeDistributed should have used 'partner'
         // Balance checks already covered elsewhere; here assert mapping keeps first partner
         assertEq(swap.affiliates(taker), partner);

@@ -106,25 +106,25 @@ contract Swap2p_GasTest is Test {
 
         vm.prank(maker);
         g = gasleft();
-        swap.maker_acceptRequest(1, "ok");
+        swap.maker_acceptRequest(1, bytes("ok"));
         g -= gasleft();
         _printRow("SELL:maker_acceptRequest", g);
 
         vm.prank(taker);
         g = gasleft();
-        swap.sendMessage(1, "hi");
+        swap.sendMessage(1, bytes("hi"));
         g -= gasleft();
         _printRow("SELL:sendMessage", g);
 
         vm.prank(taker);
         g = gasleft();
-        swap.markFiatPaid(1, "paid");
+        swap.markFiatPaid(1, bytes("paid"));
         g -= gasleft();
         _printRow("SELL:markFiatPaid", g);
 
         vm.prank(maker);
         g = gasleft();
-        swap.release(1, "release");
+        swap.release(1, bytes("release"));
         g -= gasleft();
         _printRow("SELL:release", g);
 
@@ -144,19 +144,19 @@ contract Swap2p_GasTest is Test {
 
         vm.prank(maker);
         g = gasleft();
-        swap.maker_acceptRequest(2, "ok");
+        swap.maker_acceptRequest(2, bytes("ok"));
         g -= gasleft();
         _printRow("BUY:maker_acceptRequest", g);
 
         vm.prank(maker);
         g = gasleft();
-        swap.markFiatPaid(2, "paid");
+        swap.markFiatPaid(2, bytes("paid"));
         g -= gasleft();
         _printRow("BUY:markFiatPaid", g);
 
         vm.prank(taker);
         g = gasleft();
-        swap.release(2, "release");
+        swap.release(2, bytes("release"));
         g -= gasleft();
         _printRow("BUY:release", g);
         _printFooter();

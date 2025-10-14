@@ -18,28 +18,28 @@ contract Swap2p_ChatEventsTest is Swap2p_TestBase {
     function test_Chat_OnlyInAcceptedOrPaid() public {
         // In REQUESTED chat is allowed now
         vm.prank(maker);
-        swap.sendMessage(1, "r");
+        swap.sendMessage(1, bytes("r"));
         vm.prank(taker);
-        swap.sendMessage(1, "r");
+        swap.sendMessage(1, bytes("r"));
 
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
 
         // send messages without event expectations (coverage-friendly)
         vm.prank(maker);
-        swap.sendMessage(1, "m");
+        swap.sendMessage(1, bytes("m"));
         vm.prank(taker);
-        swap.sendMessage(1, "t");
+        swap.sendMessage(1, bytes("t"));
 
         // After paid, release with message is allowed and sends Chat before state change
         vm.prank(taker);
-        swap.markFiatPaid(1, "paid msg");
+        swap.markFiatPaid(1, bytes("paid msg"));
         vm.prank(maker);
-        swap.release(1, "release msg");
+        swap.release(1, bytes("release msg"));
         
         // After released, chat is not allowed
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
-        swap.sendMessage(1, "x");
+        swap.sendMessage(1, bytes("x"));
     }
 }

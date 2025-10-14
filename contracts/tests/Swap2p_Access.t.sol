@@ -19,7 +19,7 @@ contract Swap2p_AccessTest is Swap2p_TestBase {
         address stranger = makeAddr("stranger");
         vm.prank(stranger);
         vm.expectRevert();
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
     }
 
     function test_Revert_NotFiatPayer() public {
@@ -28,10 +28,10 @@ contract Swap2p_AccessTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "ok");
+        swap.maker_acceptRequest(1, bytes("ok"));
         // taker cannot mark paid in BUY
         vm.prank(taker);
         vm.expectRevert(Swap2p.NotFiatPayer.selector);
-        swap.markFiatPaid(1, "");
+        swap.markFiatPaid(1, bytes(""));
     }
 }

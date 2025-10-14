@@ -28,7 +28,7 @@ contract Swap2p_ReentrancyTest is Swap2p_TestBase {
         // sell flow; taker requests, token attempts to reenter cancelRequest
         vm.prank(maker);
         swap.maker_makeOffer(address(rtoken), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1e18, 500e18, "wire", "");
-        rtoken.setReenter(address(swap), 1, "re", true);
+        rtoken.setReenter(address(swap), 1, bytes("re"), true);
         vm.startPrank(taker);
         vm.expectRevert();
         swap.taker_requestOffer(address(rtoken), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));

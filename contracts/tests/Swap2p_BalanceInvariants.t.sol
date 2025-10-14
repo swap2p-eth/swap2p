@@ -18,13 +18,13 @@ contract Swap2p_BalanceInvariantsTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, amount, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
         vm.prank(maker);
-        swap.maker_acceptRequest(1, "");
+        swap.maker_acceptRequest(1, bytes(""));
         vm.prank(taker);
-        swap.markFiatPaid(1, "");
+        swap.markFiatPaid(1, bytes(""));
 
         uint256 balBefore = token.balanceOf(address(swap));
         vm.prank(maker);
-        swap.release(1, "");
+        swap.release(1, bytes(""));
         uint256 balAfter = token.balanceOf(address(swap));
 
         // В ACCEPTED контракт держит депозиты: 3x amount. В release он выплачивает payout (amount - fee),

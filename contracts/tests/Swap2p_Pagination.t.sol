@@ -39,9 +39,9 @@ contract Swap2p_PaginationTest is Swap2p_TestBase {
 
         // cancel both, check cleaned lists
         vm.prank(taker);
-        swap.cancelRequest(1, "");
+        swap.cancelRequest(1, bytes(""));
         vm.prank(taker);
-        swap.cancelRequest(2, "");
+        swap.cancelRequest(2, bytes(""));
 
         assertEq(swap.getOpenDealCount(maker), 0);
         assertEq(swap.getOpenDealCount(taker), 0);
