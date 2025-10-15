@@ -23,9 +23,21 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
   const [token, setToken] = React.useState("USDT");
   const [fiat, setFiat] = React.useState("USD");
   const [paymentMethod, setPaymentMethod] = React.useState("");
+  const [customPayment, setCustomPayment] = React.useState(false);
   const [amount, setAmount] = React.useState("");
 
   const columns = React.useMemo(() => createOfferColumns(onStartDeal), [onStartDeal]);
+  const paymentMethodOptions = React.useMemo(() => {
+    const options = new Set<string>();
+    for (const offer of mockOffers) {
+      offer.paymentMethods
+        .split(",")
+        .map(method => method.trim())
+        .filter(Boolean)
+        .forEach(method => options.add(method));
+    }
+    return Array.from(options).sort((a, b) => a.localeCompare(b));
+  }, []);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
@@ -97,12 +109,38 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
               <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
                 Payment method
               </span>
-              <Input
-                placeholder="Revolut, SEPA, Pix…"
-                value={paymentMethod}
-                onChange={event => setPaymentMethod(event.target.value)}
-                className="rounded-full bg-background/70"
-              />
+              <Select
+                value={customPayment ? "__custom__" : paymentMethod || undefined}
+                onValueChange={value => {
+                  if (value === "__custom__") {
+                    setCustomPayment(true);
+                    setPaymentMethod("");
+                    return;
+                  }
+                  setCustomPayment(false);
+                  setPaymentMethod(value);
+                }}
+              >
+                <SelectTrigger className="rounded-full bg-background/70 text-left">
+                  <SelectValue placeholder="Revolut, SEPA, Pix…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {paymentMethodOptions.map(option => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__custom__">Other…</SelectItem>
+                </SelectContent>
+              </Select>
+              {customPayment ? (
+                <Input
+                  placeholder="Type payment method"
+                  value={paymentMethod}
+                  onChange={event => setPaymentMethod(event.target.value)}
+                  className="rounded-full bg-background/70"
+                />
+              ) : null}
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Amount</span>
