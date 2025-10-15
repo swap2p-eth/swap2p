@@ -1,4 +1,4 @@
-import { MessageCircle } from "lucide-react";
+import { ShoppingBasket } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { OfferRow } from "@/lib/mock-offers";
 import { Badge } from "@/components/ui/badge";
@@ -112,13 +112,13 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
           variant="ghost"
           size="icon"
           className="text-muted-foreground"
-          aria-label="Open dialog"
+          aria-label="Create deal"
           onClick={event => {
             event.stopPropagation();
             onStartDeal?.(row.original);
           }}
         >
-          <MessageCircle className="h-4 w-4" />
+          <ShoppingBasket className="h-4 w-4" />
         </Button>
       )
     }
