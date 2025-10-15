@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json.schemastore.org/eslintrc",
+  "extends": ["next"],
+  "rules": {
+    "no-console": "off",
+    "@next/next/no-html-link-for-pages": "off"
+  }
+}

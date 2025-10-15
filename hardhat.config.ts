@@ -4,10 +4,15 @@ import HardhatContractSizer from '@solidstate/hardhat-contract-sizer';
 import "@nomicfoundation/hardhat-verify";
 import "dotenv/config";
 
-if (!process.env.PRIVATE_KEY) {
-  throw new Error("PRIVATE_KEY environment variable not set");
+const DEFAULT_LOCAL_PRIVATE_KEY = "0x59c6995e998f97a5a004497e5dce3c08ad94b5c2378de0b5b743cba3cbb58533";
+const hasUserPrivateKey = Boolean(process.env.PRIVATE_KEY);
+const resolvedPrivateKey = hasUserPrivateKey ? process.env.PRIVATE_KEY! : DEFAULT_LOCAL_PRIVATE_KEY;
+
+if (!hasUserPrivateKey) {
+  console.warn(
+    "PRIVATE_KEY env variable not set. Using a default local key for tooling. Set PRIVATE_KEY before deploying to real networks.",
+  );
 }
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 const config: HardhatUserConfig = {
   plugins: [hardhatToolboxViemPlugin, HardhatContractSizer],
@@ -42,7 +47,7 @@ const config: HardhatUserConfig = {
       type: "http",
       chainType: "l1",
       url: 'https://0xrpc.io/sep',
-      accounts: [PRIVATE_KEY],
+      accounts: hasUserPrivateKey ? [resolvedPrivateKey] : [],
     },
   },
   etherscan: {

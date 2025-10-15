@@ -12,11 +12,15 @@
     "dotenv": "^17.2.3",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
     "hardhat": "^3.0.7",
+    "typechain": "^8.3.2",
     "typescript": "~5.8.0",
     "viem": "^2.38.0"
   },
   "scripts": {
     "compile": "npx hardhat compile --force",
+    "compile:app": "npm run compile && npm run typechain && npm run sync:app-contracts",
+    "typechain": "node scripts/generate-typechain.mjs",
+    "sync:app-contracts": "node scripts/sync-app-contracts.mjs",
     "size": "npx hardhat size-contracts",
     "test": "npx hardhat test",
     "test-gas": "npx hardhat test nodejs test/gas.node.ts",

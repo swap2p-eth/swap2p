@@ -1,19 +1,15 @@
-import { notFound } from "next/navigation";
+"use client";
+
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, Coins, Wallet } from "lucide-react";
-import { mockDeals } from "@/lib/mock-data";
+
+import { ChatWidget } from "@/components/chat/chat-widget";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChatWidget } from "@/components/chat/chat-widget";
-import { cn } from "@/lib/utils";
-import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
-
-interface DealPageProps {
-  params: {
-    id: string;
-  };
-}
+import { TokenIcon } from "@/components/token-icon";
+import { mockDeals } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
 
 const sideCopy = {
   BUY: {
@@ -24,24 +20,46 @@ const sideCopy = {
     headline: "Maker is selling tokens",
     tone: "Taker wires fiat after seeing escrowed funds."
   }
-};
+} as const;
 
-export default function DealDetailPage({ params }: DealPageProps) {
-  const dealId = Number(params.id);
+interface DealDetailViewProps {
+  dealId: number;
+  onBack?: () => void;
+}
+
+export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const deal = mockDeals.find(item => item.id === dealId);
 
   if (!deal) {
-    notFound();
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Deal not found</h1>
+        <p className="text-sm text-muted-foreground">
+          The requested deal is not part of the mock dataset yet. Try returning to the deals overview.
+        </p>
+        <button
+          type="button"
+          onClick={onBack}
+          className="mx-auto inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-md"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to deals
+        </button>
+      </div>
+    );
   }
 
-  const side = deal.side;
-  const summary = sideCopy[side];
+  const summary = sideCopy[deal.side];
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
       <div className="flex flex-col gap-3">
         <Link
-          href="/deals"
+          href="#deals"
+          onClick={event => {
+            event.preventDefault();
+            onBack?.();
+          }}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> Back to deals
@@ -108,7 +126,7 @@ export default function DealDetailPage({ params }: DealPageProps) {
             Secure coordination channel. Messages will be encrypted and stored as bytes on-chain.
           </p>
         </div>
-            <ChatWidget className={cn("min-h-[360px]", "bg-transparent shadow-none")} />
+        <ChatWidget className={cn("min-h-[360px]", "bg-transparent shadow-none")} />
       </div>
     </div>
   );

@@ -1,15 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 import { dealColumns } from "@/lib/deal-columns";
 import { mockDeals } from "@/lib/mock-data";
 
-export function DealsView() {
-  const router = useRouter();
+interface DealsViewProps {
+  onSelectDeal?: (dealId: number) => void;
+}
+
+export function DealsView({ onSelectDeal }: DealsViewProps) {
   const [status, setStatus] = React.useState("active");
 
   return (
@@ -46,7 +48,7 @@ export function DealsView() {
             emptyMessage="There are no deals in this view yet."
             onRowClick={deal => {
               const id = (deal as { id: number }).id;
-              router.push(`/deals/${id}`);
+              onSelectDeal?.(id);
             }}
           />
         </CardContent>

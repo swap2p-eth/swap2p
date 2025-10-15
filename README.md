@@ -67,3 +67,13 @@ npx hardhat run --network sepolia scripts/deploy-swap2p.ts
 The script deploys from the first configured account and skips verification on local networks. For Sepolia make sure the `SEPOLIA_RPC_URL`, `SEPOLIA_PRIVATE_KEY`, and `ETHERSCAN_API_KEY` configuration variables are set. Hardhat's `verify:verify` task handles retries, so you can rerun the script if the explorer indexing lags.
 
 Alternatively, run `npm run deploy:sepolia`, which wraps the same command.
+
+### Sync frontend contracts
+
+After changing the Solidity contracts, run:
+
+```shell
+npm run compile:app
+```
+
+This command force-compiles with Hardhat, regenerates the viem-friendly ABI/types (in `typechain-types/`), and copies the artifacts into `app/lib/swap2p/generated/` for the Next.js app.
