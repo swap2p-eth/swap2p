@@ -97,6 +97,7 @@ function formatRelative(source: Date, now: Date): string {
 export function RelativeTime({ value, className }: RelativeTimeProps) {
   const date = React.useMemo(() => toDate(value), [value]);
   const [, setTick] = React.useState(0);
+  const [tooltip, setTooltip] = React.useState<string | undefined>(undefined);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -108,17 +109,28 @@ export function RelativeTime({ value, className }: RelativeTimeProps) {
     };
   }, []);
 
+  React.useEffect(() => {
+    if (!date) {
+      setTooltip(undefined);
+      return;
+    }
+    const formatter = new Intl.DateTimeFormat(undefined, {
+      dateStyle: "medium",
+      timeStyle: "medium"
+    });
+    setTooltip(formatter.format(date));
+  }, [date]);
+
   if (!date) {
     return <span className={cn("text-muted-foreground", className)}>—</span>;
   }
 
   const now = new Date();
   const label = formatRelative(date, now);
-
   const iso = date.toISOString();
 
   return (
-    <span className={className} title={iso}>
+    <span className={className} title={tooltip ?? iso}>
       {label}
     </span>
   );
