@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "@rainbow-me/rainbowkit/styles.css";
 import { Providers } from "@/providers";
 import { SiteHeader } from "@/components/site-header";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Swap2p Console",
-  description: "Swap2p deal console built with Next.js, shadcn/ui, and TanStack."
+  title: "Swap2p",
+  description: "Peer to peer crypto / fiat exchange market"
 };
 
 export default function RootLayout({

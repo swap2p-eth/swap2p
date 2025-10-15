@@ -1,9 +1,14 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useState } from "react";
+import { RainbowKitProvider, lightTheme, midnightTheme } from "@rainbow-me/rainbowkit";
+import { WagmiProvider } from "wagmi";
+import { getConfig } from "@mezo-org/passport/dist/src/config";
+import { mezoTestnet } from "@mezo-org/passport/dist/src/constants";
 import { ThemeProvider } from "@/components/theme-provider";
+import { useTheme } from "next-themes";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -18,14 +23,88 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const wagmiConfig = useMemo(() => {
+    const walletConnectProjectId =
+      process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "51e609ac221c8fb9cbee39d15fb1458f";
+    const mezoNetwork = (process.env.NEXT_PUBLIC_MEZO_NETWORK ?? "testnet") as "testnet" | "mainnet";
+    return getConfig({
+      appName: "Swap2p Console",
+      walletConnectProjectId,
+      mezoNetwork,
+      bitcoinWallets: isClient ? undefined : []
+    });
+  }, [isClient]);
+
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        {children}
-        {process.env.NODE_ENV === "development" ? (
-          <ReactQueryDevtools initialIsOpen={false} />
-        ) : null}
-      </QueryClientProvider>
+      <WagmiProvider config={wagmiConfig}>
+        <QueryClientProvider client={queryClient}>
+          <RainbowKitThemeProvider>
+            {children}
+            {process.env.NODE_ENV === "development" ? <ReactQueryDevtools initialIsOpen={false} /> : null}
+          </RainbowKitThemeProvider>
+        </QueryClientProvider>
+      </WagmiProvider>
     </ThemeProvider>
+  );
+}
+
+function RainbowKitThemeProvider({ children }: { children: React.ReactNode }) {
+  const { resolvedTheme } = useTheme();
+  const theme = useMemo(() => {
+    if (resolvedTheme === "dark") {
+      const base = midnightTheme({
+        accentColor: "#4f46e5",
+        accentColorForeground: "#f8fafc",
+        borderRadius: "large",
+        fontStack: "system"
+      });
+      return {
+        ...base,
+        colors: {
+          ...base.colors,
+          connectButtonText: "#f8fafc",
+          connectButtonBackground: "rgba(79,70,229,0.18)",
+          connectButtonInnerBackground: "rgba(15,23,42,0.9)",
+          profileForeground: "rgba(15,23,42,0.92)",
+          modalBackground: "rgba(15,23,42,0.96)",
+          actionButtonSecondaryBackground: "rgba(148,163,184,0.16)",
+          generalBorder: "rgba(148,163,184,0.24)",
+          menuItemBackground: "rgba(59,130,246,0.12)"
+        }
+      };
+    }
+    const base = lightTheme({
+      accentColor: "#2563eb",
+      accentColorForeground: "#f8fafc",
+      borderRadius: "large",
+      fontStack: "system"
+    });
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        connectButtonBackground: "rgba(37,99,235,0.12)",
+        connectButtonInnerBackground: "#ffffff",
+        connectButtonText: "#0f172a",
+        profileForeground: "#f8fafc",
+        modalBackground: "#f8fafc",
+        actionButtonSecondaryBackground: "rgba(15,23,42,0.06)",
+        generalBorder: "rgba(15,23,42,0.08)",
+        menuItemBackground: "rgba(37,99,235,0.08)"
+      }
+    };
+  }, [resolvedTheme]);
+
+  return (
+    <RainbowKitProvider initialChain={mezoTestnet} modalSize="compact" theme={theme}>
+      {children}
+    </RainbowKitProvider>
   );
 }
