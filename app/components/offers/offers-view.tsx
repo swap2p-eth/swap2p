@@ -6,20 +6,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
-import { offerColumns } from "@/lib/offer-columns";
-import { mockOffers } from "@/lib/mock-offers";
+import { createOfferColumns } from "@/lib/offer-columns";
+import { mockOffers, type OfferRow } from "@/lib/mock-offers";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 
 const tokenOptions = ["USDT", "ETH", "BTC", "USDC", "DAI"];
 const fiatOptions = ["USD", "EUR", "CNY", "GBP", "BRL", "TRY", "AED", "INR"];
 
-export function OffersView() {
+interface OffersViewProps {
+  onStartDeal?: (offer: OfferRow) => void;
+}
+
+export function OffersView({ onStartDeal }: OffersViewProps) {
   const [side, setSide] = React.useState("SELL");
   const [token, setToken] = React.useState("USDT");
   const [fiat, setFiat] = React.useState("USD");
   const [paymentMethod, setPaymentMethod] = React.useState("");
   const [amount, setAmount] = React.useState("");
+
+  const columns = React.useMemo(() => createOfferColumns(onStartDeal), [onStartDeal]);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
@@ -119,10 +125,13 @@ export function OffersView() {
               </p>
             </div>
             <DataTable
-              columns={offerColumns}
+              columns={columns}
               data={mockOffers}
               title="Offers"
               emptyMessage="No offers match the current filters."
+              onRowClick={offer => {
+                onStartDeal?.(offer as OfferRow);
+              }}
             />
           </div>
         </CardContent>

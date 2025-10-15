@@ -16,13 +16,13 @@ export interface OfferRow {
 const tokenList = ["USDT", "ETH", "BTC", "DAI", "USDC"];
 const fiatList = ["USD", "EUR", "CNY", "GBP", "BRL"];
 const paymentMethods = [
-  "SEPA · Revolut",
-  "Swift wire",
-  "Pix",
-  "Faster Payments",
-  "Wise",
-  "UPI",
-  "AliPay"
+  "SEPA,Revolut",
+  "Swift,Wire",
+  "Pix,Itau",
+  "FasterPayments,Starling",
+  "Wise,Business",
+  "UPI,IMPS",
+  "AliPay,UnionPay"
 ];
 const updatedLabels = [
   "Apr 08 • 10:22",

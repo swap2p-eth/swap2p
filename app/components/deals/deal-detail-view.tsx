@@ -1,15 +1,16 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, ArrowUpRight, Coins, Wallet } from "lucide-react";
+import { ArrowUpRight, Coins, Wallet } from "lucide-react";
 
 import { ChatWidget } from "@/components/chat/chat-widget";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
-import { mockDeals } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { DealHeader } from "./deal-header";
+import { DealSummaryCard } from "./deal-summary-card";
+import { useDeals } from "./deals-provider";
 
 const sideCopy = {
   BUY: {
@@ -22,29 +23,25 @@ const sideCopy = {
   }
 } as const;
 
-interface DealDetailViewProps {
+export interface DealDetailViewProps {
   dealId: number;
   onBack?: () => void;
 }
 
 export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
-  const deal = mockDeals.find(item => item.id === dealId);
+  const { deals } = useDeals();
+  const deal = deals.find(item => item.id === dealId);
 
   if (!deal) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Deal not found</h1>
         <p className="text-sm text-muted-foreground">
-          The requested deal is not part of the mock dataset yet. Try returning to the deals overview.
+          The requested deal is not part of the dataset yet. Try returning to the deals overview.
         </p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="mx-auto inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground shadow-md"
-        >
-          <ArrowLeft className="h-4 w-4" />
+        <Button type="button" className="mx-auto rounded-full px-6" onClick={onBack}>
           Back to deals
-        </button>
+        </Button>
       </div>
     );
   }
@@ -53,71 +50,65 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
-      <div className="flex flex-col gap-3">
-        <Link
-          href="#deals"
-          onClick={event => {
-            event.preventDefault();
-            onBack?.();
-          }}
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to deals
-        </Link>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Deal #{deal.id}</h1>
-            <p className="text-sm text-muted-foreground">{summary.headline}</p>
-          </div>
-          <Badge variant="outline" className="rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em]">
-            {deal.state}
-          </Badge>
-        </div>
-      </div>
+      <DealHeader
+        title={`Deal #${deal.id}`}
+        subtitle={summary.headline}
+        badge={deal.state}
+        backLabel="Back to deals"
+        onBack={onBack}
+      />
 
-      <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/20">
-        <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-2">
-            <CardTitle className="text-xl">Settlement overview</CardTitle>
-            <CardDescription>{summary.tone}</CardDescription>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-primary">
-              <Coins className="h-4 w-4" />
-              {deal.amount.toLocaleString("en-US")}
-              <TokenIcon symbol={deal.token} size={18} className="rounded-full bg-white" />
-              <span className="text-xs uppercase">{deal.token}</span>
-            </span>
-            <span className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-secondary-foreground">
-              <Wallet className="h-4 w-4" /> Maker: {deal.maker.slice(0, 6)}…
-            </span>
-            <span className="flex items-center gap-2 rounded-full bg-muted/70 px-3 py-1">
-              <ArrowUpRight className="h-4 w-4" /> Taker: {deal.taker.slice(0, 6)}…
-            </span>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl bg-card/60 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.6)]">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Side</p>
-            <p className="mt-2 text-sm font-medium">{deal.side}</p>
-          </div>
-          <div className="rounded-2xl bg-card/60 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.6)]">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Token</p>
-            <p className="mt-2 text-sm font-medium">{deal.token}</p>
-          </div>
-          <div className="rounded-2xl bg-card/60 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.6)]">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Fiat</p>
-            <p className="mt-2 flex items-center gap-2 text-sm font-medium">
-              <FiatFlag fiat={deal.fiatCode} size={18} />
-              {deal.fiatCode}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-card/60 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.6)]">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Last update</p>
-            <p className="mt-2 text-sm font-medium">{deal.updatedLabel}</p>
-          </div>
-        </CardContent>
-      </Card>
+      <DealSummaryCard
+        title="Settlement overview"
+        description={summary.tone}
+        pills={[
+          {
+            id: "amount",
+            className: "bg-primary/10 text-primary",
+            content: (
+              <>
+                <Coins className="h-4 w-4" />
+                {deal.amount.toLocaleString("en-US")}
+                <TokenIcon symbol={deal.token} size={18} className="rounded-full bg-white" />
+                <span className="text-xs uppercase">{deal.token}</span>
+              </>
+            )
+          },
+          {
+            id: "maker",
+            className: "bg-secondary text-secondary-foreground",
+            content: (
+              <>
+                <Wallet className="h-4 w-4" /> Maker: {deal.maker.slice(0, 6)}…
+              </>
+            )
+          },
+          {
+            id: "taker",
+            className: "bg-muted/70",
+            content: (
+              <>
+                <ArrowUpRight className="h-4 w-4" /> Taker: {deal.taker.slice(0, 6)}…
+              </>
+            )
+          }
+        ]}
+        metaItems={[
+          { id: "side", label: "Side", value: deal.side },
+          { id: "token", label: "Token", value: deal.token },
+          {
+            id: "fiat",
+            label: "Fiat",
+            value: (
+              <span className="flex items-center gap-2">
+                <FiatFlag fiat={deal.fiatCode} size={18} />
+                {deal.fiatCode}
+              </span>
+            )
+          },
+          { id: "updated", label: "Last update", value: deal.updatedLabel }
+        ]}
+      />
 
       <div className="rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">
         <div className="mb-4">

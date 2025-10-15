@@ -5,7 +5,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 import { dealColumns } from "@/lib/deal-columns";
-import { mockDeals } from "@/lib/mock-data";
+import { useDeals } from "./deals-provider";
 
 interface DealsViewProps {
   onSelectDeal?: (dealId: number) => void;
@@ -13,6 +13,14 @@ interface DealsViewProps {
 
 export function DealsView({ onSelectDeal }: DealsViewProps) {
   const [status, setStatus] = React.useState("active");
+  const { deals } = useDeals();
+
+  const filteredDeals = React.useMemo(() => {
+    if (status === "closed") {
+      return deals.filter(deal => deal.state !== "REQUESTED");
+    }
+    return deals;
+  }, [deals, status]);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
@@ -43,7 +51,7 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
         <CardContent className="space-y-6">
           <DataTable
             columns={dealColumns}
-            data={mockDeals}
+            data={filteredDeals}
             title={status === "active" ? "Active deals" : "Closed deals"}
             emptyMessage="There are no deals in this view yet."
             onRowClick={deal => {
