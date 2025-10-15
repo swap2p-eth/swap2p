@@ -15,7 +15,7 @@ function readHash(fallback: string) {
 }
 
 export function useHashLocation(defaultHash = "offers") {
-  const [hash, setHashValue] = React.useState(() => readHash(defaultHash));
+  const [hash, setHashValue] = React.useState(defaultHash);
 
   React.useEffect(() => {
     const handleHashChange = () => {

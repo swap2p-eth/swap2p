@@ -115,8 +115,10 @@ export function RelativeTime({ value, className }: RelativeTimeProps) {
   const now = new Date();
   const label = formatRelative(date, now);
 
+  const iso = date.toISOString();
+
   return (
-    <span className={className} title={date.toLocaleString()}>
+    <span className={className} title={iso}>
       {label}
     </span>
   );

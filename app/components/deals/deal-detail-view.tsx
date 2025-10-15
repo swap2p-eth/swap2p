@@ -4,7 +4,6 @@ import { ArrowUpRight, Coins, Wallet } from "lucide-react";
 
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
 import { cn } from "@/lib/utils";
