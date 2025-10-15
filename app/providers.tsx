@@ -67,6 +67,10 @@ function RainbowKitThemeProvider({ children }: { children: React.ReactNode }) {
       });
       return {
         ...base,
+        fonts: {
+          ...base.fonts,
+          body: "Inter, 'Helvetica Neue', Arial, sans-serif"
+        },
         colors: {
           ...base.colors,
           connectButtonText: "#f8fafc",
@@ -88,6 +92,10 @@ function RainbowKitThemeProvider({ children }: { children: React.ReactNode }) {
     });
     return {
       ...base,
+      fonts: {
+        ...base.fonts,
+        body: "Inter, 'Helvetica Neue', Arial, sans-serif"
+      },
       colors: {
         ...base.colors,
         connectButtonBackground: "rgba(37,99,235,0.12)",

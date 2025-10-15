@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useHashLocation } from "@/hooks/use-hash-location";
@@ -59,8 +58,8 @@ export function SiteHeader() {
           })}
         </nav>
         <div className="flex items-center gap-3">
-          <ConnectWalletPill />
           <ThemeToggle />
+          <ConnectWalletPill />
         </div>
       </div>
     </header>
@@ -68,18 +67,13 @@ export function SiteHeader() {
 }
 
 function ConnectWalletPill() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return <div className="h-9 w-36 animate-pulse rounded-full bg-muted/60" />;
-  }
-
   return (
     <ConnectButton.Custom>
       {({ account, chain, openAccountModal, openChainModal, openConnectModal, mounted: buttonMounted }) => {
+        if (!buttonMounted) {
+          return <div className="h-9 w-36 animate-pulse rounded-full bg-muted/60" />;
+        }
+
         const connected = buttonMounted && account && chain;
 
         if (!connected) {
