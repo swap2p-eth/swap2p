@@ -22,14 +22,6 @@ interface DealsContextValue {
 
 const DealsContext = React.createContext<DealsContextValue | null>(null);
 
-const formatTimestampLabel = (date: Date) =>
-  date.toLocaleString("en-US", {
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-
 const defaultTakerAddress = "0xYou000000000000000000000000000000000000";
 
 export function DealsProvider({ children }: { children: React.ReactNode }) {
@@ -49,7 +41,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
           fiatCode: offer.fiat,
           partner: null,
           state: "REQUESTED",
-          updatedLabel: formatTimestampLabel(timestamp),
+          updatedAt: timestamp.toISOString(),
           maker: offer.maker,
           taker: defaultTakerAddress,
           token: offer.token

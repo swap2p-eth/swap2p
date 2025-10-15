@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
+import { RelativeTime } from "@/components/relative-time";
 
 export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): ColumnDef<OfferRow>[] {
   return [
@@ -96,10 +97,10 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       )
     },
     {
-      accessorKey: "updatedLabel",
+      accessorKey: "updatedAt",
       header: "Updated",
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">{row.getValue("updatedLabel")}</span>
+        <RelativeTime value={row.getValue("updatedAt") as string | number} className="text-sm text-muted-foreground" />
       )
     },
     {

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { DealRow } from "@/lib/mock-data";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
+import { RelativeTime } from "@/components/relative-time";
 
 export const dealColumns: ColumnDef<DealRow>[] = [
   {
@@ -91,10 +92,10 @@ export const dealColumns: ColumnDef<DealRow>[] = [
     }
   },
   {
-    accessorKey: "updatedLabel",
+    accessorKey: "updatedAt",
     header: "Updated",
     cell: ({ row }) => (
-      <span className="text-sm text-muted-foreground">{row.getValue("updatedLabel")}</span>
+      <RelativeTime value={row.getValue("updatedAt") as string | number} className="text-sm text-muted-foreground" />
     )
   },
   {

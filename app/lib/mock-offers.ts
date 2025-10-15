@@ -10,7 +10,7 @@ export interface OfferRow {
   minAmount: number;
   maxAmount: number;
   paymentMethods: string;
-  updatedLabel: string;
+  updatedAt: string;
 }
 
 const tokenList = ["USDT", "ETH", "BTC", "DAI", "USDC"];
@@ -24,20 +24,15 @@ const paymentMethods = [
   "UPI,IMPS",
   "AliPay,UnionPay"
 ];
-const updatedLabels = [
-  "Apr 08 • 10:22",
-  "Apr 08 • 11:05",
-  "Apr 08 • 12:44",
-  "Apr 08 • 13:18",
-  "Apr 08 • 14:52",
-  "Apr 08 • 15:37",
-  "Apr 08 • 16:11"
-];
+const updatedAgoMinutes = [3, 9, 22, 35, 61, 140, 280];
+const now = Date.now();
 
 export const mockOffers: OfferRow[] = Array.from({ length: 18 }).map((_, index) => {
   const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
   const min = 500 + index * 60;
   const max = min + 2200;
+  const offsetMinutes = updatedAgoMinutes[index % updatedAgoMinutes.length];
+  const timestamp = new Date(now - offsetMinutes * 60_000).toISOString();
 
   return {
     id: index + 1,
@@ -49,6 +44,6 @@ export const mockOffers: OfferRow[] = Array.from({ length: 18 }).map((_, index) 
     minAmount: min,
     maxAmount: max,
     paymentMethods: paymentMethods[index % paymentMethods.length],
-    updatedLabel: updatedLabels[index % updatedLabels.length]
+    updatedAt: timestamp
   };
 });

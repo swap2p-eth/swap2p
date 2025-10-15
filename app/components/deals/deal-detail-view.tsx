@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { useDeals } from "./deals-provider";
+import { RelativeTime } from "@/components/relative-time";
 
 const sideCopy = {
   BUY: {
@@ -106,7 +107,11 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
               </span>
             )
           },
-          { id: "updated", label: "Last update", value: deal.updatedLabel }
+          {
+            id: "updated",
+            label: "Last update",
+            value: <RelativeTime value={deal.updatedAt} className="text-sm text-muted-foreground" />
+          }
         ]}
       />
 
