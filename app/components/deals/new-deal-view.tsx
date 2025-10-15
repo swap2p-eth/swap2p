@@ -207,9 +207,26 @@ export function NewDealView({ offerId, onCancel, onCreated }: NewDealViewProps) 
               value={amountKind}
               onChange={value => setAmountKind(value as AmountKind)}
               options={[
-                { label: `${offer.token}`, value: "crypto" },
-                { label: offer.fiat, value: "fiat" }
+                {
+                  label: (
+                    <span className="flex items-center gap-2">
+                      <TokenIcon symbol={offer.token} size={16} className="rounded-full bg-white" />
+                      {offer.token}
+                    </span>
+                  ),
+                  value: "crypto"
+                },
+                {
+                  label: (
+                    <span className="flex items-center gap-2">
+                      <FiatFlag fiat={offer.fiat} size={16} />
+                      {offer.fiat}
+                    </span>
+                  ),
+                  value: "fiat"
+                }
               ]}
+              className="w-fit"
             />
             <div className="relative mt-2">
               <Input

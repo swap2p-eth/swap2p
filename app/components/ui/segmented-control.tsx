@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export type SegmentedOption = {
-  label: string;
+  label: React.ReactNode;
   value: string;
 };
 

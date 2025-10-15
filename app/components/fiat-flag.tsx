@@ -85,7 +85,7 @@ export function FiatFlag({ fiat, size = 20, className }: FiatFlagProps) {
       style={style}
     >
       <span
-        className={cn("fi h-full w-full", `fi-${flagCode}`)}
+        className={cn("fi fis h-full w-full", `fi-${flagCode}`)}
         role="img"
         aria-label={`${fiat} flag`}
         style={{ width: "100%", height: "100%", backgroundSize: "cover", backgroundPosition: "center" }}
