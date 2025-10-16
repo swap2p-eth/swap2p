@@ -186,24 +186,23 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
         <CardHeader className="space-y-2">
           <CardTitle className="text-xl">Offer parameters</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Configure price, limits, rails, and taker requirements for this offer on {network.name}.
+            Configure price, limits, rails, and taker requirements for this offer.
           </p>
         </CardHeader>
         <CardContent>
           <form className="space-y-8" onSubmit={handleSubmit}>
             <section className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3 rounded-3xl border border-border/60 bg-background/60 p-6">
-                <div className="space-y-2">
-                  <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Side</span>
-                  <SegmentedControl
-                    value={side}
-                    onChange={value => setSide(value as DealSide)}
-                    options={[
-                      { label: "SELL", value: "SELL" },
-                      { label: "BUY", value: "BUY" }
-                    ]}
-                  />
-                </div>
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Side</div>
+                <SegmentedControl
+                  className="mt-2"
+                  value={side}
+                  onChange={value => setSide(value as DealSide)}
+                  options={[
+                    { label: "BUY", value: "BUY" },
+                    { label: "SELL", value: "SELL" }
+                  ]}
+                />
                 <p className="text-xs text-muted-foreground">
                   SELL — you sell crypto and wait for fiat. BUY — you buy crypto and wait for tokens.
                 </p>
@@ -385,8 +384,12 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
                 <TextArea
                   value={requirements}
                   onChange={event => setRequirements(event.target.value)}
-                  placeholder="Describe verification, documents, or timing expectations for takers."
+                  placeholder="Write taker requirements and, if you sell crypto, include payment details for each rail."
+                  className="min-h-[200px]"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Write taker requirements and, if you sell crypto, include payment details for each rail.
+                </p>
               </div>
             </section>
 
