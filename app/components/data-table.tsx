@@ -14,7 +14,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const ROW_HEIGHT_PX = 32;
+const ROW_HEIGHT_BASE_PX = 56;
+const ROW_HEIGHT_EXTRA_PX = 8; // for skeleton
+const ROW_HEIGHT_WITH_CONTENT_PX = ROW_HEIGHT_BASE_PX + ROW_HEIGHT_EXTRA_PX;
 
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -82,7 +84,7 @@ export function DataTable<TData, TValue>({
     return Array.from({ length: rows }).map((_, rowIndex) => (
       <TableRow
         key={`skeleton-${rowIndex}`}
-        style={{ height: ROW_HEIGHT_PX+32 }}
+        style={{ height: ROW_HEIGHT_WITH_CONTENT_PX }}
         className="align-middle hover:bg-transparent"
       >
         {Array.from({ length: columnCount }).map((__, cellIndex) => (
@@ -149,7 +151,7 @@ export function DataTable<TData, TValue>({
               return (
                 <TableRow
                   key={row.id}
-                  style={{ height: ROW_HEIGHT_PX }}
+                  style={{ minHeight: ROW_HEIGHT_BASE_PX }}
                   className={cn(
                     "border-transparent align-middle transition hover:bg-muted/20",
                     onRowClick ? "cursor-pointer" : ""
