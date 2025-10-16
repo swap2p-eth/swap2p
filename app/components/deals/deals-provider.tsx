@@ -2,8 +2,7 @@
 
 import * as React from "react";
 
-import type { DealRow } from "@/lib/mock-data";
-import { mockDeals } from "@/lib/mock-data";
+import { generateMockDeals, type DealRow } from "@/lib/mock-data";
 import type { OfferRow } from "@/lib/mock-offers";
 
 type AmountKind = "crypto" | "fiat";
@@ -17,7 +16,9 @@ interface CreateDealInput {
 
 interface DealsContextValue {
   deals: DealRow[];
+  isLoading: boolean;
   createDeal: (input: CreateDealInput) => DealRow;
+  refresh: () => void;
 }
 
 const DealsContext = React.createContext<DealsContextValue | null>(null);
@@ -25,7 +26,19 @@ const DealsContext = React.createContext<DealsContextValue | null>(null);
 const defaultTakerAddress = "0xYou000000000000000000000000000000000000";
 
 export function DealsProvider({ children }: { children: React.ReactNode }) {
-  const [deals, setDeals] = React.useState<DealRow[]>(() => [...mockDeals]);
+  const [deals, setDeals] = React.useState<DealRow[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  const loadDeals = React.useCallback(() => {
+    setIsLoading(true);
+    const next = generateMockDeals();
+    setDeals(next);
+    setIsLoading(false);
+  }, []);
+
+  React.useEffect(() => {
+    loadDeals();
+  }, [loadDeals]);
 
   const createDeal = React.useCallback(
     ({ offer, amount, amountKind, paymentMethod }: CreateDealInput) => {
@@ -63,8 +76,8 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = React.useMemo<DealsContextValue>(
-    () => ({ deals, createDeal }),
-    [deals, createDeal]
+    () => ({ deals, createDeal, isLoading, refresh: loadDeals }),
+    [deals, createDeal, isLoading, loadDeals]
   );
 
   return <DealsContext.Provider value={value}>{children}</DealsContext.Provider>;

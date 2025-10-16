@@ -8,6 +8,7 @@ import { DealsProvider } from "@/components/deals/deals-provider";
 import { NewDealView } from "@/components/deals/new-deal-view";
 import { OffersView } from "@/components/offers/offers-view";
 import { useHashLocation } from "@/hooks/use-hash-location";
+import { OffersProvider } from "@/components/offers/offers-provider";
 
 type ViewState =
   | { type: "offers" }
@@ -41,9 +42,11 @@ function parseHash(hash: string): ViewState {
 
 export default function HomePage() {
   return (
-    <DealsProvider>
-      <HomePageRouter />
-    </DealsProvider>
+    <OffersProvider>
+      <DealsProvider>
+        <HomePageRouter />
+      </DealsProvider>
+    </OffersProvider>
   );
 }
 

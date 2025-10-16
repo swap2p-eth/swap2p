@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 import { createOfferColumns } from "@/lib/offer-columns";
-import { mockOffers, type OfferRow } from "@/lib/mock-offers";
+import { useOffers } from "@/components/offers/offers-provider";
+import type { OfferRow } from "@/lib/mock-offers";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 
@@ -19,6 +20,7 @@ interface OffersViewProps {
 }
 
 export function OffersView({ onStartDeal }: OffersViewProps) {
+  const { offers, isLoading } = useOffers();
   const [side, setSide] = React.useState("SELL");
   const [token, setToken] = React.useState("USDT");
   const [fiat, setFiat] = React.useState("USD");
@@ -29,7 +31,7 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
   const columns = React.useMemo(() => createOfferColumns(onStartDeal), [onStartDeal]);
   const paymentMethodOptions = React.useMemo(() => {
     const options = new Set<string>();
-    for (const offer of mockOffers) {
+    for (const offer of offers) {
       offer.paymentMethods
         .split(",")
         .map(method => method.trim())
@@ -37,7 +39,7 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
         .forEach(method => options.add(method));
     }
     return Array.from(options).sort((a, b) => a.localeCompare(b));
-  }, []);
+  }, [offers]);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
@@ -164,9 +166,10 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
             </div>
             <DataTable
               columns={columns}
-              data={mockOffers}
+              data={offers}
               title="Offers"
               emptyMessage="No offers match the current filters."
+              isLoading={isLoading}
               onRowClick={offer => {
                 onStartDeal?.(offer as OfferRow);
               }}

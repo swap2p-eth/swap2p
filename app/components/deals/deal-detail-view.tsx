@@ -4,6 +4,7 @@ import { ArrowUpRight, Coins, Wallet } from "lucide-react";
 
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
 import { cn } from "@/lib/utils";
@@ -29,8 +30,21 @@ export interface DealDetailViewProps {
 }
 
 export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
-  const { deals } = useDeals();
+  const { deals, isLoading } = useDeals();
   const deal = deals.find(item => item.id === dealId);
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
+        <Skeleton className="h-10 w-40 rounded-full" />
+        <div className="space-y-6">
+          <Skeleton className="h-12 w-2/3 rounded-full" />
+          <Skeleton className="h-40 w-full rounded-3xl" />
+        </div>
+        <Skeleton className="h-[360px] w-full rounded-3xl" />
+      </div>
+    );
+  }
 
   if (!deal) {
     return (

@@ -9,16 +9,10 @@ import {
   type SortingState,
   useReactTable
 } from "@tanstack/react-table";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -28,6 +22,8 @@ export interface DataTableProps<TData, TValue> {
   emptyMessage?: string;
   onRowClick?: (row: TData) => void;
   pageSize?: number;
+  isLoading?: boolean;
+  skeletonRowCount?: number;
 }
 
 export function DataTable<TData, TValue>({
@@ -37,7 +33,9 @@ export function DataTable<TData, TValue>({
   title = "Items",
   emptyMessage = "No data available.",
   onRowClick,
-  pageSize = 8
+  pageSize = 8,
+  isLoading = false,
+  skeletonRowCount
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [page, setPage] = React.useState(1);
@@ -76,6 +74,20 @@ export function DataTable<TData, TValue>({
     return Array.from({ length: maxButtons }, (_, index) => start + index);
   }, [page, totalPages]);
 
+  const renderSkeletonRows = () => {
+    const rows = skeletonRowCount ?? pageSize;
+    const columnCount = columns.length || 1;
+    return Array.from({ length: rows }).map((_, rowIndex) => (
+      <TableRow key={`skeleton-${rowIndex}`} className="hover:bg-transparent">
+        {Array.from({ length: columnCount }).map((__, cellIndex) => (
+          <TableCell key={cellIndex}>
+            <Skeleton className="h-4 w-full" />
+          </TableCell>
+        ))}
+      </TableRow>
+    ));
+  };
+
   return (
     <div
       className={cn(
@@ -113,7 +125,9 @@ export function DataTable<TData, TValue>({
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.length === 0 ? (
+          {isLoading ? (
+            renderSkeletonRows()
+          ) : table.getRowModel().rows.length === 0 ? (
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
                 {emptyMessage}
@@ -148,7 +162,7 @@ export function DataTable<TData, TValue>({
       </Table>
       <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
         <span className="text-xs text-muted-foreground">
-          Showing {showingFrom}-{showingTo} of {data.length}
+          {isLoading ? "Loading…" : `Showing ${showingFrom}-${showingTo} of ${data.length}`}
         </span>
         <div className="flex items-center gap-1">
           <Button
@@ -157,7 +171,7 @@ export function DataTable<TData, TValue>({
             size="icon"
             className="h-9 w-9 rounded-full"
             onClick={() => setPage(page - 1)}
-            disabled={page === 1}
+            disabled={page === 1 || isLoading}
           >
             ←
           </Button>
@@ -172,6 +186,7 @@ export function DataTable<TData, TValue>({
                 pageNumber === page ? "shadow-[0_8px_20px_-12px_rgba(37,99,235,0.8)]" : ""
               )}
               onClick={() => setPage(pageNumber)}
+              disabled={isLoading}
             >
               {pageNumber}
             </Button>
@@ -182,7 +197,7 @@ export function DataTable<TData, TValue>({
             size="icon"
             className="h-9 w-9 rounded-full"
             onClick={() => setPage(page + 1)}
-            disabled={page === totalPages}
+            disabled={page === totalPages || isLoading}
           >
             →
           </Button>

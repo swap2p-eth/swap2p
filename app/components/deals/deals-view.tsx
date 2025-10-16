@@ -13,7 +13,7 @@ interface DealsViewProps {
 
 export function DealsView({ onSelectDeal }: DealsViewProps) {
   const [status, setStatus] = React.useState("active");
-  const { deals } = useDeals();
+  const { deals, isLoading } = useDeals();
 
   const filteredDeals = React.useMemo(() => {
     if (status === "closed") {
@@ -54,6 +54,7 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
             data={filteredDeals}
             title={status === "active" ? "Active deals" : "Closed deals"}
             emptyMessage="There are no deals in this view yet."
+            isLoading={isLoading}
             onRowClick={deal => {
               const id = (deal as { id: number }).id;
               onSelectDeal?.(id);

@@ -10,11 +10,12 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
 import type { OfferRow } from "@/lib/mock-offers";
-import { mockOffers } from "@/lib/mock-offers";
 import { cn } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { useDeals } from "./deals-provider";
+import { useOffers } from "@/components/offers/offers-provider";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type AmountKind = "crypto" | "fiat";
 
@@ -38,15 +39,13 @@ const formatOfferSubtitle = (offer: OfferRow) =>
     : "Maker escrows tokens and waits for your fiat rails.";
 
 export function NewDealView({ offerId, onCancel, onCreated }: NewDealViewProps) {
-  const offer = mockOffers.find(item => item.id === offerId);
+  const { offers, isLoading: offersLoading } = useOffers();
+  const offer = React.useMemo(() => offers.find(item => item.id === offerId), [offers, offerId]);
   const { createDeal } = useDeals();
 
   const [amountKind, setAmountKind] = React.useState<AmountKind>("crypto");
-  const [amount, setAmount] = React.useState(() => (offer ? offer.minAmount.toString() : ""));
-  const [paymentMethod, setPaymentMethod] = React.useState<string>(() => {
-    const options = offer ? parsePaymentMethods(offer.paymentMethods) : [];
-    return options[0] ?? "";
-  });
+  const [amount, setAmount] = React.useState("");
+  const [paymentMethod, setPaymentMethod] = React.useState<string>("");
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -54,7 +53,18 @@ export function NewDealView({ offerId, onCancel, onCreated }: NewDealViewProps) 
     setAmount(offer.minAmount.toString());
     const options = parsePaymentMethods(offer.paymentMethods);
     setPaymentMethod(options[0] ?? "");
+    setError(null);
   }, [offerId, offer]);
+
+  if (offersLoading) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
+        <Skeleton className="h-10 w-48 rounded-full" />
+        <Skeleton className="h-40 w-full rounded-3xl" />
+        <Skeleton className="h-72 w-full rounded-3xl" />
+      </div>
+    );
+  }
 
   if (!offer) {
     return (
