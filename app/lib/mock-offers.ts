@@ -1,5 +1,12 @@
 import { createMockRng, MOCK_NOW_MS } from "@/lib/mock-clock";
 import type { DealSide } from "@/lib/mock-data";
+import {
+  computeTokenPriceInFiat,
+  ensureMaxAmount,
+  mockFiatCurrencies,
+  mockTokenConfigs,
+  sampleAmountInRange
+} from "@/lib/mock-market";
 
 export interface OfferRow {
   id: number;
@@ -14,8 +21,6 @@ export interface OfferRow {
   updatedAt: string;
 }
 
-const tokenList = ["USDT", "ETH", "BTC", "DAI", "USDC"];
-const fiatList = ["USD", "EUR", "CNY", "GBP", "BRL"];
 const paymentMethods = [
   "SEPA,Revolut",
   "Swift,Wire",
@@ -27,12 +32,6 @@ const paymentMethods = [
 ];
 const MIN_OFFSET_SECONDS = 5;
 const MAX_OFFSET_SECONDS = 2 * 24 * 60 * 60;
-
-const priceBase = 1.01;
-const priceStep = 0.002;
-const minBase = 500;
-const minStep = 60;
-const rangeWidth = 2200;
 
 export function generateMockOffers(count = 18): OfferRow[] {
   const now = MOCK_NOW_MS;
@@ -46,8 +45,13 @@ export function generateMockOffers(count = 18): OfferRow[] {
 
   return Array.from({ length: count }).map((_, index) => {
     const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
-    const min = minBase + index * minStep;
-    const max = min + rangeWidth;
+    const tokenConfig = mockTokenConfigs[index % mockTokenConfigs.length];
+    const fiatConfig = mockFiatCurrencies[index % mockFiatCurrencies.length];
+    const minAmount = sampleAmountInRange(random(), tokenConfig.minAmountRange, tokenConfig.decimals);
+    const rawMaxAmount = sampleAmountInRange(random(), tokenConfig.maxAmountRange, tokenConfig.decimals);
+    const maxAmount = Number(
+      ensureMaxAmount(rawMaxAmount, minAmount, tokenConfig.minMaxMultiplier).toFixed(tokenConfig.decimals)
+    );
     const offsetSeconds = randomOffsetSeconds();
     const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
 
@@ -55,11 +59,11 @@ export function generateMockOffers(count = 18): OfferRow[] {
       id: index + 1,
       side,
       maker: `0xMaker${(index + 10).toString(16).padStart(2, "0")}`,
-      token: tokenList[index % tokenList.length],
-      fiat: fiatList[index % fiatList.length],
-      price: Number((priceBase + index * priceStep).toFixed(3)),
-      minAmount: min,
-      maxAmount: max,
+      token: tokenConfig.symbol,
+      fiat: fiatConfig.code,
+      price: computeTokenPriceInFiat(tokenConfig, fiatConfig, random()),
+      minAmount,
+      maxAmount,
       paymentMethods: paymentMethods[index % paymentMethods.length],
       updatedAt: timestamp
     };

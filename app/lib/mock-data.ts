@@ -1,4 +1,5 @@
 import { createMockRng, MOCK_NOW_MS } from "@/lib/mock-clock";
+import { mockFiatCurrencies, mockTokenConfigs, sampleAmountInRange } from "@/lib/mock-market";
 
 export type DealSide = "BUY" | "SELL";
 export type DealState = "REQUESTED" | "ACCEPTED" | "PAID";
@@ -17,13 +18,10 @@ export interface DealRow {
 }
 
 const stateCycle: DealState[] = ["REQUESTED", "ACCEPTED", "PAID"];
-const fiatCycle = ["USD", "EUR", "GBP", "BRL"];
-const tokenCycle = ["USDT", "ETH", "BTC", "USDC"];
+const fiatCycle = mockFiatCurrencies.map((fiat) => fiat.code);
+const tokenCycle = mockTokenConfigs.map((token) => token.symbol);
 const MIN_OFFSET_SECONDS = 5;
 const MAX_OFFSET_SECONDS = 2 * 24 * 60 * 60;
-
-const amountBase = 100;
-const amountStep = 7.5;
 
 export function generateMockDeals(count = 24): DealRow[] {
   const now = MOCK_NOW_MS;
@@ -39,10 +37,17 @@ export function generateMockDeals(count = 24): DealRow[] {
     const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
     const offsetSeconds = randomOffsetSeconds();
     const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
+    const tokenConfig = mockTokenConfigs[index % mockTokenConfigs.length];
+    const amount = sampleAmountInRange(
+      random(),
+      [tokenConfig.minAmountRange[0], tokenConfig.maxAmountRange[1]],
+      tokenConfig.decimals
+    );
+
     return {
       id: index + 1,
       side,
-      amount: Number((amountBase + index * amountStep).toFixed(2)),
+      amount,
       fiatCode: fiatCycle[index % fiatCycle.length],
       partner: index % 3 === 0 ? "0xPartner" : null,
       state: stateCycle[index % stateCycle.length],

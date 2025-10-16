@@ -18,6 +18,12 @@ const ROW_HEIGHT_BASE_PX = 56;
 const ROW_HEIGHT_EXTRA_PX = 8; // for skeleton
 const ROW_HEIGHT_WITH_CONTENT_PX = ROW_HEIGHT_BASE_PX + ROW_HEIGHT_EXTRA_PX;
 
+type ColumnMeta = {
+  align?: "left" | "center" | "right";
+  headerClassName?: string;
+  cellClassName?: string;
+};
+
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -110,25 +116,37 @@ export function DataTable<TData, TValue>({
         <TableHeader>
           {table.getHeaderGroups().map(headerGroup => (
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
-              {headerGroup.headers.map(header => (
-                <TableHead
-                  key={header.id}
-                  colSpan={header.colSpan}
-                  className={cn(
-                    header.column.getCanSort() ? "cursor-pointer select-none" : "",
-                    "whitespace-nowrap"
-                  )}
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
-                  {{
-                    asc: " ▲",
-                    desc: " ▼"
-                  }[header.column.getIsSorted() as string] ?? null}
-                </TableHead>
-              ))}
+              {headerGroup.headers.map(header => {
+                const meta = header.column.columnDef.meta as ColumnMeta | undefined;
+                const alignClass =
+                  meta?.align === "right"
+                    ? "text-right"
+                    : meta?.align === "center"
+                      ? "text-center"
+                      : undefined;
+
+                return (
+                  <TableHead
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    className={cn(
+                      header.column.getCanSort() ? "cursor-pointer select-none" : "",
+                      "whitespace-nowrap",
+                      alignClass,
+                      meta?.headerClassName
+                    )}
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                    {{
+                      asc: " ▲",
+                      desc: " ▼"
+                    }[header.column.getIsSorted() as string] ?? null}
+                  </TableHead>
+                );
+              })}
             </TableRow>
           ))}
         </TableHeader>
@@ -158,11 +176,21 @@ export function DataTable<TData, TValue>({
                   )}
                   onClick={handleClick}
                 >
-                  {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id} className="py-3 align-middle">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map(cell => {
+                    const meta = cell.column.columnDef.meta as ColumnMeta | undefined;
+                    const alignClass =
+                      meta?.align === "right"
+                        ? "text-right"
+                        : meta?.align === "center"
+                          ? "text-center"
+                          : undefined;
+
+                    return (
+                      <TableCell key={cell.id} className={cn("py-3 align-middle", alignClass, meta?.cellClassName)}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               );
             })

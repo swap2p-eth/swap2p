@@ -58,31 +58,46 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       accessorKey: "price",
       header: "Price",
       cell: ({ row }) => (
-        <span className="text-sm font-medium text-foreground">
+        <span className="block text-right text-sm font-medium text-foreground tabular-nums">
           {Number(row.getValue("price")).toLocaleString("en-US", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 3
           })}
         </span>
-      )
+      ),
+      meta: {
+        align: "right",
+        headerClassName: "text-right",
+        cellClassName: "text-right"
+      }
     },
     {
       accessorKey: "minAmount",
       header: "Min",
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
+        <span className="block text-right text-sm text-muted-foreground tabular-nums">
           {Number(row.getValue("minAmount")).toLocaleString("en-US")}
         </span>
-      )
+      ),
+      meta: {
+        align: "right",
+        headerClassName: "text-right",
+        cellClassName: "text-right"
+      }
     },
     {
       accessorKey: "maxAmount",
       header: "Max",
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground">
+        <span className="block text-right text-sm text-muted-foreground tabular-nums">
           {Number(row.getValue("maxAmount")).toLocaleString("en-US")}
         </span>
-      )
+      ),
+      meta: {
+        align: "right",
+        headerClassName: "text-right",
+        cellClassName: "text-right"
+      }
     },
     {
       accessorKey: "paymentMethods",
@@ -100,8 +115,16 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       accessorKey: "updatedAt",
       header: "Updated",
       cell: ({ row }) => (
-        <RelativeTime value={row.getValue("updatedAt") as string | number} className="text-sm text-muted-foreground" />
-      )
+        <RelativeTime
+          value={row.getValue("updatedAt") as string | number}
+          className="block text-right text-sm text-muted-foreground"
+        />
+      ),
+      meta: {
+        align: "right",
+        headerClassName: "text-right",
+        cellClassName: "text-right"
+      }
     },
     {
       id: "actions",
