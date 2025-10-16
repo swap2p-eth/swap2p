@@ -17,9 +17,11 @@ export interface OfferRow {
   token: string;
   fiat: string;
   price: number;
+  reserve: number;
   minAmount: number;
   maxAmount: number;
   paymentMethods: string;
+  requirements?: string;
   updatedAt: string;
 }
 
@@ -71,10 +73,22 @@ export function generateMockOffers(count = 32): OfferRow[] {
       tokenConfig.decimals,
       { mode: "ceil", min: minAmount, max: tokenConfig.maxAmountRange[1] }
     );
+    const reserve = quantizeAmount(
+      Math.max(maxAmount * 2.5, ensuredMax),
+      tokenConfig.maxStep ?? tokenConfig.minStep,
+      tokenConfig.decimals,
+      { mode: "ceil", min: maxAmount }
+    );
     const offsetSeconds = randomOffsetSeconds();
     const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
 
     const makerAddress = index < 6 ? CURRENT_USER_ADDRESS : `0xMaker${(index + 10).toString(16).padStart(2, "0")}`;
+    const requirements =
+      index % 4 === 0
+        ? "KYC selfie + proof of address."
+        : index % 4 === 1
+          ? "Corporate buyers: share company registry."
+          : "";
     return {
       id: index + 1,
       side,
@@ -82,9 +96,11 @@ export function generateMockOffers(count = 32): OfferRow[] {
       token: tokenConfig.symbol,
       fiat: fiatConfig.code,
       price: computeTokenPriceInFiat(tokenConfig, fiatConfig, random()),
+      reserve,
       minAmount,
       maxAmount,
       paymentMethods: paymentMethods[index % paymentMethods.length],
+      requirements,
       updatedAt: timestamp
     };
   });

@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, Trophy, X } from "lucide-react";
+import { Loader2, Trash2, Trophy, X } from "lucide-react";
+import { useChainId } from "wagmi";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,18 +10,23 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { cn } from "@/lib/utils";
-import { getNetworkConfigForChain, type TokenConfig } from "@/config";
+import { getNetworkConfigForChain } from "@/config";
 import { useOffers } from "./offers-provider";
 import { DealHeader } from "@/components/deals/deal-header";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
-import { useChainId } from "wagmi";
+import type { OfferRow } from "@/lib/mock-offers";
 
 type DealSide = "BUY" | "SELL";
+type OfferEditorMode = "create" | "edit";
 
-interface NewOfferViewProps {
+interface OfferViewProps {
+  mode?: OfferEditorMode;
+  offerId?: number;
   onCancel?: () => void;
   onCreated?: () => void;
+  onDelete?: () => void;
+  returnHash?: string;
 }
 
 interface PaymentMethodOption {
@@ -35,62 +41,104 @@ function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className={cn(textareaBase, props.className)} />;
 }
 
-export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
+const parseMethods = (raw?: string) =>
+  raw
+    ? raw
+        .split(",")
+        .map(value => value.trim())
+        .filter(Boolean)
+    : [];
+
+const summarizeMethods = (methods: string[]) => (methods.length ? methods.join(", ") : "no payment methods");
+
+export function OfferView({
+  mode = "create",
+  offerId,
+  onCancel,
+  onCreated,
+  onDelete,
+  returnHash
+}: OfferViewProps) {
   const chainId = useChainId();
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
+  const { offers, createOffer, updateOffer, removeOffer } = useOffers();
 
-  const { refresh } = useOffers();
+  const isEdit = mode === "edit" && typeof offerId === "number";
+  const existingOffer = React.useMemo<OfferRow | undefined>(
+    () => (isEdit ? offers.find(item => item.id === offerId) : undefined),
+    [isEdit, offers, offerId]
+  );
 
-  const [side, setSide] = React.useState<DealSide>("SELL");
-  const [token, setToken] = React.useState<TokenConfig | null>(() => network.tokens[0] ?? null);
-  const [fiat, setFiat] = React.useState(() => network.fiats[0]?.code ?? "");
-  const [price, setPrice] = React.useState("");
-  const [reserve, setReserve] = React.useState("");
-  const [minAmount, setMinAmount] = React.useState("");
-  const [maxAmount, setMaxAmount] = React.useState("");
-  const [requirements, setRequirements] = React.useState("");
-  const [selectedMethods, setSelectedMethods] = React.useState<string[]>([]);
+  const [side, setSide] = React.useState<DealSide>(existingOffer?.side ?? "SELL");
+  const [tokenSymbol, setTokenSymbol] = React.useState<string>(existingOffer?.token ?? network.tokens[0]?.symbol ?? "");
+  const [fiat, setFiat] = React.useState<string>(existingOffer?.fiat ?? network.fiats[0]?.code ?? "");
+  const [price, setPrice] = React.useState(existingOffer ? String(existingOffer.price) : "");
+  const [reserve, setReserve] = React.useState(existingOffer ? String(existingOffer.reserve) : "");
+  const [minAmount, setMinAmount] = React.useState(existingOffer ? String(existingOffer.minAmount) : "");
+  const [maxAmount, setMaxAmount] = React.useState(existingOffer ? String(existingOffer.maxAmount) : "");
+  const [requirements, setRequirements] = React.useState(existingOffer?.requirements ?? "");
+  const [selectedMethods, setSelectedMethods] = React.useState<string[]>(parseMethods(existingOffer?.paymentMethods));
   const [customMethodInput, setCustomMethodInput] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [successState, setSuccessState] = React.useState<null | {
-    reference: string;
-    summary: string;
-  }>(null);
+  const [successState, setSuccessState] = React.useState<null | { message: string; summary: string }>(null);
+
+  const backLabel = "Back";
+  const fallbackHash = returnHash ?? "offers";
+
+  const navigateBack = React.useCallback(() => {
+    if (onCancel) {
+      onCancel();
+    } else if (typeof window !== "undefined") {
+      window.location.hash = fallbackHash;
+    }
+  }, [onCancel, fallbackHash]);
 
   React.useEffect(() => {
-    setToken(network.tokens[0] ?? null);
-    const firstFiat = network.fiats[0]?.code ?? "";
-    setFiat(firstFiat);
-    setPrice("");
-    setReserve("");
-    setMinAmount("");
-    setMaxAmount("");
-    setRequirements("");
-    setSelectedMethods([]);
-    setCustomMethodInput("");
-    setError(null);
-    setSuccessState(null);
-  }, [network]);
-
-  const handleToggleMethod = (method: string) => {
-    setSelectedMethods(prev => {
-      if (prev.includes(method)) {
-        return prev.filter(value => value !== method);
-      }
-      return [...prev, method];
-    });
-  };
+    if (isEdit && existingOffer) {
+      setSide(existingOffer.side);
+      setTokenSymbol(existingOffer.token);
+      setFiat(existingOffer.fiat);
+      setPrice(String(existingOffer.price));
+      setReserve(String(existingOffer.reserve));
+      setMinAmount(String(existingOffer.minAmount));
+      setMaxAmount(String(existingOffer.maxAmount));
+      setRequirements(existingOffer.requirements ?? "");
+      setSelectedMethods(parseMethods(existingOffer.paymentMethods));
+      setCustomMethodInput("");
+      setError(null);
+      setSuccessState(null);
+    }
+  }, [isEdit, existingOffer]);
 
   React.useEffect(() => {
-    setSelectedMethods([]);
-    setCustomMethodInput("");
-  }, [fiat]);
+    if (!isEdit) {
+      setTokenSymbol(network.tokens[0]?.symbol ?? "");
+      setFiat(network.fiats[0]?.code ?? "");
+      setPrice("");
+      setReserve("");
+      setMinAmount("");
+      setMaxAmount("");
+      setRequirements("");
+      setSelectedMethods([]);
+      setCustomMethodInput("");
+      setError(null);
+      setSuccessState(null);
+    }
+  }, [network, isEdit]);
+
+  React.useEffect(() => {
+    if (!isEdit) {
+      setSelectedMethods([]);
+      setCustomMethodInput("");
+    }
+  }, [fiat, isEdit]);
 
   const paymentMethodOptions = React.useMemo<PaymentMethodOption[]>(() => {
-    const methods = network.paymentMethods[fiat] ?? [];
-    return methods.map(method => ({ id: method, label: method }));
-  }, [network, fiat]);
+    const base = network.paymentMethods[fiat] ?? [];
+    const extra = selectedMethods.filter(method => !base.includes(method));
+    return [...base, ...extra].map(method => ({ id: method, label: method }));
+  }, [network, fiat, selectedMethods]);
 
   const addCustomMethod = React.useCallback(() => {
     const trimmed = customMethodInput.trim();
@@ -98,6 +146,10 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
     setSelectedMethods(prev => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
     setCustomMethodInput("");
   }, [customMethodInput]);
+
+  const handleToggleMethod = (method: string) => {
+    setSelectedMethods(prev => (prev.includes(method) ? prev.filter(item => item !== method) : [...prev, method]));
+  };
 
   const handleRemoveMethod = (method: string) => {
     setSelectedMethods(prev => prev.filter(item => item !== method));
@@ -108,7 +160,12 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
     setError(null);
     setSuccessState(null);
 
-    if (!token) {
+    if (isEdit && !existingOffer) {
+      setError("Offer not found.");
+      return;
+    }
+
+    if (!tokenSymbol) {
       setError("Select a token to continue.");
       return;
     }
@@ -140,64 +197,126 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
     }
 
     setIsSubmitting(true);
-    const payload = {
+
+    if (isEdit && existingOffer) {
+      const updated = updateOffer(existingOffer.id, {
+        price: parsedPrice,
+        reserve: parsedReserve,
+        minAmount: parsedMin,
+        maxAmount: parsedMax,
+        paymentMethods: selectedMethods
+      });
+
+      setIsSubmitting(false);
+
+      if (!updated) {
+        setError("Failed to update offer.");
+        return;
+      }
+
+      setSuccessState({
+        message: "Offer updated",
+        summary: `${updated.side} ${updated.token} for ${updated.fiat} · ${summarizeMethods(selectedMethods)}`
+      });
+      onCreated?.();
+      return;
+    }
+
+    const created = createOffer({
       side,
-      token: {
-        symbol: token.symbol,
-        address: token.address,
-        decimals: token.decimals
-      },
-      chainId: network.chainId,
+      token: tokenSymbol,
       fiat,
       price: parsedPrice,
       reserve: parsedReserve,
       minAmount: parsedMin,
       maxAmount: parsedMax,
-      requirements: requirements.trim(),
-      paymentMethods: selectedMethods
-    };
+      paymentMethods: selectedMethods,
+      requirements: requirements.trim()
+    });
 
-    // In a real app this is where we would call the contract or backend.
-    // For now, simulate the action and refresh the mock offers list.
-    window.console.info("[swap2p] create offer payload", payload);
-
-    setTimeout(() => {
-      setIsSubmitting(false);
-      const methodSummary = selectedMethods.length ? selectedMethods.join(", ") : "no payment methods";
-      setSuccessState({
-        reference: `${Math.random().toString(16).slice(2, 8)}-${Date.now().toString().slice(-4)}`,
-        summary: `${side} ${token.symbol} for ${fiat} · ${methodSummary}`
-      });
-      refresh();
-      onCreated?.();
-    }, 600);
+    setIsSubmitting(false);
+    setSuccessState({
+      message: "Offer draft prepared",
+      summary: `${created.side} ${created.token} for ${created.fiat} · ${summarizeMethods(selectedMethods)}`
+    });
+    onCreated?.();
   };
+
+  const handleDelete = () => {
+    if (!isEdit || !existingOffer) return;
+    removeOffer(existingOffer.id);
+    onDelete?.();
+    navigateBack();
+  };
+
+  const tokenOptions = React.useMemo(() => {
+    const symbols = network.tokens.map(item => item.symbol);
+    if (isEdit && existingOffer && !symbols.includes(existingOffer.token)) {
+      return [existingOffer.token, ...symbols];
+    }
+    return symbols;
+  }, [network, isEdit, existingOffer]);
+
+  const fiatOptions = React.useMemo(() => {
+    const codes = network.fiats.map(item => item.code);
+    if (isEdit && existingOffer && !codes.includes(existingOffer.fiat)) {
+      return [existingOffer.fiat, ...codes];
+    }
+    return codes;
+  }, [network, isEdit, existingOffer]);
+
+  if (isEdit && !existingOffer) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offer not found</h1>
+        <p className="text-sm text-muted-foreground">
+          This offer is no longer available. Return to the previous section to pick another one.
+        </p>
+        <Button type="button" onClick={navigateBack} className="mx-auto rounded-full px-6">
+          {backLabel}
+        </Button>
+      </div>
+    );
+  }
+
+  const submitLabel = isEdit ? (isSubmitting ? "Saving…" : "Save changes") : isSubmitting ? "Publishing…" : "Publish offer";
+  const disableImmutable = isEdit;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
       <DealHeader
-        title="Create offer"
-        subtitle="Publish maker liquidity parameters and invite takers to lock deals with you."
-        backLabel="Back to offers"
-        onBack={() => onCancel?.()}
+        title={isEdit ? "Edit offer" : "Create offer"}
+        subtitle={isEdit ? "Adjust price, limits, and rails for this offer." : "Publish maker liquidity parameters and invite takers to lock deals with you."}
+        backLabel={backLabel}
+        onBack={navigateBack}
       />
 
       <Card className="rounded-3xl border bg-gradient-to-br from-background/70 to-background/30 shadow-lg shadow-primary/5">
-        <CardHeader className="space-y-2">
-          <CardTitle className="text-xl">Offer parameters</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Configure price, limits, rails, and taker requirements for this offer.
-          </p>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <CardTitle className="text-xl">Offer parameters</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Configure price, limits, rails, and taker requirements for this offer.
+            </p>
+          </div>
+          {isEdit ? (
+            <Button type="button" variant="destructive" className="rounded-full px-6" onClick={handleDelete}>
+              <Trash2 className="mr-2 h-4 w-4" /> Delete offer
+            </Button>
+          ) : null}
         </CardHeader>
         <CardContent>
           <form className="space-y-8" onSubmit={handleSubmit}>
             <section className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3 rounded-3xl border border-border/60 bg-background/60 p-6">
-                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Side</div>
+                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Side</span>
                 <SegmentedControl
-                  className="mt-2"
+                  className={cn("mt-2", disableImmutable && "pointer-events-none opacity-60")}
                   value={side}
-                  onChange={value => setSide(value as DealSide)}
+                  onChange={value => {
+                    if (disableImmutable) return;
+                    setSide(value as DealSide);
+                  }}
                   options={[
                     { label: "BUY", value: "BUY" },
                     { label: "SELL", value: "SELL" }
@@ -211,21 +330,19 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
               <div className="space-y-3 rounded-3xl border border-border/60 bg-background/60 p-6">
                 <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Token</span>
                 <Select
-                  value={token?.symbol ?? ""}
-                  onValueChange={symbol => {
-                    const next = network.tokens.find(item => item.symbol === symbol) ?? null;
-                    setToken(next);
-                  }}
+                  disabled={disableImmutable}
+                  value={tokenSymbol}
+                  onValueChange={symbol => setTokenSymbol(symbol)}
                 >
                   <SelectTrigger className="rounded-full">
                     <SelectValue placeholder="Select token" />
                   </SelectTrigger>
                   <SelectContent>
-                    {network.tokens.map(item => (
-                      <SelectItem key={item.symbol} value={item.symbol}>
+                    {tokenOptions.map(symbol => (
+                      <SelectItem key={symbol} value={symbol}>
                         <span className="flex items-center gap-2">
-                          <TokenIcon symbol={item.symbol} size={20} />
-                          {item.symbol}
+                          <TokenIcon symbol={symbol} size={20} />
+                          {symbol}
                         </span>
                       </SelectItem>
                     ))}
@@ -237,16 +354,16 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
             <section className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
                 <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Fiat currency</label>
-                <Select value={fiat} onValueChange={code => setFiat(code)}>
+                <Select disabled={disableImmutable} value={fiat} onValueChange={code => setFiat(code)}>
                   <SelectTrigger className="rounded-full">
                     <SelectValue placeholder="Select fiat" />
                   </SelectTrigger>
                   <SelectContent>
-                    {network.fiats.map(item => (
-                      <SelectItem key={item.code} value={item.code}>
+                    {fiatOptions.map(code => (
+                      <SelectItem key={code} value={code}>
                         <span className="flex items-center gap-2">
-                          <FiatFlag fiat={item.code} size={18} />
-                          {item.code}
+                          <FiatFlag fiat={code} size={18} />
+                          {code}
                         </span>
                       </SelectItem>
                     ))}
@@ -319,7 +436,8 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
                       <label
                         key={option.id}
                         className={cn(
-                          "flex cursor-pointer items-center justify-between rounded-2xl border border-border/40 bg-background/70 px-4 py-2 text-sm transition hover:border-primary/40 hover:bg-primary/5"
+                          "flex cursor-pointer items-center justify-between rounded-2xl border border-border/40 bg-background/70 px-4 py-2 text-sm transition hover:border-primary/40 hover:bg-primary/5",
+                          selectedMethods.includes(option.label) ? "border-primary/50" : undefined
                         )}
                       >
                         <span>{option.label}</span>
@@ -386,6 +504,7 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
                   onChange={event => setRequirements(event.target.value)}
                   placeholder="Write taker requirements and, if you sell crypto, include payment details for each rail."
                   className="min-h-[200px]"
+                  readOnly={isEdit}
                 />
                 <p className="text-xs text-muted-foreground">
                   Write taker requirements and, if you sell crypto, include payment details for each rail.
@@ -403,25 +522,19 @@ export function NewOfferView({ onCancel, onCreated }: NewOfferViewProps) {
               <div className="rounded-3xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-700">
                 <div className="flex items-center gap-2">
                   <Trophy className="h-4 w-4" />
-                  Offer draft prepared · ref {successState.reference}
+                  {successState.message}
                 </div>
                 <p className="mt-2 text-xs text-emerald-800/80">{successState.summary}</p>
               </div>
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onCancel?.()}
-                className="rounded-full px-6"
-                disabled={isSubmitting}
-              >
+              <Button type="button" variant="outline" onClick={navigateBack} className="rounded-full px-6" disabled={isSubmitting}>
                 Cancel
               </Button>
-              <Button type="submit" className="rounded-full px-6" disabled={isSubmitting || !token}>
+              <Button type="submit" className="rounded-full px-6" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? "Publishing…" : "Publish offer"}
+                {submitLabel}
               </Button>
             </div>
           </form>

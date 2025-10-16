@@ -13,8 +13,11 @@ const NAV_ITEMS = [
 ] as const;
 
 function deriveActiveSection(hash: string) {
-  if (hash.startsWith("deal/") || hash === "dashboard" || hash === "new-offer" || hash === "deals") {
+  if (hash.startsWith("deal/") || hash === "dashboard" || hash === "deals" || hash.startsWith("offer/")) {
     return "dashboard";
+  }
+  if (hash === "offer") {
+    return "offers";
   }
   return hash || "offers";
 }

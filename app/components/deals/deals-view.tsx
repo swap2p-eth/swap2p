@@ -11,6 +11,7 @@ import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
 import { useDeals } from "./deals-provider";
 import { useOffers } from "@/components/offers/offers-provider";
 import { useHashLocation } from "@/hooks/use-hash-location";
+import type { OfferRow } from "@/lib/mock-offers";
 
 interface DealsViewProps {
   onSelectDeal?: (dealId: number) => void;
@@ -28,10 +29,10 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
   );
 
   const filteredDeals = React.useMemo(() => {
-    const base = status === "closed"
-      ? userDeals.filter(deal => deal.state !== "REQUESTED")
-      : userDeals.filter(deal => deal.state === "REQUESTED");
-    return base.slice(0, 5);
+    const activeDeals = userDeals.filter(deal => deal.state !== "PAID");
+    const closedDeals = userDeals.filter(deal => deal.state === "PAID");
+    const source = status === "closed" ? closedDeals : activeDeals;
+    return source.slice(0, 5);
   }, [userDeals, status]);
 
   const myOffers = React.useMemo(
@@ -84,18 +85,19 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
             <CardTitle className="text-xl">My Offers</CardTitle>
             <CardDescription>Review every offer you currently publish to takers.</CardDescription>
           </div>
-          <Button type="button" className="rounded-full px-6" onClick={() => setHash("new-offer")}>
+          <Button type="button" className="rounded-full px-6" onClick={() => setHash("offer")}>
             Create Offer
           </Button>
         </CardHeader>
         <CardContent>
           <DataTable
-            className="[&_td]:py-6"
+            className="[&_td]:py-5"
             columns={createOfferColumns()}
             data={myOffers}
             title="Published offers"
             emptyMessage="You have not published any offers yet."
             isLoading={offersLoading}
+            onRowClick={offer => setHash(`offer/${(offer as OfferRow).id}`)}
           />
         </CardContent>
       </Card>

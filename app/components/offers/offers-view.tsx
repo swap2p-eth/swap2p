@@ -155,7 +155,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
     if (onCreateOffer) {
       onCreateOffer();
     } else if (typeof window !== "undefined") {
-      window.location.hash = "new-offer";
+      window.location.hash = "offer";
     }
   }, [onCreateOffer]);
 

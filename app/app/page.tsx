@@ -9,14 +9,14 @@ import { NewDealView } from "@/components/deals/new-deal-view";
 import { OffersView } from "@/components/offers/offers-view";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import { OffersProvider } from "@/components/offers/offers-provider";
-import { NewOfferView } from "@/components/offers/new-offer-view";
+import { OfferView } from "@/components/offers/offer-view";
 
 type ViewState =
   | { type: "offers" }
   | { type: "dashboard" }
   | { type: "new-deal"; offerId: number }
   | { type: "deal-detail"; dealId: number }
-  | { type: "new-offer" };
+  | { type: "offer"; offerId?: number };
 
 function parseHash(hash: string): ViewState {
   const normalized = hash || "offers";
@@ -39,8 +39,16 @@ function parseHash(hash: string): ViewState {
     }
     return { type: "dashboard" };
   }
-  if (normalized === "new-offer") {
-    return { type: "new-offer" };
+  if (normalized === "offer") {
+    return { type: "offer" };
+  }
+  if (normalized.startsWith("offer/")) {
+    const [, idPart] = normalized.split("/");
+    const offerId = Number.parseInt(idPart ?? "", 10);
+    if (Number.isFinite(offerId)) {
+      return { type: "offer", offerId };
+    }
+    return { type: "offers" };
   }
   return { type: "offers" };
 }
@@ -58,11 +66,22 @@ export default function HomePage() {
 function HomePageRouter() {
   const { hash, setHash } = useHashLocation("offers");
   const view = React.useMemo(() => parseHash(hash), [hash]);
-  const lastStableView = React.useRef<ViewState["type"]>("offers");
+  const lastStableHash = React.useRef<"offers" | "dashboard">("offers");
 
   React.useEffect(() => {
-    if (view.type !== "new-deal") {
-      lastStableView.current = view.type === "deal-detail" ? "dashboard" : view.type;
+    switch (view.type) {
+      case "new-deal":
+      case "offer":
+        return;
+      case "deal-detail":
+        lastStableHash.current = "dashboard";
+        return;
+      case "dashboard":
+        lastStableHash.current = "dashboard";
+        return;
+      case "offers":
+      default:
+        lastStableHash.current = "offers";
     }
   }, [view]);
 
@@ -79,7 +98,7 @@ function HomePageRouter() {
     case "deal-detail":
       return <DealDetailView dealId={view.dealId} onBack={() => setHash("dashboard")} />;
     case "new-deal": {
-      const backTarget = lastStableView.current === "dashboard" ? "dashboard" : "offers";
+      const backTarget = lastStableHash.current;
       return (
         <NewDealView
           offerId={view.offerId}
@@ -89,14 +108,35 @@ function HomePageRouter() {
         />
       );
     }
-    case "new-offer":
-      return <NewOfferView onCancel={() => setHash("offers")} onCreated={() => setHash("offers")} />;
+    case "offer": {
+      const backTarget = lastStableHash.current;
+      if (typeof view.offerId === "number") {
+        return (
+          <OfferView
+            mode="edit"
+            offerId={view.offerId}
+            returnHash={backTarget}
+            onCancel={() => setHash(backTarget)}
+            onCreated={() => setHash(backTarget)}
+            onDelete={() => setHash(backTarget)}
+          />
+        );
+      }
+      return (
+        <OfferView
+          mode="create"
+          returnHash={backTarget}
+          onCancel={() => setHash(backTarget)}
+          onCreated={() => setHash("offers")}
+        />
+      );
+    }
     case "offers":
     default:
       return (
         <OffersView
           onStartDeal={offer => setHash(`new-deal/${offer.id}`)}
-          onCreateOffer={() => setHash("new-offer")}
+          onCreateOffer={() => setHash("offer")}
         />
       );
   }
