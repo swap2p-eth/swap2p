@@ -33,9 +33,12 @@ const paymentMethods = [
 const MIN_OFFSET_SECONDS = 5;
 const MAX_OFFSET_SECONDS = 2 * 24 * 60 * 60;
 
-export function generateMockOffers(count = 18): OfferRow[] {
+export function generateMockOffers(count = 32): OfferRow[] {
   const now = MOCK_NOW_MS;
-  const random = createMockRng(`mock-offers:${count}`);
+  const minimumCount = 32;
+  const totalCount = Math.max(count, minimumCount);
+  const evenCount = totalCount % 2 === 0 ? totalCount : totalCount + 1;
+  const random = createMockRng(`mock-offers:${evenCount}`);
 
   const randomOffsetSeconds = () => {
     const span = MAX_OFFSET_SECONDS - MIN_OFFSET_SECONDS;
@@ -43,7 +46,7 @@ export function generateMockOffers(count = 18): OfferRow[] {
     return MIN_OFFSET_SECONDS + Math.floor(sample * span);
   };
 
-  return Array.from({ length: count }).map((_, index) => {
+  return Array.from({ length: evenCount }).map((_, index) => {
     const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
     const tokenConfig = mockTokenConfigs[index % mockTokenConfigs.length];
     const fiatConfig = mockFiatCurrencies[index % mockFiatCurrencies.length];

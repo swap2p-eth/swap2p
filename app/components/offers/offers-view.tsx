@@ -12,8 +12,15 @@ import type { OfferRow } from "@/lib/mock-offers";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 
-const tokenOptions = ["USDT", "ETH", "BTC", "USDC", "DAI"];
-const fiatOptions = ["USD", "EUR", "CNY", "GBP", "BRL", "TRY", "AED", "INR"];
+const FILTER_STORAGE_KEY = "swap2p:offers-filters";
+const ANY_OPTION = "any";
+
+type StoredFilters = {
+  side?: "BUY" | "SELL";
+  token?: string;
+  fiat?: string;
+  paymentMethod?: string;
+};
 
 interface OffersViewProps {
   onStartDeal?: (offer: OfferRow) => void;
@@ -22,11 +29,64 @@ interface OffersViewProps {
 export function OffersView({ onStartDeal }: OffersViewProps) {
   const { offers, isLoading } = useOffers();
   const [side, setSide] = React.useState("SELL");
-  const [token, setToken] = React.useState("USDT");
-  const [fiat, setFiat] = React.useState("USD");
-  const [paymentMethod, setPaymentMethod] = React.useState("");
-  const [customPayment, setCustomPayment] = React.useState(false);
+  const [token, setToken] = React.useState(ANY_OPTION);
+  const [fiat, setFiat] = React.useState(ANY_OPTION);
+  const [paymentMethod, setPaymentMethod] = React.useState(ANY_OPTION);
   const [amount, setAmount] = React.useState("");
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as StoredFilters;
+      if (parsed.side === "BUY" || parsed.side === "SELL") {
+        setSide(parsed.side);
+      }
+      if (typeof parsed.token === "string") {
+        setToken(parsed.token);
+      }
+      if (typeof parsed.fiat === "string") {
+        setFiat(parsed.fiat);
+      }
+      if (typeof parsed.paymentMethod === "string") {
+        setPaymentMethod(parsed.paymentMethod);
+      }
+    } catch (error) {
+      console.warn("Failed to read offer filters from storage", error);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const payload = JSON.stringify({
+      side,
+      token,
+      fiat,
+      paymentMethod
+    });
+    window.localStorage.setItem(FILTER_STORAGE_KEY, payload);
+  }, [side, token, fiat, paymentMethod]);
+
+  const tokenOptions = React.useMemo(() => {
+    const options = new Set<string>();
+    for (const offer of offers) {
+      options.add(offer.token);
+    }
+    return [ANY_OPTION, ...Array.from(options).sort((a, b) => a.localeCompare(b))];
+  }, [offers]);
+
+  const fiatOptions = React.useMemo(() => {
+    const options = new Set<string>();
+    for (const offer of offers) {
+      options.add(offer.fiat);
+    }
+    return [ANY_OPTION, ...Array.from(options).sort((a, b) => a.localeCompare(b))];
+  }, [offers]);
 
   const columns = React.useMemo(() => createOfferColumns(onStartDeal), [onStartDeal]);
   const paymentMethodOptions = React.useMemo(() => {
@@ -38,8 +98,56 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
         .filter(Boolean)
         .forEach(method => options.add(method));
     }
-    return Array.from(options).sort((a, b) => a.localeCompare(b));
+    return [ANY_OPTION, ...Array.from(options).sort((a, b) => a.localeCompare(b))];
   }, [offers]);
+
+  React.useEffect(() => {
+    if (!tokenOptions.includes(token)) {
+      setToken(ANY_OPTION);
+    }
+  }, [tokenOptions, token]);
+
+  React.useEffect(() => {
+    if (!fiatOptions.includes(fiat)) {
+      setFiat(ANY_OPTION);
+    }
+  }, [fiatOptions, fiat]);
+
+  React.useEffect(() => {
+    if (!paymentMethodOptions.includes(paymentMethod)) {
+      setPaymentMethod(ANY_OPTION);
+    }
+  }, [paymentMethodOptions, paymentMethod]);
+
+  const filteredOffers = React.useMemo(() => {
+    const trimmedAmount = amount.trim();
+    const amountValue = trimmedAmount === "" ? null : Number(trimmedAmount);
+    const hasAmountFilter = amountValue !== null && !Number.isNaN(amountValue);
+
+    return offers.filter(offer => {
+      if (offer.side !== side) return false;
+      if (token !== ANY_OPTION && offer.token !== token) return false;
+      if (fiat !== ANY_OPTION && offer.fiat !== fiat) return false;
+      if (paymentMethod !== ANY_OPTION) {
+        const methods = offer.paymentMethods
+          .split(",")
+          .map(method => method.trim())
+          .filter(Boolean);
+        if (!methods.includes(paymentMethod)) {
+          return false;
+        }
+      }
+      if (hasAmountFilter) {
+        if (amountValue === null) {
+          return false;
+        }
+        if (amountValue < offer.minAmount || amountValue > offer.maxAmount) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [offers, side, token, fiat, paymentMethod, amount]);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
@@ -75,15 +183,19 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
               <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Token</span>
               <Select value={token} onValueChange={setToken}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select token" />
+                  <SelectValue placeholder="Any token" />
                 </SelectTrigger>
                 <SelectContent>
                   {tokenOptions.map(option => (
                     <SelectItem key={option} value={option}>
-                      <span className="flex items-center gap-2">
-                        <TokenIcon symbol={option} size={20} />
-                        {option}
-                      </span>
+                      {option === ANY_OPTION ? (
+                        "Any token"
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <TokenIcon symbol={option} size={20} />
+                          {option}
+                        </span>
+                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -93,15 +205,19 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
               <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Fiat</span>
               <Select value={fiat} onValueChange={setFiat}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select fiat" />
+                  <SelectValue placeholder="Any fiat" />
                 </SelectTrigger>
                 <SelectContent>
                   {fiatOptions.map(option => (
                     <SelectItem key={option} value={option}>
-                      <span className="flex items-center gap-2">
-                        <FiatFlag fiat={option} size={20} />
-                        {option}
-                      </span>
+                      {option === ANY_OPTION ? (
+                        "Any fiat"
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <FiatFlag fiat={option} size={20} />
+                          {option}
+                        </span>
+                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -111,45 +227,25 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
               <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
                 Payment method
               </span>
-              <Select
-                value={customPayment ? "__custom__" : paymentMethod || undefined}
-                onValueChange={value => {
-                  if (value === "__custom__") {
-                    setCustomPayment(true);
-                    setPaymentMethod("");
-                    return;
-                  }
-                  setCustomPayment(false);
-                  setPaymentMethod(value);
-                }}
-              >
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
                 <SelectTrigger className="rounded-full bg-background/70 text-left">
-                  <SelectValue placeholder="Revolut, SEPA, Pix…" />
+                  <SelectValue placeholder="Any payment method" />
                 </SelectTrigger>
                 <SelectContent>
                   {paymentMethodOptions.map(option => (
                     <SelectItem key={option} value={option}>
-                      {option}
+                      {option === ANY_OPTION ? "Any payment method" : option}
                     </SelectItem>
                   ))}
-                  <SelectItem value="__custom__">Other…</SelectItem>
                 </SelectContent>
               </Select>
-              {customPayment ? (
-                <Input
-                  placeholder="Type payment method"
-                  value={paymentMethod}
-                  onChange={event => setPaymentMethod(event.target.value)}
-                  className="rounded-full bg-background/70"
-                />
-              ) : null}
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Amount</span>
               <Input
                 type="number"
                 min={0}
-                placeholder="Min/Max"
+                placeholder=""
                 value={amount}
                 onChange={event => setAmount(event.target.value)}
                 className="rounded-full bg-background/70"
@@ -166,7 +262,7 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
             </div>*/}
             <DataTable
               columns={columns}
-              data={offers}
+              data={filteredOffers}
               title="Offers"
               emptyMessage="No offers match the current filters."
               isLoading={isLoading}
