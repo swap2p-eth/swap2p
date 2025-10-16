@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -24,9 +25,10 @@ type StoredFilters = {
 
 interface OffersViewProps {
   onStartDeal?: (offer: OfferRow) => void;
+  onCreateOffer?: () => void;
 }
 
-export function OffersView({ onStartDeal }: OffersViewProps) {
+export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
   const { offers, isLoading } = useOffers();
   const [side, setSide] = React.useState("SELL");
   const [token, setToken] = React.useState(ANY_OPTION);
@@ -149,13 +151,31 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
     });
   }, [offers, side, token, fiat, paymentMethod, amount]);
 
+  const handleCreateOffer = React.useCallback(() => {
+    if (onCreateOffer) {
+      onCreateOffer();
+    } else if (typeof window !== "undefined") {
+      window.location.hash = "new-offer";
+    }
+  }, [onCreateOffer]);
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
-      <section className="flex flex-col gap-2">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offers</h1>
-        <p className="text-sm text-muted-foreground">
-          Explore maker inventory across markets. Choose the side, token, and fiat rails to narrow the list.
-        </p>
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offers</h1>
+          <p className="text-sm text-muted-foreground">
+            Explore maker inventory across markets. Choose the side, token, and fiat rails to narrow the list.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="lg"
+          className="rounded-full px-6 text-sm font-medium shadow-lg shadow-primary/20"
+          onClick={handleCreateOffer}
+        >
+          Create Offer
+        </Button>
       </section>
 
       <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30">

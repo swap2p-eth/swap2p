@@ -9,12 +9,14 @@ import { NewDealView } from "@/components/deals/new-deal-view";
 import { OffersView } from "@/components/offers/offers-view";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import { OffersProvider } from "@/components/offers/offers-provider";
+import { NewOfferView } from "@/components/offers/new-offer-view";
 
 type ViewState =
   | { type: "offers" }
   | { type: "deals" }
   | { type: "new-deal"; offerId: number }
-  | { type: "deal-detail"; dealId: number };
+  | { type: "deal-detail"; dealId: number }
+  | { type: "new-offer" };
 
 function parseHash(hash: string): ViewState {
   const normalized = hash || "offers";
@@ -36,6 +38,9 @@ function parseHash(hash: string): ViewState {
       return { type: "deal-detail", dealId };
     }
     return { type: "deals" };
+  }
+  if (normalized === "new-offer") {
+    return { type: "new-offer" };
   }
   return { type: "offers" };
 }
@@ -74,8 +79,15 @@ function HomePageRouter() {
           onCreated={dealId => setHash(`deal/${dealId}`)}
         />
       );
+    case "new-offer":
+      return <NewOfferView onCancel={() => setHash("offers")} onCreated={() => setHash("offers")} />;
     case "offers":
     default:
-      return <OffersView onStartDeal={offer => setHash(`new-deal/${offer.id}`)} />;
+      return (
+        <OffersView
+          onStartDeal={offer => setHash(`new-deal/${offer.id}`)}
+          onCreateOffer={() => setHash("new-offer")}
+        />
+      );
   }
 }
