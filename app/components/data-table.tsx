@@ -105,7 +105,7 @@ export function DataTable<TData, TValue>({
   return (
     <div
       className={cn(
-        "w-full rounded-3xl bg-card/60 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur",
+        "w-full rounded-3xl bg-card/60 shadow-none shadow-[inset_0_0_2px_rgba(15,23,42,0.12)] backdrop-blur",
         className
       )}
     >
