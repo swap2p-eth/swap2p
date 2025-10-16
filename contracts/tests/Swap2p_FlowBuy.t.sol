@@ -45,9 +45,9 @@ contract Swap2p_FlowBuyTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.release(dealId, bytes(""));
 
-        // fee = 0.5%, share=50%
+        // fee = 0.5%, taker share = 20% of fee
         uint256 fee = (amount * 50) / 10_000;
-        uint256 share = (fee * 5000) / 10_000;
+        uint256 share = (fee * 2000) / 10_000;
 
         // maker (buyer) receives payout (amount - fee) plus refund of their deposit (amount)
         assertEq(token.balanceOf(maker) - makerBefore, amount + (amount - fee), "maker delta includes payout and refund");

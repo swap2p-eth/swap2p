@@ -14,6 +14,7 @@ contract Swap2p_GasTest is Test {
     address internal maker;
     address internal taker;
     address internal partner;
+    address internal author;
 
     // Only current gas table is printed; no baselines/deltas
 
@@ -21,8 +22,9 @@ contract Swap2p_GasTest is Test {
         maker = makeAddr("maker");
         taker = makeAddr("taker");
         partner = makeAddr("partner");
+        author = makeAddr("author");
 
-        swap = new Swap2p();
+        swap = new Swap2p(author);
         token = new MintableERC20("Mock", "MCK");
 
         token.mint(maker, 1e24);

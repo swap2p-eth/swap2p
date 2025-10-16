@@ -22,7 +22,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 ///
 /// Fees & Affiliates
 /// - Protocol fee `FEE_BPS` (default 0.5%) is deducted from the main payout.
-/// - Affiliate share `AFF_SHARE_BP` (default 50% of fee) is paid to taker’s bound partner; remainder goes to `author`.
+/// - Affiliate share is split: taker partner receives `TAKER_AFF_SHARE_BP` (20%) and maker partner receives
+///   `MAKER_AFF_SHARE_BP` (30%); remainder goes to `author`.
 ///
 /// States & Permissions
 /// - REQUESTED: created by taker_requestOffer; cancellable by maker or taker; chat allowed.
@@ -46,8 +47,9 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Constants and types
-    uint32 private constant FEE_BPS      = 50;    // 0.50%
-    uint32 private constant AFF_SHARE_BP = 5000;  // 50% of protocol fee goes to affiliate
+    uint32 private constant FEE_BPS              = 50;    // 0.50%
+    uint32 private constant TAKER_AFF_SHARE_BP   = 2000;  // 20% of protocol fee goes to taker affiliate
+    uint32 private constant MAKER_AFF_SHARE_BP   = 3000;  // 30% of protocol fee goes to maker affiliate
     type   FiatCode is uint24;
 
     enum Side { BUY, SELL }
@@ -120,7 +122,7 @@ contract Swap2p is ReentrancyGuard {
     // deal ids
     mapping(address => uint64) private _takerDealNonce;
 
-    // taker → affiliate partner
+    // user → affiliate partner
     mapping(address => address) public affiliates;
 
     // maker profiles
@@ -152,6 +154,7 @@ contract Swap2p is ReentrancyGuard {
     error WorsePrice();
     error InsufficientReserve();
     error FeeOnTransferTokenNotSupported();
+    error AuthorZero();
 
     // ────────────────────────────────────────────────────────────────────────
     // Events
@@ -180,6 +183,7 @@ contract Swap2p is ReentrancyGuard {
 
     event Chat(bytes32 indexed id, address indexed from, bytes text);
 
+    /// @notice Emitted for each affiliate partner receiving a share of the fee (taker or maker).
     event FeeDistributed(
         bytes32 indexed id,
         address indexed token,
@@ -193,9 +197,11 @@ contract Swap2p is ReentrancyGuard {
     event DealDeleted(bytes32 indexed id);
 
     // ────────────────────────────────────────────────────────────────────────
-    /// @notice Initializes fee receiver (`author`) as the deployer.
-    constructor() {
-        author = msg.sender;
+    /// @notice Initializes fee receiver (`author`).
+    /// @param author_ Address that receives protocol fees.
+    constructor(address author_) {
+        if (author_ == address(0)) revert AuthorZero();
+        author = author_;
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -321,19 +327,45 @@ contract Swap2p is ReentrancyGuard {
         IERC20(token).safeTransfer(to, amt);
     }
 
-    /// @dev Pays `amt` to `to`, charges protocol fee and splits affiliate share.
-    function _payWithFee(bytes32 id, address token, address taker, address to, uint128 amt) internal {
+    /// @dev Pays `amt` to `to`, charges protocol fee and splits affiliate share between taker/maker partners.
+    function _payWithFee(
+        bytes32 id,
+        address token,
+        address taker,
+        address maker,
+        address to,
+        uint128 amt
+    ) internal {
         uint128 fee = uint128((uint256(amt) * FEE_BPS) / 10_000);
         _push(token, to, amt - fee);
-        address p = affiliates[taker];
-        if (p != address(0)) {
-            uint128 share = uint128((uint256(fee) * AFF_SHARE_BP) / 10_000);
-            _push(token, p, share);
-            _push(token, author, fee - share);
-            emit FeeDistributed(id, token, p, fee, share);
+
+        uint128 remaining = fee;
+
+        address takerPartner = affiliates[taker];
+        uint128 takerShare = 0;
+        if (takerPartner != address(0)) {
+            takerShare = uint128((uint256(fee) * TAKER_AFF_SHARE_BP) / 10_000);
+            if (takerShare != 0) {
+                _push(token, takerPartner, takerShare);
+                remaining -= takerShare;
+            }
+            emit FeeDistributed(id, token, takerPartner, fee, takerShare);
         } else {
-            _push(token, author, fee);
             emit FeeDistributed(id, token, address(0), fee, 0);
+        }
+
+        address makerPartner = affiliates[maker];
+        if (makerPartner != address(0)) {
+            uint128 makerShare = uint128((uint256(fee) * MAKER_AFF_SHARE_BP) / 10_000);
+            if (makerShare != 0) {
+                _push(token, makerPartner, makerShare);
+                remaining -= makerShare;
+            }
+            emit FeeDistributed(id, token, makerPartner, fee, makerShare);
+        }
+
+        if (remaining != 0) {
+            _push(token, author, remaining);
         }
     }
 
@@ -614,7 +646,7 @@ contract Swap2p is ReentrancyGuard {
 
         // main payout (crypto recipient)
         address payoutTo = (d.side == Side.BUY) ? d.maker : d.taker;
-        _payWithFee(id, d.token, d.taker, payoutTo, d.amount);
+        _payWithFee(id, d.token, d.taker, d.maker, payoutTo, d.amount);
 
         // return both deposits
         _push(d.token, d.taker, d.amount);

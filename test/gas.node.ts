@@ -61,7 +61,7 @@ test("Gas report (Node test runner, TS)", async () => {
   const MintableArtifact = await artifacts.readArtifact("MintableERC20");
 
   // Deploy
-  const swap = await hreViem.deployContract("Swap2p", []);
+  const swap = await hreViem.deployContract("Swap2p", [maker.account.address]);
   const token = await hreViem.deployContract("MintableERC20", ["Mock", "MCK"]);
 
   // Helper to send tx and return gas used

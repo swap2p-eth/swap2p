@@ -61,8 +61,89 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
         vm.prank(taker);
         swap.release(dealId, bytes(""));
         uint256 fee = (amount * 50) / 10_000;
-        uint256 share = (fee * 5000) / 10_000;
-        assertEq(token.balanceOf(partner) - partnerBefore, share);
-        assertEq(token.balanceOf(author) - authorBefore, fee - share);
+        uint256 takerShare = (fee * 2000) / 10_000;
+        assertEq(token.balanceOf(partner) - partnerBefore, takerShare);
+        assertEq(token.balanceOf(author) - authorBefore, fee - takerShare);
+    }
+
+    function test_Fees_BothPartners() public {
+        address makerPartner = makeAddr("makerPartner");
+        address auxMaker = makeAddr("auxMaker");
+
+        // prepare aux maker so primary maker can bind affiliate once
+        token.mint(auxMaker, 1e24);
+        vm.startPrank(auxMaker);
+        token.approve(address(swap), type(uint256).max);
+        swap.setOnline(true);
+        swap.maker_makeOffer(
+            address(token),
+            Swap2p.Side.BUY,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            1_000e18,
+            1e18,
+            500e18,
+            "wire",
+            ""
+        );
+        vm.stopPrank();
+
+        // maker (acting as taker) binds affiliate partner once
+        bytes32 dummyDeal = _requestDealAs(
+            maker,
+            address(token),
+            Swap2p.Side.BUY,
+            auxMaker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            makerPartner
+        );
+        vm.prank(maker);
+        swap.cancelRequest(dummyDeal, bytes(""));
+
+        // actual trade where both sides have affiliates
+        vm.prank(maker);
+        swap.maker_makeOffer(
+            address(token),
+            Swap2p.Side.SELL,
+            Swap2p.FiatCode.wrap(978),
+            100e18,
+            1_000e18,
+            1e18,
+            500e18,
+            "sepa",
+            ""
+        );
+        uint128 amount = 200e18;
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            amount,
+            Swap2p.FiatCode.wrap(978),
+            100e18,
+            "",
+            partner
+        );
+        vm.prank(maker);
+        swap.maker_acceptRequest(dealId, bytes("ok"));
+        vm.prank(taker);
+        swap.markFiatPaid(dealId, bytes("paid"));
+
+        uint256 authorBefore = token.balanceOf(author);
+        uint256 takerPartnerBefore = token.balanceOf(partner);
+        uint256 makerPartnerBefore = token.balanceOf(makerPartner);
+        vm.prank(maker);
+        swap.release(dealId, bytes(""));
+
+        uint256 fee = (amount * 50) / 10_000;
+        uint256 takerShare = (fee * 2000) / 10_000;
+        uint256 makerShare = (fee * 3000) / 10_000;
+
+        assertEq(token.balanceOf(partner) - takerPartnerBefore, takerShare, "taker affiliate share");
+        assertEq(token.balanceOf(makerPartner) - makerPartnerBefore, makerShare, "maker affiliate share");
+        assertEq(token.balanceOf(author) - authorBefore, fee - takerShare - makerShare, "author residual share");
     }
 }

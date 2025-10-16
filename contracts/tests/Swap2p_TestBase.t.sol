@@ -12,7 +12,7 @@ contract Swap2p_TestBase is Test {
     address internal maker;
     address internal taker;
     address internal partner;
-    address internal author; // fee receiver (deployer)
+    address internal author; // fee receiver
 
     function setUp() public virtual {
         maker = makeAddr("maker");
@@ -20,7 +20,7 @@ contract Swap2p_TestBase is Test {
         partner = makeAddr("partner");
         author = address(this);
 
-        swap = new Swap2p();
+        swap = new Swap2p(author);
         token = new MintableERC20("Mock", "MCK");
 
         // Mint balances
