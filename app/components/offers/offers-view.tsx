@@ -4,7 +4,7 @@ import * as React from "react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 import { createOfferColumns } from "@/lib/offer-columns";
 import { useOffers } from "@/components/offers/offers-provider";
@@ -161,12 +161,13 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
       <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30">
         <CardHeader className="space-y-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-{/*            <div className="space-y-1">
+            <div className="space-y-1">
               <CardTitle className="text-xl">Filters</CardTitle>
               <CardDescription>
-                Configure the parameters to match buyers and sellers you want to surface.
+                Do you want to buy or sell crypto?
               </CardDescription>
-            </div>*/}
+            </div>
+            {/*<span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Do you want to buy or sell crypto?</span>*/}
             <SegmentedControl
               value={side}
               onChange={setSide}

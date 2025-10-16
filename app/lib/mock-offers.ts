@@ -5,6 +5,7 @@ import {
   ensureMaxAmount,
   mockFiatCurrencies,
   mockTokenConfigs,
+  quantizeAmount,
   sampleAmountInRange
 } from "@/lib/mock-market";
 
@@ -50,10 +51,24 @@ export function generateMockOffers(count = 32): OfferRow[] {
     const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
     const tokenConfig = mockTokenConfigs[index % mockTokenConfigs.length];
     const fiatConfig = mockFiatCurrencies[index % mockFiatCurrencies.length];
-    const minAmount = sampleAmountInRange(random(), tokenConfig.minAmountRange, tokenConfig.decimals);
-    const rawMaxAmount = sampleAmountInRange(random(), tokenConfig.maxAmountRange, tokenConfig.decimals);
-    const maxAmount = Number(
-      ensureMaxAmount(rawMaxAmount, minAmount, tokenConfig.minMaxMultiplier).toFixed(tokenConfig.decimals)
+    const minAmount = sampleAmountInRange(
+      random(),
+      tokenConfig.minAmountRange,
+      tokenConfig.decimals,
+      tokenConfig.minStep
+    );
+    const rawMaxAmount = sampleAmountInRange(
+      random(),
+      tokenConfig.maxAmountRange,
+      tokenConfig.decimals,
+      tokenConfig.maxStep ?? tokenConfig.minStep
+    );
+    const ensuredMax = ensureMaxAmount(rawMaxAmount, minAmount, tokenConfig.minMaxMultiplier);
+    const maxAmount = quantizeAmount(
+      ensuredMax,
+      tokenConfig.maxStep ?? tokenConfig.minStep,
+      tokenConfig.decimals,
+      { mode: "ceil", min: minAmount, max: tokenConfig.maxAmountRange[1] }
     );
     const offsetSeconds = randomOffsetSeconds();
     const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();

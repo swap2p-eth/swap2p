@@ -41,7 +41,8 @@ export function generateMockDeals(count = 24): DealRow[] {
     const amount = sampleAmountInRange(
       random(),
       [tokenConfig.minAmountRange[0], tokenConfig.maxAmountRange[1]],
-      tokenConfig.decimals
+      tokenConfig.decimals,
+      tokenConfig.maxStep ?? tokenConfig.minStep
     );
 
     return {
