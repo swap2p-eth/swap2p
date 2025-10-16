@@ -4,7 +4,7 @@ import * as React from "react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 import { createOfferColumns } from "@/lib/offer-columns";
 import { useOffers } from "@/components/offers/offers-provider";
@@ -53,12 +53,12 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
       <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30">
         <CardHeader className="space-y-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
+{/*            <div className="space-y-1">
               <CardTitle className="text-xl">Filters</CardTitle>
               <CardDescription>
                 Configure the parameters to match buyers and sellers you want to surface.
               </CardDescription>
-            </div>
+            </div>*/}
             <SegmentedControl
               value={side}
               onChange={setSide}
@@ -158,12 +158,12 @@ export function OffersView({ onStartDeal }: OffersViewProps) {
           </div>
 
           <div className="space-y-3">
-            <div>
+{/*            <div>
               <h2 className="text-lg font-semibold">Maker offers</h2>
               <p className="text-sm text-muted-foreground">
                 Filter results update as soon as we plug real data.
               </p>
-            </div>
+            </div>*/}
             <DataTable
               columns={columns}
               data={offers}
