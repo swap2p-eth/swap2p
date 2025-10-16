@@ -4,6 +4,7 @@ import * as React from "react";
 
 import { generateMockDeals, type DealRow } from "@/lib/mock-data";
 import type { OfferRow } from "@/lib/mock-offers";
+import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
 
 type AmountKind = "crypto" | "fiat";
 
@@ -23,7 +24,7 @@ interface DealsContextValue {
 
 const DealsContext = React.createContext<DealsContextValue | null>(null);
 
-const defaultTakerAddress = "0xYou000000000000000000000000000000000000";
+const defaultTakerAddress = CURRENT_USER_ADDRESS;
 
 export function DealsProvider({ children }: { children: React.ReactNode }) {
   const [deals, setDeals] = React.useState<DealRow[]>([]);

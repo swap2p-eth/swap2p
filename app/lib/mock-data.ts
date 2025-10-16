@@ -1,3 +1,4 @@
+import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
 import { createMockRng, MOCK_NOW_MS } from "@/lib/mock-clock";
 import { mockFiatCurrencies, mockTokenConfigs, sampleAmountInRange } from "@/lib/mock-market";
 
@@ -45,6 +46,10 @@ export function generateMockDeals(count = 24): DealRow[] {
       tokenConfig.maxStep ?? tokenConfig.minStep
     );
 
+    const isUserDeal = index < 5;
+    const makerAddress = isUserDeal ? CURRENT_USER_ADDRESS : `0xMaker${(index + 16).toString(16).padStart(2, "0")}`;
+    const takerAddress = isUserDeal ? `0xCounterparty${(index + 21).toString(16).padStart(2, "0")}` : `0xTaker${(index + 42).toString(16).padStart(2, "0")}`;
+
     return {
       id: index + 1,
       side,
@@ -53,8 +58,8 @@ export function generateMockDeals(count = 24): DealRow[] {
       partner: index % 3 === 0 ? "0xPartner" : null,
       state: stateCycle[index % stateCycle.length],
       updatedAt: timestamp,
-      maker: `0xMaker${(index + 16).toString(16).padStart(2, "0")}`,
-      taker: `0xTaker${(index + 42).toString(16).padStart(2, "0")}`,
+      maker: makerAddress,
+      taker: takerAddress,
       token: tokenCycle[index % tokenCycle.length]
     };
   });

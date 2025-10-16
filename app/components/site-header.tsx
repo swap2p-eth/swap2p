@@ -9,12 +9,12 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { hash: "offers", label: "Offers" },
-  { hash: "deals", label: "Deals" }
+  { hash: "dashboard", label: "Dashboard" }
 ] as const;
 
 function deriveActiveSection(hash: string) {
-  if (hash.startsWith("deal/")) {
-    return "deals";
+  if (hash.startsWith("deal/") || hash === "dashboard" || hash === "new-offer" || hash === "deals") {
+    return "dashboard";
   }
   return hash || "offers";
 }

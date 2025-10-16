@@ -1,4 +1,5 @@
 import { createMockRng, MOCK_NOW_MS } from "@/lib/mock-clock";
+import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
 import type { DealSide } from "@/lib/mock-data";
 import {
   computeTokenPriceInFiat,
@@ -73,10 +74,11 @@ export function generateMockOffers(count = 32): OfferRow[] {
     const offsetSeconds = randomOffsetSeconds();
     const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
 
+    const makerAddress = index < 6 ? CURRENT_USER_ADDRESS : `0xMaker${(index + 10).toString(16).padStart(2, "0")}`;
     return {
       id: index + 1,
       side,
-      maker: `0xMaker${(index + 10).toString(16).padStart(2, "0")}`,
+      maker: makerAddress,
       token: tokenConfig.symbol,
       fiat: fiatConfig.code,
       price: computeTokenPriceInFiat(tokenConfig, fiatConfig, random()),

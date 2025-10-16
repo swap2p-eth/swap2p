@@ -23,6 +23,7 @@ interface NewDealViewProps {
   offerId: number;
   onCancel?: () => void;
   onCreated?: (dealId: number) => void;
+  returnHash?: string;
 }
 
 const MERCHANT_REQUIREMENTS =
@@ -38,7 +39,7 @@ const formatOfferSubtitle = (offer: OfferRow) =>
     ? "Maker escrows collateral and waits for your tokens."
     : "Maker escrows tokens and waits for your fiat rails.";
 
-export function NewDealView({ offerId, onCancel, onCreated }: NewDealViewProps) {
+export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers" }: NewDealViewProps) {
   const { offers, isLoading: offersLoading } = useOffers();
   const offer = React.useMemo(() => offers.find(item => item.id === offerId), [offers, offerId]);
   const { createDeal } = useDeals();
@@ -71,7 +72,7 @@ export function NewDealView({ offerId, onCancel, onCreated }: NewDealViewProps) 
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offer not found</h1>
         <p className="text-sm text-muted-foreground">
-          This offer is no longer available in the mock dataset. Return to the offers list to pick another one.
+          This offer is no longer available in the mock dataset. Return to the previous section to pick another one.
         </p>
         <Button
           type="button"
@@ -79,7 +80,7 @@ export function NewDealView({ offerId, onCancel, onCreated }: NewDealViewProps) 
           onClick={() => onCancel?.()}
           className="mx-auto rounded-full px-6"
         >
-          Back to offers
+          {returnHash === "dashboard" ? "Back to dashboard" : "Back to offers"}
         </Button>
       </div>
     );
@@ -149,12 +150,14 @@ export function NewDealView({ offerId, onCancel, onCreated }: NewDealViewProps) 
       </>
     );
 
+  const backLabel = returnHash === "dashboard" ? "Back to dashboard" : "Back to offers";
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
       <DealHeader
         title="New deal"
         subtitle={`Create a taker request for maker ${offer.maker.slice(0, 6)}…`}
-        backLabel="Back to offers"
+        backLabel={backLabel}
         onBack={() => onCancel?.()}
       />
 

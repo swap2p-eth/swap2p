@@ -13,15 +13,15 @@ import { NewOfferView } from "@/components/offers/new-offer-view";
 
 type ViewState =
   | { type: "offers" }
-  | { type: "deals" }
+  | { type: "dashboard" }
   | { type: "new-deal"; offerId: number }
   | { type: "deal-detail"; dealId: number }
   | { type: "new-offer" };
 
 function parseHash(hash: string): ViewState {
   const normalized = hash || "offers";
-  if (normalized === "deals") {
-    return { type: "deals" };
+  if (normalized === "deals" || normalized === "dashboard") {
+    return { type: "dashboard" };
   }
   if (normalized.startsWith("new-deal/")) {
     const [, idPart] = normalized.split("/");
@@ -37,7 +37,7 @@ function parseHash(hash: string): ViewState {
     if (Number.isFinite(dealId)) {
       return { type: "deal-detail", dealId };
     }
-    return { type: "deals" };
+    return { type: "dashboard" };
   }
   if (normalized === "new-offer") {
     return { type: "new-offer" };
@@ -58,6 +58,13 @@ export default function HomePage() {
 function HomePageRouter() {
   const { hash, setHash } = useHashLocation("offers");
   const view = React.useMemo(() => parseHash(hash), [hash]);
+  const lastStableView = React.useRef<ViewState["type"]>("offers");
+
+  React.useEffect(() => {
+    if (view.type !== "new-deal") {
+      lastStableView.current = view.type === "deal-detail" ? "dashboard" : view.type;
+    }
+  }, [view]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -67,18 +74,21 @@ function HomePageRouter() {
   }, [setHash]);
 
   switch (view.type) {
-    case "deals":
+    case "dashboard":
       return <DealsView onSelectDeal={dealId => setHash(`deal/${dealId}`)} />;
     case "deal-detail":
-      return <DealDetailView dealId={view.dealId} onBack={() => setHash("deals")} />;
-    case "new-deal":
+      return <DealDetailView dealId={view.dealId} onBack={() => setHash("dashboard")} />;
+    case "new-deal": {
+      const backTarget = lastStableView.current === "dashboard" ? "dashboard" : "offers";
       return (
         <NewDealView
           offerId={view.offerId}
-          onCancel={() => setHash("offers")}
+          returnHash={backTarget}
+          onCancel={() => setHash(backTarget)}
           onCreated={dealId => setHash(`deal/${dealId}`)}
         />
       );
+    }
     case "new-offer":
       return <NewOfferView onCancel={() => setHash("offers")} onCreated={() => setHash("offers")} />;
     case "offers":

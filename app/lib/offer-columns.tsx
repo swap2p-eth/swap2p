@@ -8,7 +8,7 @@ import { FiatFlag } from "@/components/fiat-flag";
 import { RelativeTime } from "@/components/relative-time";
 
 export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): ColumnDef<OfferRow>[] {
-  return [
+  const columns: ColumnDef<OfferRow>[] = [
     {
       accessorKey: "id",
       header: "ID",
@@ -141,8 +141,11 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
         headerClassName: "text-right",
         cellClassName: "text-right"
       }
-    },
-    {
+    }
+  ];
+
+  if (onStartDeal) {
+    columns.push({
       id: "actions",
       header: "",
       cell: ({ row }) => (
@@ -154,7 +157,7 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
           aria-label="Create deal"
           onClick={event => {
             event.stopPropagation();
-            onStartDeal?.(row.original);
+            onStartDeal(row.original);
           }}
         >
           <ShoppingBasket className="h-4 w-4" />
@@ -163,6 +166,8 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       meta: {
         headerClassName: "text-center"
       }
-    }
-  ];
+    });
+  }
+
+  return columns;
 }
