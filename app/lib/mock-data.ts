@@ -1,3 +1,5 @@
+import { createMockRng, MOCK_NOW_MS } from "@/lib/mock-clock";
+
 export type DealSide = "BUY" | "SELL";
 export type DealState = "REQUESTED" | "ACCEPTED" | "PAID";
 
@@ -18,13 +20,21 @@ const stateCycle: DealState[] = ["REQUESTED", "ACCEPTED", "PAID"];
 const fiatCycle = ["USD", "EUR", "GBP", "BRL"];
 const tokenCycle = ["USDT", "ETH", "BTC", "USDC"];
 
-const updatedAgoMinutes = [5, 12, 25, 48, 95, 180, 240, 360];
-const now = Date.now();
+const now = MOCK_NOW_MS;
+const random = createMockRng("mock-deals");
+const MIN_OFFSET_SECONDS = 5;
+const MAX_OFFSET_SECONDS = 2 * 24 * 60 * 60;
+
+function randomOffsetSeconds(): number {
+  const span = MAX_OFFSET_SECONDS - MIN_OFFSET_SECONDS;
+  const sample = random();
+  return MIN_OFFSET_SECONDS + Math.floor(sample * span);
+}
 
 export const mockDeals: DealRow[] = Array.from({ length: 24 }).map((_, index) => {
   const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
-  const offsetMinutes = updatedAgoMinutes[index % updatedAgoMinutes.length];
-  const timestamp = new Date(now - offsetMinutes * 60_000).toISOString();
+  const offsetSeconds = randomOffsetSeconds();
+  const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
   return {
     id: index + 1,
     side,

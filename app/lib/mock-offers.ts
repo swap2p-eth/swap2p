@@ -1,3 +1,4 @@
+import { createMockRng, MOCK_NOW_MS } from "@/lib/mock-clock";
 import type { DealSide } from "@/lib/mock-data";
 
 export interface OfferRow {
@@ -24,15 +25,23 @@ const paymentMethods = [
   "UPI,IMPS",
   "AliPay,UnionPay"
 ];
-const updatedAgoMinutes = [3, 9, 22, 35, 61, 140, 280];
-const now = Date.now();
+const now = MOCK_NOW_MS;
+const random = createMockRng("mock-offers");
+const MIN_OFFSET_SECONDS = 5;
+const MAX_OFFSET_SECONDS = 2 * 24 * 60 * 60;
+
+function randomOffsetSeconds(): number {
+  const span = MAX_OFFSET_SECONDS - MIN_OFFSET_SECONDS;
+  const sample = random();
+  return MIN_OFFSET_SECONDS + Math.floor(sample * span);
+}
 
 export const mockOffers: OfferRow[] = Array.from({ length: 18 }).map((_, index) => {
   const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
   const min = 500 + index * 60;
   const max = min + 2200;
-  const offsetMinutes = updatedAgoMinutes[index % updatedAgoMinutes.length];
-  const timestamp = new Date(now - offsetMinutes * 60_000).toISOString();
+  const offsetSeconds = randomOffsetSeconds();
+  const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
 
   return {
     id: index + 1,
