@@ -13,7 +13,11 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
 
     function test_Revert_SelfPartner() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, "wire", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "wire",
+            requirements: "",
+            comment: ""
+        }));
         vm.prank(taker);
         vm.expectRevert(Swap2p.SelfPartnerNotAllowed.selector);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", taker);
@@ -21,7 +25,11 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
 
     function test_Partner_BindsOnce() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1, 500e18, "sepa", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "sepa",
+            requirements: "",
+            comment: ""
+        }));
 
         // first request binds partner
         bytes32 firstDeal = _requestDealDefault(

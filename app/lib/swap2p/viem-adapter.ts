@@ -11,13 +11,12 @@ import {
   isHex,
   stringToHex,
 } from "viem";
-import { swap2pAbi } from "./generated/typechain/swap2p";
+import { swap2pAbi } from "@/lib/swap2p/generated";
 import type {
   CancelDealArgs,
   CancelRequestArgs,
   CleanupDealsArgs,
   Deal,
-  DealsQuery,
   MakerAcceptRequestArgs,
   MakerDeleteOfferArgs,
   MakerMakeOfferArgs,
@@ -30,6 +29,8 @@ import type {
   ReleaseDealArgs,
   SendMessageArgs,
   SetOnlineArgs,
+  SetRequirementsArgs,
+  SetNicknameArgs,
   Swap2pAdapter,
   TakerRequestOfferArgs,
 } from "./types";
@@ -140,11 +141,17 @@ const mapDeal = (id: bigint, raw: any): Deal | null => {
   };
 };
 
-const mapMakerProfile = (address: Address, raw: any): MakerProfile | null => {
+const mapMakerProfile = (_address: Address, raw: any): MakerProfile | null => {
   if (!raw) return null;
+  const requirements = raw.requirements ?? raw[2];
+  const nickname = raw.nickname ?? raw[3];
   return {
     online: Boolean(raw[0] ?? raw.online ?? false),
     lastActivity: toNumber(raw[1] ?? raw.lastActivity ?? 0),
+    requirements: requirements !== undefined ? String(requirements) : "",
+    nickname: nickname !== undefined ? String(nickname) : "",
+    dealsCancelled: Number(raw[4] ?? raw.dealsCancelled ?? 0),
+    dealsCompleted: Number(raw[5] ?? raw.dealsCompleted ?? 0),
   };
 };
 
@@ -294,20 +301,40 @@ export const createSwap2pViemAdapter = (
       return deals.filter((deal): deal is Deal => deal !== null);
     },
 
-    async areMakersAvailable(addresses) {
-      const result = (await read({
-        functionName: "areMakersAvailable",
-        args: [addresses] as const,
-      })) as boolean[] | readonly boolean[];
-      return Array.from(result ?? [], Boolean);
-    },
-
     async getMakerProfile(addr) {
       const raw = await read({
         functionName: "makerInfo",
         args: [addr] as const,
       });
       return mapMakerProfile(addr, raw);
+    },
+
+    async getMakerProfiles(addresses) {
+      if (addresses.length === 0) return [];
+      const raw = (await read({
+        functionName: "getMakerProfiles",
+        args: [addresses] as const,
+      })) as readonly unknown[] | null;
+      if (!raw) {
+        return addresses.map(() => ({
+          online: false,
+          lastActivity: 0,
+          requirements: "",
+          nickname: "",
+          dealsCancelled: 0,
+          dealsCompleted: 0,
+        }));
+      }
+      return addresses.map((addr, index) =>
+        mapMakerProfile(addr, raw[index]) ?? {
+          online: false,
+          lastActivity: 0,
+          requirements: "",
+          nickname: "",
+          dealsCancelled: 0,
+          dealsCompleted: 0,
+        },
+      );
     },
 
     async setOnline({ account, online }: SetOnlineArgs) {
@@ -326,6 +353,42 @@ export const createSwap2pViemAdapter = (
       );
     },
 
+    async setRequirements({ account, requirements }: SetRequirementsArgs) {
+      const sender = withAccount(account);
+      const signer = ensureWalletClient(walletClient, "setRequirements");
+      if (!sender) {
+        throw new Error(
+          "Swap2pViemAdapter: account is required for setRequirements",
+        );
+      }
+      return simulateAndWrite(
+        signer,
+        publicClient,
+        address,
+        "setRequirements",
+        [requirements] as const,
+        sender,
+      );
+    },
+
+    async setNickname({ account, nickname }: SetNicknameArgs) {
+      const sender = withAccount(account);
+      const signer = ensureWalletClient(walletClient, "setNickname");
+      if (!sender) {
+        throw new Error(
+          "Swap2pViemAdapter: account is required for setNickname",
+        );
+      }
+      return simulateAndWrite(
+        signer,
+        publicClient,
+        address,
+        "setNickname",
+        [nickname] as const,
+        sender,
+      );
+    },
+
     async makerMakeOffer(args: MakerMakeOfferArgs) {
       const {
         account,
@@ -337,6 +400,7 @@ export const createSwap2pViemAdapter = (
         minAmount,
         maxAmount,
         paymentMethods,
+        requirements,
         comment,
       } = args;
       const sender = withAccount(account);
@@ -359,8 +423,11 @@ export const createSwap2pViemAdapter = (
           reserve,
           minAmount,
           maxAmount,
-          paymentMethods,
-          comment ?? "",
+          {
+            paymentMethods,
+            requirements: requirements ?? "",
+            comment: comment ?? "",
+          },
         ] as const,
         sender,
       );

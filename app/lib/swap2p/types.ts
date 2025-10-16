@@ -64,6 +64,10 @@ export type Deal = {
 export type MakerProfile = {
   online: boolean;
   lastActivity: number;
+  requirements: string;
+  nickname: string;
+  dealsCancelled: number;
+  dealsCompleted: number;
 };
 
 export type PaginationArgs = {
@@ -87,6 +91,7 @@ export type MakerMakeOfferArgs = OfferFilter & {
   minAmount: bigint;
   maxAmount: bigint;
   paymentMethods: string;
+  requirements?: string;
   comment?: string;
 };
 
@@ -119,6 +124,16 @@ export type CancelDealArgs = {
   account: Address;
   id: bigint;
   reason?: string;
+};
+
+export type SetRequirementsArgs = {
+  account: Address;
+  requirements: string;
+};
+
+export type SetNicknameArgs = {
+  account: Address;
+  nickname: string;
 };
 
 export type MarkFiatPaidArgs = {
@@ -159,9 +174,11 @@ export interface Swap2pAdapter {
   getDeal(id: bigint): Promise<Deal | null>;
   getOpenDeals(query: DealsQuery): Promise<Deal[]>;
   getRecentDeals(query: DealsQuery): Promise<Deal[]>;
-  areMakersAvailable(addresses: Address[]): Promise<boolean[]>;
   getMakerProfile(address: Address): Promise<MakerProfile | null>;
+  getMakerProfiles(addresses: Address[]): Promise<MakerProfile[]>;
   setOnline(args: SetOnlineArgs): Promise<Swap2pWriteResult>;
+  setRequirements(args: SetRequirementsArgs): Promise<Swap2pWriteResult>;
+  setNickname(args: SetNicknameArgs): Promise<Swap2pWriteResult>;
   makerMakeOffer(args: MakerMakeOfferArgs): Promise<Swap2pWriteResult>;
   makerDeleteOffer(args: MakerDeleteOfferArgs): Promise<Swap2pWriteResult>;
   takerRequestOffer(args: TakerRequestOfferArgs): Promise<Swap2pWriteResult>;

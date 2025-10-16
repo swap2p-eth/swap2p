@@ -13,7 +13,11 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
 
     function _setupSell(uint128 amount) internal returns (bytes32 dealId) {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, "wire", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "wire",
+            requirements: "",
+            comment: ""
+        }));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -28,7 +32,11 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
 
     function _setupBuy(uint128 amount) internal returns (bytes32 dealId) {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1e18, 500e18, "sepa", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1e18, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "sepa",
+            requirements: "",
+            comment: ""
+        }));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,

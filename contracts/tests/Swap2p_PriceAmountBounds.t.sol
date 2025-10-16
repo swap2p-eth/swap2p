@@ -14,13 +14,21 @@ contract Swap2p_PriceAmountBoundsTest is Swap2p_TestBase {
     function test_PriceEqualityAllowed() public {
         // SELL: offer price == expected OK
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100, 1_000e18, 1, 500e18, "wire", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "wire",
+            requirements: "",
+            comment: ""
+        }));
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100, "", address(0));
 
         // BUY: offer price == expected OK
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100, 1_000e18, 1, 500e18, "sepa", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "sepa",
+            requirements: "",
+            comment: ""
+        }));
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 100, "", address(0));
     }
@@ -28,7 +36,11 @@ contract Swap2p_PriceAmountBoundsTest is Swap2p_TestBase {
     function test_AmountBoundsMinMax() public {
         // min==10, max==20
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 10e18, 20e18, "wire", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 10e18, 20e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "wire",
+            requirements: "",
+            comment: ""
+        }));
         // exactly min
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));

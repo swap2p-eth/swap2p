@@ -13,15 +13,19 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
 
     function test_LastActivity_OnSetOnline_And_Request() public {
         // setOnline already touched
-        (bool on1, uint40 ts1) = swap.makerInfo(maker);
-        assertTrue(on1);
-        assertGt(ts1, 0);
+        Swap2p.MakerProfile memory makerProfile = _makerProfile(maker);
+        assertTrue(makerProfile.online);
+        assertGt(makerProfile.lastActivity, 0);
 
         // warp and taker_requestOffer updates taker activity
         vm.warp(block.timestamp + 100);
         // create offer for SELL
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, "wire", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "wire",
+            requirements: "",
+            comment: ""
+        }));
         _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -32,13 +36,17 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
             "",
             address(0)
         );
-        (, uint40 tsT) = swap.makerInfo(taker);
-        assertEq(tsT, uint40(block.timestamp));
+        Swap2p.MakerProfile memory takerProfile = _makerProfile(taker);
+        assertEq(takerProfile.lastActivity, uint40(block.timestamp));
     }
 
     function test_LastActivity_OnAccept_Cancel_Pay_Release_And_Messages() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, "wire", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "wire",
+            requirements: "",
+            comment: ""
+        }));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -50,34 +58,37 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
             address(0)
         );
 
+        Swap2p.MakerProfile memory makerProfile;
+        Swap2p.MakerProfile memory takerProfile;
+
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
         swap.maker_acceptRequest(dealId, bytes("hi"));
-        (, uint40 tsM) = swap.makerInfo(maker);
-        assertEq(tsM, uint40(block.timestamp));
+        makerProfile = _makerProfile(maker);
+        assertEq(makerProfile.lastActivity, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
         swap.sendMessage(dealId, bytes("m"));
-        (, tsM) = swap.makerInfo(maker);
-        assertEq(tsM, uint40(block.timestamp));
+        makerProfile = _makerProfile(maker);
+        assertEq(makerProfile.lastActivity, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(taker);
         swap.sendMessage(dealId, bytes("t"));
-        (, uint40 tsT) = swap.makerInfo(taker);
-        assertEq(tsT, uint40(block.timestamp));
+        takerProfile = _makerProfile(taker);
+        assertEq(takerProfile.lastActivity, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(taker);
         swap.markFiatPaid(dealId, bytes("paid"));
-        (, tsT) = swap.makerInfo(taker);
-        assertEq(tsT, uint40(block.timestamp));
+        takerProfile = _makerProfile(taker);
+        assertEq(takerProfile.lastActivity, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
         swap.release(dealId, bytes(""));
-        (, tsM) = swap.makerInfo(maker);
-        assertEq(tsM, uint40(block.timestamp));
+        makerProfile = _makerProfile(maker);
+        assertEq(makerProfile.lastActivity, uint40(block.timestamp));
     }
 }

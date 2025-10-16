@@ -94,7 +94,14 @@ test("Gas report (Node test runner, TS)", async () => {
   // SELL flow
   latest.G_SELL_setOnline = await write(maker, swap.address, Swap2pArtifact.abi, "setOnline", [true]);
   latest.G_SELL_maker_makeOffer = await write(maker, swap.address, Swap2pArtifact.abi, "maker_makeOffer", [
-    token.address, 1, 840, 100n * WAD, 1_000n * WAD, 1n * WAD, 500n * WAD, "wire", "",
+    token.address,
+    1,
+    840,
+    100n * WAD,
+    1_000n * WAD,
+    1n * WAD,
+    500n * WAD,
+    { paymentMethods: "wire", requirements: "", comment: "" },
   ]);
   const amountSell = 100n * WAD;
   const [sellDealId] = await publicClient.readContract({
@@ -114,7 +121,14 @@ test("Gas report (Node test runner, TS)", async () => {
 
   // BUY flow
   latest.G_BUY_maker_makeOffer = await write(maker, swap.address, Swap2pArtifact.abi, "maker_makeOffer", [
-    token.address, 0, 978, 100n * WAD, 1_000n * WAD, 1n * WAD, 500n * WAD, "sepa", "",
+    token.address,
+    0,
+    978,
+    100n * WAD,
+    1_000n * WAD,
+    1n * WAD,
+    500n * WAD,
+    { paymentMethods: "sepa", requirements: "", comment: "" },
   ]);
   const amountBuy = 200n * WAD;
   const [buyDealId] = await publicClient.readContract({

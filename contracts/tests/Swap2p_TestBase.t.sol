@@ -46,6 +46,24 @@ contract Swap2p_TestBase is Test {
         return id;
     }
 
+    function _makerProfile(address addr)
+        internal
+        view
+        returns (Swap2p.MakerProfile memory)
+    {
+        address[] memory addrs = new address[](1);
+        addrs[0] = addr;
+        Swap2p.MakerProfile[] memory profiles = swap.getMakerProfiles(addrs);
+        return profiles.length != 0 ? profiles[0] : Swap2p.MakerProfile({
+            online: false,
+            lastActivity: 0,
+            requirements: "",
+            nickname: "",
+            dealsCancelled: 0,
+            dealsCompleted: 0
+        });
+    }
+
     function _offerId(
         address token_,
         address maker_,

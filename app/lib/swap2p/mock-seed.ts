@@ -32,6 +32,10 @@ export type MockMakerSeed = {
   address: Address;
   online: boolean;
   lastActiveHoursAgo: number;
+  requirements?: string;
+  nickname?: string;
+  dealsCancelled?: number;
+  dealsCompleted?: number;
 };
 
 export type MockAffiliateSeed = {
@@ -50,16 +54,25 @@ export const mockMakers: MockMakerSeed[] = [
     address: "0x00000000000000000000000000000000000000a1",
     online: true,
     lastActiveHoursAgo: 1,
+    requirements: "ID + selfie",
+    nickname: "p2p-alpha",
+    dealsCompleted: 12,
   },
   {
     address: "0x00000000000000000000000000000000000000a2",
     online: true,
     lastActiveHoursAgo: 4,
+    requirements: "Video call",
+    nickname: "fx-pro",
+    dealsCancelled: 2,
+    dealsCompleted: 7,
   },
   {
     address: "0x00000000000000000000000000000000000000a3",
     online: false,
     lastActiveHoursAgo: 12,
+    requirements: "",
+    nickname: "",
   },
 ];
 

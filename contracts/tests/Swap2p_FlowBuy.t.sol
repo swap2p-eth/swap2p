@@ -12,7 +12,11 @@ contract Swap2p_FlowBuyTest is Swap2p_TestBase {
 
         // make offer BUY
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1e18, 500e18, "sepa", "buy offer");
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1e18, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "sepa",
+            requirements: "",
+            comment: "buy offer"
+        }));
 
         // taker binds partner on first request
         uint128 amount = 200e18;

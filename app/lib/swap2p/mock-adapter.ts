@@ -17,6 +17,8 @@ import {
   type ReleaseDealArgs,
   type SendMessageArgs,
   type SetOnlineArgs,
+  type SetRequirementsArgs,
+  type SetNicknameArgs,
   type Swap2pAdapter,
   type TakerRequestOfferArgs,
   SwapDealState,
@@ -47,6 +49,7 @@ type MockState = {
   recentDeals: Map<Address, bigint[]>;
   makerInfo: Map<Address, MakerProfile>;
   affiliates: Map<Address, Address>;
+  nicknames: Map<string, Address>;
   nextDealId: bigint;
   txCounter: bigint;
 };
@@ -72,6 +75,15 @@ const makeOfferKey = (key: OfferKey) =>
 
 const cloneOffer = (offer: Offer): Offer => ({
   ...offer,
+});
+
+const makeEmptyProfile = (): MakerProfile => ({
+  online: false,
+  lastActivity: 0,
+  requirements: "",
+  nickname: "",
+  dealsCancelled: 0,
+  dealsCompleted: 0,
 });
 
 const cloneDeal = (deal: MockDealRecord): Deal => ({
@@ -115,6 +127,7 @@ const buildInitialState = (): MockState => {
   const recentDeals = new Map<Address, bigint[]>();
   const makerInfo = new Map<Address, MakerProfile>();
   const affiliates = new Map<Address, Address>();
+  const nicknames = new Map<string, Address>();
   let maxId = 0n;
 
   for (const seed of mockMakers) {
@@ -122,7 +135,14 @@ const buildInitialState = (): MockState => {
     makerInfo.set(address, {
       online: seed.online,
       lastActivity: applyHoursAgo(seed.lastActiveHoursAgo),
+      requirements: seed.requirements ?? "",
+      nickname: seed.nickname ?? "",
+      dealsCancelled: seed.dealsCancelled ?? 0,
+      dealsCompleted: seed.dealsCompleted ?? 0,
     });
+    if (seed.nickname) {
+      nicknames.set(seed.nickname.trim().toLowerCase(), address);
+    }
   }
 
   for (const seed of mockAffiliates) {
@@ -218,6 +238,7 @@ const buildInitialState = (): MockState => {
     recentDeals,
     makerInfo,
     affiliates,
+    nicknames,
     nextDealId: maxId + 1n,
     txCounter: 1n,
   };
@@ -280,16 +301,17 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     this.nextHash = createHashGenerator();
   }
 
-  private ensureMakerInfo(address: Address): MakerProfile {
+  private ensureMakerInfo(
+    address: Address,
+    initializeLastActivity = true,
+  ): MakerProfile {
     const normalized = getAddress(address);
     const existing = this.state.makerInfo.get(normalized);
     if (existing) {
       return existing;
     }
-    const profile: MakerProfile = {
-      online: false,
-      lastActivity: now(),
-    };
+    const profile = makeEmptyProfile();
+    profile.lastActivity = initializeLastActivity ? now() : 0;
     this.state.makerInfo.set(normalized, profile);
     return profile;
   }
@@ -363,22 +385,62 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
       .map(cloneDeal);
   }
 
-  async areMakersAvailable(addresses: Address[]) {
-    return addresses.map((addr) => {
-      const profile = this.state.makerInfo.get(getAddress(addr));
-      return Boolean(profile?.online);
-    });
-  }
-
   async getMakerProfile(address: Address) {
     const profile = this.state.makerInfo.get(getAddress(address));
     return profile ? { ...profile } : null;
   }
 
+  async getMakerProfiles(addresses: Address[]) {
+    return addresses.map((addr) => {
+      const profile = this.state.makerInfo.get(getAddress(addr));
+      return profile ? { ...profile } : makeEmptyProfile();
+    });
+  }
+
   async setOnline({ account, online }: SetOnlineArgs) {
     const normalized = getAddress(account);
-    const profile = this.ensureMakerInfo(normalized);
+    const profile = this.ensureMakerInfo(normalized, false);
     profile.online = online;
+    this.touchActivity(normalized);
+    return this.nextHash();
+  }
+
+  async setRequirements({ account, requirements }: SetRequirementsArgs) {
+    const normalized = getAddress(account);
+    const profile = this.ensureMakerInfo(normalized);
+    profile.requirements = requirements;
+    this.touchActivity(normalized);
+    return this.nextHash();
+  }
+
+  async setNickname({ account, nickname }: SetNicknameArgs) {
+    const normalized = getAddress(account);
+    const desired = nickname.trim();
+    const profile = this.ensureMakerInfo(normalized);
+    const current = profile.nickname;
+    const currentKey = current.trim().toLowerCase();
+    if (desired.length === 0) {
+      if (currentKey.length !== 0) {
+        this.state.nicknames.delete(currentKey);
+        profile.nickname = "";
+      }
+      this.touchActivity(normalized);
+      return this.nextHash();
+    }
+    const desiredKey = desired.toLowerCase();
+    if (currentKey === desiredKey) {
+      this.touchActivity(normalized);
+      return this.nextHash();
+    }
+    const owner = this.state.nicknames.get(desiredKey);
+    if (owner && owner !== normalized) {
+      throw new MockSwap2pError("NicknameTaken");
+    }
+    if (currentKey.length !== 0) {
+      this.state.nicknames.delete(currentKey);
+    }
+    this.state.nicknames.set(desiredKey, normalized);
+    profile.nickname = desired;
     this.touchActivity(normalized);
     return this.nextHash();
   }
@@ -394,6 +456,7 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
       minAmount,
       maxAmount,
       paymentMethods,
+      requirements,
       comment,
     } = args;
     const maker = getAddress(account);
@@ -412,6 +475,10 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     };
     this.state.offers.set(makeOfferKey(key), updated);
     addMakerIndex(this.state.offerIndex, key);
+    if (requirements && requirements.length !== 0) {
+      const profile = this.ensureMakerInfo(maker, false);
+      profile.requirements = requirements;
+    }
     this.touchActivity(maker);
     void comment;
     return this.nextHash();
@@ -559,6 +626,8 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
       offerRecord.reserve += deal.amount;
       this.state.offers.set(makeOfferKey(offerKey), offerRecord);
     }
+    const cancellerProfile = this.ensureMakerInfo(account, false);
+    cancellerProfile.dealsCancelled += 1;
     this.touchActivity(account);
     void args.reason;
     return this.nextHash();
@@ -607,6 +676,8 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
       offerRecord.reserve += deal.amount;
       this.state.offers.set(makeOfferKey(offerKey), offerRecord);
     }
+    const cancellerProfile = this.ensureMakerInfo(account, false);
+    cancellerProfile.dealsCancelled += 1;
     this.touchActivity(account);
     void args.reason;
     return this.nextHash();
@@ -661,6 +732,10 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
       deal.taker,
       addIdUnique(this.state.recentDeals.get(deal.taker), deal.id),
     );
+    const makerProfile = this.ensureMakerInfo(deal.maker, false);
+    const takerProfile = this.ensureMakerInfo(deal.taker, false);
+    makerProfile.dealsCompleted += 1;
+    takerProfile.dealsCompleted += 1;
     this.touchActivity(account);
     void args.message;
     return this.nextHash();

@@ -7,7 +7,11 @@ import {Swap2p_TestBase} from "./Swap2p_TestBase.t.sol";
 contract Swap2p_ViewsAvailabilityTest is Swap2p_TestBase {
     function test_OfferKeysAndCounts() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1e18, 500e18, "wire", "");
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1e18, 500e18, Swap2p.MakerOfferTexts({
+            paymentMethods: "wire",
+            requirements: "",
+            comment: ""
+        }));
         uint count = swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
         assertEq(count, 1);
         address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
@@ -19,13 +23,14 @@ contract Swap2p_ViewsAvailabilityTest is Swap2p_TestBase {
         // offline by default
         address[] memory arr = new address[](1);
         arr[0] = maker;
-        bool[] memory a = swap.areMakersAvailable(arr);
-        assertEq(a[0], false);
+        Swap2p.MakerProfile[] memory profiles = swap.getMakerProfiles(arr);
+        assertEq(profiles.length, 1);
+        assertEq(profiles[0].online, false);
 
         vm.prank(maker);
         swap.setOnline(true);
-        a = swap.areMakersAvailable(arr);
-        assertEq(a[0], true);
+        profiles = swap.getMakerProfiles(arr);
+        assertEq(profiles[0].online, true);
 
         // no working hours anymore; availability equals online state
     }

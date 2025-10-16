@@ -86,6 +86,12 @@ contract Swap2p is ReentrancyGuard {
         Offer   offer;
     }
 
+    struct MakerOfferTexts {
+        string paymentMethods;
+        string requirements;
+        string comment;
+    }
+
     /// @notice Active deal between maker and taker.
     struct Deal {
         uint128   amount;
@@ -104,6 +110,10 @@ contract Swap2p is ReentrancyGuard {
     struct MakerProfile {
         bool   online;
         uint40 lastActivity;          // last interaction timestamp
+        string requirements;          // taker requirements text
+        string nickname;              // unique public nickname
+        int32  dealsCancelled;        // self-canceled deals count
+        int32  dealsCompleted;        // completed deals count
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -127,6 +137,7 @@ contract Swap2p is ReentrancyGuard {
 
     // maker profiles
     mapping(address => MakerProfile) public makerInfo;
+    mapping(bytes32 => bool) private _nicknameTaken;
 
     // offer indexes
     mapping(address => mapping(Side => mapping(FiatCode => address[]))) private _offerKeys;
@@ -155,6 +166,7 @@ contract Swap2p is ReentrancyGuard {
     error InsufficientReserve();
     error FeeOnTransferTokenNotSupported();
     error AuthorZero();
+    error NicknameTaken();
 
     // ────────────────────────────────────────────────────────────────────────
     // Events
@@ -369,6 +381,12 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
+    function _updateRequirements(address maker, string memory req) private {
+        if (bytes(req).length != 0) {
+            makerInfo[maker].requirements = req;
+        }
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // Maker profile
     /// @notice Sets caller's online status for availability checks.
@@ -376,6 +394,46 @@ contract Swap2p is ReentrancyGuard {
     function setOnline(bool on) external touchActivity {
         makerInfo[msg.sender].online = on;
         emit MakerOnline(msg.sender, on);
+    }
+
+    /// @notice Updates maker requirements for the caller.
+    /// @param req New requirements text.
+    function setRequirements(string calldata req) external touchActivity {
+        makerInfo[msg.sender].requirements = req;
+    }
+
+    /// @notice Updates caller's public nickname. Empty string clears nickname.
+    /// @param nick Nickname to set (must be unique when non-empty).
+    function setNickname(string calldata nick) external touchActivity {
+        MakerProfile storage profile = makerInfo[msg.sender];
+        bytes memory newBytes = bytes(nick);
+        bytes memory oldBytes = bytes(profile.nickname);
+
+        if (newBytes.length == 0) {
+            if (oldBytes.length != 0) {
+                bytes32 oldHash = keccak256(oldBytes);
+                delete _nicknameTaken[oldHash];
+                profile.nickname = "";
+            }
+            return;
+        }
+
+        bytes32 newHash = keccak256(newBytes);
+        if (oldBytes.length != 0) {
+            if (keccak256(oldBytes) == newHash) {
+                return;
+            }
+        }
+
+        if (_nicknameTaken[newHash]) revert NicknameTaken();
+
+        _nicknameTaken[newHash] = true;
+        profile.nickname = nick;
+
+        if (oldBytes.length != 0) {
+            bytes32 oldHash = keccak256(oldBytes);
+            delete _nicknameTaken[oldHash];
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -388,8 +446,7 @@ contract Swap2p is ReentrancyGuard {
     /// @param reserve Amount of tokens reserved for this offer.
     /// @param minAmt Minimum per-request amount.
     /// @param maxAmt Maximum per-request amount.
-    /// @param paymentMethods Free-form list/description of fiat rails.
-    /// @param comment Optional comment emitted in OfferUpsert.
+    /// @param texts Aggregated string parameters: payment methods, requirements (optional), comment.
     function maker_makeOffer(
         address  token,
         Side     s,
@@ -398,13 +455,26 @@ contract Swap2p is ReentrancyGuard {
         uint96   reserve,
         uint128  minAmt,
         uint128  maxAmt,
-        string calldata paymentMethods,
-        string calldata comment
+        MakerOfferTexts calldata texts
     ) external {
-        _addOfferKey(token, msg.sender, s, f);
-        bytes32 oid = _getOrCreateOfferId(token, msg.sender, s, f);
+        _makerMakeOffer(msg.sender, token, s, f, price, reserve, minAmt, maxAmt, texts);
+    }
 
-        Offer storage o = offers[token][msg.sender][s][f];
+    function _makerMakeOffer(
+        address maker,
+        address token,
+        Side s,
+        FiatCode f,
+        uint96 price,
+        uint96 reserve,
+        uint128 minAmt,
+        uint128 maxAmt,
+        MakerOfferTexts calldata texts
+    ) private {
+        _addOfferKey(token, maker, s, f);
+        bytes32 oid = _getOrCreateOfferId(token, maker, s, f);
+
+        Offer storage o = offers[token][maker][s][f];
         o.minAmt = minAmt;
         o.maxAmt = maxAmt;
         o.reserve = reserve;
@@ -413,9 +483,11 @@ contract Swap2p is ReentrancyGuard {
         o.ts = uint32(block.timestamp);
         o.side = s;
         o.token = token;
-        o.paymentMethods = paymentMethods;
+        o.paymentMethods = texts.paymentMethods;
 
-        emit OfferUpsert(oid, token, msg.sender, f, o, comment);
+        _updateRequirements(maker, texts.requirements);
+
+        emit OfferUpsert(oid, token, maker, f, o, texts.comment);
     }
 
     /// @notice Deletes caller's offer for (token, side, fiat).
@@ -526,6 +598,7 @@ contract Swap2p is ReentrancyGuard {
         uint128 back = d.side == Side.BUY ? d.amount * 2 : d.amount;
         _push(d.token, d.taker, back);
         _closeBoth(d.maker, d.taker, id);
+        makerInfo[msg.sender].dealsCancelled += int32(1);
         emit DealCanceled(id);
     }
 
@@ -600,6 +673,7 @@ contract Swap2p is ReentrancyGuard {
             _push(d.token, d.maker, d.amount * 2);
         }
         _closeBoth(d.maker, d.taker, id);
+        makerInfo[msg.sender].dealsCancelled += int32(1);
         emit DealCanceled(id);
     }
 
@@ -643,6 +717,8 @@ contract Swap2p is ReentrancyGuard {
         _addRecent(d.maker, id);
         _addRecent(d.taker, id);
         _closeBoth(d.maker, d.taker, id);
+        makerInfo[d.maker].dealsCompleted += int32(1);
+        makerInfo[d.taker].dealsCompleted += int32(1);
 
         // main payout (crypto recipient)
         address payoutTo = (d.side == Side.BUY) ? d.maker : d.taker;
@@ -756,14 +832,22 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
-    /// @notice Checks maker availability for current UTC hour.
-    /// @notice Returns online flags for the given maker addresses.
-    function areMakersAvailable(address[] calldata m) external view returns (bool[] memory a) {
-        uint len = m.length;
-        a = new bool[](len);
+    /// @notice Returns maker profiles for the provided addresses.
+    function getMakerProfiles(address[] calldata accounts)
+        external
+        view
+        returns (MakerProfile[] memory profiles)
+    {
+        uint len = accounts.length;
+        profiles = new MakerProfile[](len);
         for (uint i; i < len; i++) {
-            MakerProfile storage p = makerInfo[m[i]];
-            a[i] = p.online;
+            MakerProfile storage src = makerInfo[accounts[i]];
+            profiles[i].online = src.online;
+            profiles[i].lastActivity = src.lastActivity;
+            profiles[i].requirements = src.requirements;
+            profiles[i].nickname = src.nickname;
+            profiles[i].dealsCancelled = src.dealsCancelled;
+            profiles[i].dealsCompleted = src.dealsCompleted;
         }
     }
 
