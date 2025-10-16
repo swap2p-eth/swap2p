@@ -11,7 +11,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         swap.setOnline(true);
     }
 
-    function _hasId(uint96[] memory arr, uint96 id) internal pure returns (bool) {
+    function _hasId(bytes32[] memory arr, bytes32 id) internal pure returns (bool) {
         for (uint i = 0; i < arr.length; i++) if (arr[i] == id) return true;
         return false;
     }
@@ -19,40 +19,64 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
     function test_Recent_OnCancelRequest_BothSides() public {
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "");
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
-        vm.prank(taker);
-        swap.cancelRequest(1, bytes(""));
+        swap.cancelRequest(dealId, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 1);
         assertEq(swap.getRecentDealCount(taker), 1);
-        uint96[] memory rm = swap.getRecentDeals(maker, 0, 10);
-        uint96[] memory rt = swap.getRecentDeals(taker, 0, 10);
-        assertTrue(_hasId(rm, 1));
-        assertTrue(_hasId(rt, 1));
+        bytes32[] memory rm = swap.getRecentDeals(maker, 0, 10);
+        bytes32[] memory rt = swap.getRecentDeals(taker, 0, 10);
+        assertTrue(_hasId(rm, dealId));
+        assertTrue(_hasId(rt, dealId));
     }
 
     function test_Recent_OnCancelDeal_SellAndBuy() public {
         // SELL: taker cancels after accept
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "");
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 5e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 sellDeal = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            5e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(sellDeal, bytes(""));
         vm.prank(taker);
-        swap.cancelDeal(1, bytes(""));
+        swap.cancelDeal(sellDeal, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 1);
         assertEq(swap.getRecentDealCount(taker), 1);
 
         // BUY: maker cancels after accept
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1, 500e18, "sepa", "");
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 6e18, Swap2p.FiatCode.wrap(978), 100e18, "", address(0));
+        bytes32 buyDeal = _requestDealDefault(
+            address(token),
+            Swap2p.Side.BUY,
+            maker,
+            6e18,
+            Swap2p.FiatCode.wrap(978),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(maker);
-        swap.maker_acceptRequest(2, bytes(""));
+        swap.maker_acceptRequest(buyDeal, bytes(""));
         vm.prank(maker);
-        swap.cancelDeal(2, bytes(""));
+        swap.cancelDeal(buyDeal, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 2);
         assertEq(swap.getRecentDealCount(taker), 2);
     }
@@ -60,31 +84,47 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
     function test_Recent_OnRelease_BothSides() public {
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "");
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 7e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            7e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(dealId, bytes(""));
         vm.prank(taker);
-        swap.markFiatPaid(1, bytes(""));
+        swap.markFiatPaid(dealId, bytes(""));
         vm.prank(maker);
-        swap.release(1, bytes(""));
+        swap.release(dealId, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 1);
         assertEq(swap.getRecentDealCount(taker), 1);
-        uint96[] memory rm = swap.getRecentDeals(maker, 0, 10);
-        uint96[] memory rt = swap.getRecentDeals(taker, 0, 10);
-        assertTrue(_hasId(rm, 1));
-        assertTrue(_hasId(rt, 1));
+        bytes32[] memory rm = swap.getRecentDeals(maker, 0, 10);
+        bytes32[] memory rt = swap.getRecentDeals(taker, 0, 10);
+        assertTrue(_hasId(rm, dealId));
+        assertTrue(_hasId(rt, dealId));
     }
 
     function test_Cleanup_RevertBelow48() public {
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "");
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            8e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 8e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
-        vm.prank(taker);
-        swap.cancelRequest(1, bytes(""));
-        uint96[] memory ids = new uint96[](1);
-        ids[0] = 1;
+        swap.cancelRequest(dealId, bytes(""));
+        bytes32[] memory ids = new bytes32[](1);
+        ids[0] = dealId;
         vm.expectRevert(Swap2p.WrongState.selector);
         swap.cleanupDeals(ids, 47);
     }
@@ -93,73 +133,106 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         // A: canceled, old enough -> should be deleted
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "");
+        bytes32 dealA = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            9e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 9e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
-        vm.prank(taker);
-        swap.cancelRequest(1, bytes(""));
+        swap.cancelRequest(dealA, bytes(""));
         vm.warp(block.timestamp + 49 hours);
 
         // B: released, but not old enough -> should stay
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "");
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 dealB = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(maker);
-        swap.maker_acceptRequest(2, bytes(""));
+        swap.maker_acceptRequest(dealB, bytes(""));
         vm.prank(taker);
-        swap.markFiatPaid(2, bytes(""));
+        swap.markFiatPaid(dealB, bytes(""));
         vm.prank(maker);
-        swap.release(2, bytes(""));
+        swap.release(dealB, bytes(""));
         // make it younger than 48h by not warping further
 
         // C: accepted (wrong state) -> should be ignored
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "");
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 11e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 dealC = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            11e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(maker);
-        swap.maker_acceptRequest(3, bytes(""));
+        swap.maker_acceptRequest(dealC, bytes(""));
 
         // cleanup with 48 hours
-        uint96[] memory ids = new uint96[](3);
-        ids[0] = 1; ids[1] = 2; ids[2] = 3;
+        bytes32[] memory ids = new bytes32[](3);
+        ids[0] = dealA; ids[1] = dealB; ids[2] = dealC;
         swap.cleanupDeals(ids, 48);
 
         // A deleted
-        (,,Swap2p.DealState stA,,,,,,,) = swap.deals(1);
+        (,,Swap2p.DealState stA,,,,,,,) = swap.deals(dealA);
         assertEq(uint(stA), uint(Swap2p.DealState.NONE));
         // B remains
-        (,,Swap2p.DealState stB,,,,,,,) = swap.deals(2);
+        (,,Swap2p.DealState stB,,,,,,,) = swap.deals(dealB);
         assertTrue(stB == Swap2p.DealState.RELEASED);
         // C remains
-        (,,Swap2p.DealState stC,,,,,,,) = swap.deals(3);
+        (,,Swap2p.DealState stC,,,,,,,) = swap.deals(dealC);
         assertTrue(stC == Swap2p.DealState.ACCEPTED);
 
         // A removed from recent for both
-        uint96[] memory rm = swap.getRecentDeals(maker, 0, 10);
-        uint96[] memory rt = swap.getRecentDeals(taker, 0, 10);
-        assertTrue(!_hasId(rm, 1));
-        assertTrue(!_hasId(rt, 1));
+        bytes32[] memory rm = swap.getRecentDeals(maker, 0, 10);
+        bytes32[] memory rt = swap.getRecentDeals(taker, 0, 10);
+        assertTrue(!_hasId(rm, dealA));
+        assertTrue(!_hasId(rt, dealA));
     }
 
     function test_Cleanup_SameMakerTaker() public {
         // maker == taker
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 0, 500e18, "wire", "");
+        bytes32 dealId = _requestDealAs(
+            maker,
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            0,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(maker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 0, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
-        vm.prank(maker);
-        swap.cancelRequest(1, bytes(""));
+        swap.cancelRequest(dealId, bytes(""));
         vm.warp(block.timestamp + 49 hours);
-        uint96[] memory ids = new uint96[](1);
-        ids[0] = 1;
+        bytes32[] memory ids = new bytes32[](1);
+        ids[0] = dealId;
         swap.cleanupDeals(ids, 48);
         // recent cleared and deal deleted
         assertEq(swap.getRecentDealCount(maker), 0);
         // off >= len branch returns empty
-        uint96[] memory emptySlice = swap.getRecentDeals(maker, 5, 10);
+        bytes32[] memory emptySlice = swap.getRecentDeals(maker, 5, 10);
         assertEq(emptySlice.length, 0);
-        (,,Swap2p.DealState st,,,,,,,) = swap.deals(1);
+        (,,Swap2p.DealState st,,,,,,,) = swap.deals(dealId);
         assertEq(uint(st), uint(Swap2p.DealState.NONE));
     }
 }

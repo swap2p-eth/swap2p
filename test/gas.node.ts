@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import hre from "hardhat";
 import { stringToHex } from "viem";
-const { viem, artifacts } = hre as any;
+const { artifacts } = hre as any;
 
 type KeyLabel = [key: string, label: string];
 const KEYS: KeyLabel[] = [
@@ -93,25 +93,39 @@ test("Gas report (Node test runner, TS)", async () => {
     token.address, 1, 840, 100n * WAD, 1_000n * WAD, 1n * WAD, 500n * WAD, "wire", "",
   ]);
   const amountSell = 100n * WAD;
+  const [sellDealId] = await publicClient.readContract({
+    address: swap.address,
+    abi: Swap2pArtifact.abi,
+    functionName: "previewNextDealId",
+    args: [taker.account.address],
+  }) as [`0x${string}`, bigint];
+
   latest.G_SELL_taker_requestOffer = await write(taker, swap.address, Swap2pArtifact.abi, "taker_requestOffer", [
     token.address, 1, maker.account.address, amountSell, 840, 100n * WAD, "details", "0x0000000000000000000000000000000000000000",
   ]);
-  latest.G_SELL_maker_acceptRequest = await write(maker, swap.address, Swap2pArtifact.abi, "maker_acceptRequest", [1, stringToHex("ok")]);
-  latest.G_SELL_sendMessage = await write(taker, swap.address, Swap2pArtifact.abi, "sendMessage", [1, stringToHex("hi")]);
-  latest.G_SELL_markFiatPaid = await write(taker, swap.address, Swap2pArtifact.abi, "markFiatPaid", [1, stringToHex("paid")]);
-  latest.G_SELL_release = await write(maker, swap.address, Swap2pArtifact.abi, "release", [1, stringToHex("release")]);
+  latest.G_SELL_maker_acceptRequest = await write(maker, swap.address, Swap2pArtifact.abi, "maker_acceptRequest", [sellDealId, stringToHex("ok")]);
+  latest.G_SELL_sendMessage = await write(taker, swap.address, Swap2pArtifact.abi, "sendMessage", [sellDealId, stringToHex("hi")]);
+  latest.G_SELL_markFiatPaid = await write(taker, swap.address, Swap2pArtifact.abi, "markFiatPaid", [sellDealId, stringToHex("paid")]);
+  latest.G_SELL_release = await write(maker, swap.address, Swap2pArtifact.abi, "release", [sellDealId, stringToHex("release")]);
 
   // BUY flow
   latest.G_BUY_maker_makeOffer = await write(maker, swap.address, Swap2pArtifact.abi, "maker_makeOffer", [
     token.address, 0, 978, 100n * WAD, 1_000n * WAD, 1n * WAD, 500n * WAD, "sepa", "",
   ]);
   const amountBuy = 200n * WAD;
+  const [buyDealId] = await publicClient.readContract({
+    address: swap.address,
+    abi: Swap2pArtifact.abi,
+    functionName: "previewNextDealId",
+    args: [taker.account.address],
+  }) as [`0x${string}`, bigint];
+
   latest.G_BUY_taker_requestOffer = await write(taker, swap.address, Swap2pArtifact.abi, "taker_requestOffer", [
     token.address, 0, maker.account.address, amountBuy, 978, 100n * WAD, "details", "0x0000000000000000000000000000000000000000",
   ]);
-  latest.G_BUY_maker_acceptRequest = await write(maker, swap.address, Swap2pArtifact.abi, "maker_acceptRequest", [2, stringToHex("ok")]);
-  latest.G_BUY_markFiatPaid = await write(maker, swap.address, Swap2pArtifact.abi, "markFiatPaid", [2, stringToHex("paid")]);
-  latest.G_BUY_release = await write(taker, swap.address, Swap2pArtifact.abi, "release", [2, stringToHex("release")]);
+  latest.G_BUY_maker_acceptRequest = await write(maker, swap.address, Swap2pArtifact.abi, "maker_acceptRequest", [buyDealId, stringToHex("ok")]);
+  latest.G_BUY_markFiatPaid = await write(maker, swap.address, Swap2pArtifact.abi, "markFiatPaid", [buyDealId, stringToHex("paid")]);
+  latest.G_BUY_release = await write(taker, swap.address, Swap2pArtifact.abi, "release", [buyDealId, stringToHex("release")]);
 
   // Load previous baseline and print table
   let prev: Record<string, number> = {};

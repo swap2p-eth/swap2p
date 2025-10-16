@@ -26,25 +26,40 @@ contract Swap2p_PaginationTest is Swap2p_TestBase {
         // create two deals
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "");
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 20e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 d1 = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
+        bytes32 d2 = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            20e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
 
         assertEq(swap.getOpenDealCount(maker), 2);
-        uint96[] memory a = swap.getOpenDeals(maker, 0, 1);
+        bytes32[] memory a = swap.getOpenDeals(maker, 0, 1);
         assertEq(a.length, 1);
-        uint96[] memory b = swap.getOpenDeals(maker, 1, 2);
+        bytes32[] memory b = swap.getOpenDeals(maker, 1, 2);
         assertEq(b.length, 1);
 
         // cancel both, check cleaned lists
         vm.prank(taker);
-        swap.cancelRequest(1, bytes(""));
+        swap.cancelRequest(d1, bytes(""));
         vm.prank(taker);
-        swap.cancelRequest(2, bytes(""));
+        swap.cancelRequest(d2, bytes(""));
 
         assertEq(swap.getOpenDealCount(maker), 0);
         assertEq(swap.getOpenDealCount(taker), 0);
     }
 }
-

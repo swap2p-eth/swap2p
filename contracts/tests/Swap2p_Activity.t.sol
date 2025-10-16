@@ -22,8 +22,16 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
         // create offer for SELL
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, "wire", "");
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         (, uint40 tsT) = swap.makerInfo(taker);
         assertEq(tsT, uint40(block.timestamp));
     }
@@ -31,36 +39,44 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
     function test_LastActivity_OnAccept_Cancel_Pay_Release_And_Messages() public {
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, "wire", "");
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes("hi"));
+        swap.maker_acceptRequest(dealId, bytes("hi"));
         (, uint40 tsM) = swap.makerInfo(maker);
         assertEq(tsM, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
-        swap.sendMessage(1, bytes("m"));
+        swap.sendMessage(dealId, bytes("m"));
         (, tsM) = swap.makerInfo(maker);
         assertEq(tsM, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(taker);
-        swap.sendMessage(1, bytes("t"));
+        swap.sendMessage(dealId, bytes("t"));
         (, uint40 tsT) = swap.makerInfo(taker);
         assertEq(tsT, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(taker);
-        swap.markFiatPaid(1, bytes("paid"));
+        swap.markFiatPaid(dealId, bytes("paid"));
         (, tsT) = swap.makerInfo(taker);
         assertEq(tsT, uint40(block.timestamp));
 
         vm.warp(block.timestamp + 1);
         vm.prank(maker);
-        swap.release(1, bytes(""));
+        swap.release(dealId, bytes(""));
         (, tsM) = swap.makerInfo(maker);
         assertEq(tsM, uint40(block.timestamp));
     }

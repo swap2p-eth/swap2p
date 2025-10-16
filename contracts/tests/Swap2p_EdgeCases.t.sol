@@ -26,23 +26,39 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
     // Covers modifier onlyMaker revert (line ~150)
     function test_Modifier_onlyMaker_WrongCaller() public {
         _setupSellBasic(1);
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         address stranger = makeAddr("stranger");
         vm.prank(stranger);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(dealId, bytes(""));
     }
 
     // Covers modifier onlyTaker revert (line ~154)
     function test_Modifier_onlyTaker_WrongCaller() public {
         _setupSellBasic(1);
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         address stranger = makeAddr("str2");
         vm.prank(stranger);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.sendMessage(1, bytes("x"));
+        swap.sendMessage(dealId, bytes("x"));
     }
 
     // Covers _removeOfferKey pos==0 early return (line ~177)
@@ -61,43 +77,68 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         // maker posts SELL, then self-requests as taker==maker
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "");
-        vm.prank(maker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 1e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 dealId = _requestDealAs(
+            maker,
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            1e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         // maker cancels; second _removeOpen sees pos==0
         vm.prank(maker);
-        swap.cancelRequest(1, bytes(""));
+        swap.cancelRequest(dealId, bytes(""));
     }
 
     // Covers _pull amt==0 early return (line ~218) and _push amt==0 (line ~226)
     function test_ZeroAmount_Request_Accept_Release() public {
         _setupSellBasic(0);
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 0, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            0,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(dealId, bytes(""));
         vm.prank(taker);
-        swap.markFiatPaid(1, bytes(""));
+        swap.markFiatPaid(dealId, bytes(""));
         vm.prank(maker);
-        swap.release(1, bytes(""));
+        swap.release(dealId, bytes(""));
     }
 
     // Covers taker cancelDeal WrongSide in BUY (line ~399)
     function test_CancelDeal_WrongSide_TakerOnBuy() public {
         _setupBuyBasic(1);
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 100e18, "", address(0));
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.BUY,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(978),
+            100e18,
+            "",
+            address(0)
+        );
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(dealId, bytes(""));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WrongSide.selector);
-        swap.cancelDeal(1, bytes(""));
+        swap.cancelDeal(dealId, bytes(""));
     }
 
     // Covers getOpenDeals(off>=len) early return (line ~489)
     function test_GetOpenDeals_OffGeLen_ReturnsEmpty() public view {
         // no open deals for maker
         uint len = swap.getOpenDealCount(maker);
-        uint96[] memory out = swap.getOpenDeals(maker, len, 10);
+        bytes32[] memory out = swap.getOpenDeals(maker, len, 10);
         require(out.length == 0, "should be empty");
     }
 }

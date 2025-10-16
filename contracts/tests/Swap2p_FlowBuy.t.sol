@@ -16,16 +16,24 @@ contract Swap2p_FlowBuyTest is Swap2p_TestBase {
 
         // taker binds partner on first request
         uint128 amount = 200e18;
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, amount, Swap2p.FiatCode.wrap(978), 100e18, "details", partner);
+        bytes32 dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.BUY,
+            maker,
+            amount,
+            Swap2p.FiatCode.wrap(978),
+            100e18,
+            "details",
+            partner
+        );
 
         // accept (maker deposits 1x)
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes("ok"));
+        swap.maker_acceptRequest(dealId, bytes("ok"));
 
         // mark fiat paid (maker pays fiat in BUY)
         vm.prank(maker);
-        swap.markFiatPaid(1, bytes("paid"));
+        swap.markFiatPaid(dealId, bytes("paid"));
 
         // capture balances before release
         uint256 makerBefore = token.balanceOf(maker);
@@ -35,7 +43,7 @@ contract Swap2p_FlowBuyTest is Swap2p_TestBase {
 
         // release (taker confirms receipt of fiat)
         vm.prank(taker);
-        swap.release(1, bytes(""));
+        swap.release(dealId, bytes(""));
 
         // fee = 0.5%, share=50%
         uint256 fee = (amount * 50) / 10_000;

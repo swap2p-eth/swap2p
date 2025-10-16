@@ -39,6 +39,11 @@ contract Swap2p_GasTest is Test {
         // baseline.push(Baseline({name: "SELL:setOnline", gas: 0}));
     }
 
+    function _previewNextDealId(address taker_) internal view returns (bytes32) {
+        (bytes32 id, ) = swap.previewNextDealId(taker_);
+        return id;
+    }
+
     // no baseline helpers
 
     // ---------- formatting helpers ----------
@@ -98,6 +103,7 @@ contract Swap2p_GasTest is Test {
         _printRow("SELL:maker_makeOffer", g);
 
         uint128 amount = 100e18;
+        bytes32 sellDealId = _previewNextDealId(taker);
         vm.prank(taker);
         g = gasleft();
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, amount, Swap2p.FiatCode.wrap(840), 100e18, "details", address(0));
@@ -106,25 +112,25 @@ contract Swap2p_GasTest is Test {
 
         vm.prank(maker);
         g = gasleft();
-        swap.maker_acceptRequest(1, bytes("ok"));
+        swap.maker_acceptRequest(sellDealId, bytes("ok"));
         g -= gasleft();
         _printRow("SELL:maker_acceptRequest", g);
 
         vm.prank(taker);
         g = gasleft();
-        swap.sendMessage(1, bytes("hi"));
+        swap.sendMessage(sellDealId, bytes("hi"));
         g -= gasleft();
         _printRow("SELL:sendMessage", g);
 
         vm.prank(taker);
         g = gasleft();
-        swap.markFiatPaid(1, bytes("paid"));
+        swap.markFiatPaid(sellDealId, bytes("paid"));
         g -= gasleft();
         _printRow("SELL:markFiatPaid", g);
 
         vm.prank(maker);
         g = gasleft();
-        swap.release(1, bytes("release"));
+        swap.release(sellDealId, bytes("release"));
         g -= gasleft();
         _printRow("SELL:release", g);
 
@@ -136,6 +142,7 @@ contract Swap2p_GasTest is Test {
         _printRow("BUY:maker_makeOffer", g);
 
         amount = 200e18;
+        bytes32 buyDealId = _previewNextDealId(taker);
         vm.prank(taker);
         g = gasleft();
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, amount, Swap2p.FiatCode.wrap(978), 100e18, "details", partner);
@@ -144,19 +151,19 @@ contract Swap2p_GasTest is Test {
 
         vm.prank(maker);
         g = gasleft();
-        swap.maker_acceptRequest(2, bytes("ok"));
+        swap.maker_acceptRequest(buyDealId, bytes("ok"));
         g -= gasleft();
         _printRow("BUY:maker_acceptRequest", g);
 
         vm.prank(maker);
         g = gasleft();
-        swap.markFiatPaid(2, bytes("paid"));
+        swap.markFiatPaid(buyDealId, bytes("paid"));
         g -= gasleft();
         _printRow("BUY:markFiatPaid", g);
 
         vm.prank(taker);
         g = gasleft();
-        swap.release(2, bytes("release"));
+        swap.release(buyDealId, bytes("release"));
         g -= gasleft();
         _printRow("BUY:release", g);
         _printFooter();

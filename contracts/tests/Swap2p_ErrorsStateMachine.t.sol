@@ -11,59 +11,67 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
         swap.setOnline(true);
     }
 
-    function _reqSell() internal {
+    function _reqSell() internal returns (bytes32 dealId) {
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 10e18, 500e18, "wire", "");
-        vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        dealId = _requestDealDefault(
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            address(0)
+        );
     }
 
     function test_WrongState_AcceptTwice_ReleaseWrongStates() public {
-        _reqSell();
+        bytes32 dealId = _reqSell();
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(dealId, bytes(""));
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(dealId, bytes(""));
         // release without paid
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongState.selector);
-        swap.release(1, bytes(""));
+        swap.release(dealId, bytes(""));
     }
 
     function test_WrongCaller_CancelRequest_Release() public {
-        _reqSell();
+        bytes32 dealId = _reqSell();
         address stranger = makeAddr("xx");
         vm.prank(stranger);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.cancelRequest(1, bytes(""));
+        swap.cancelRequest(dealId, bytes(""));
         // After paid, wrong party release
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(dealId, bytes(""));
         vm.prank(taker);
-        swap.markFiatPaid(1, bytes(""));
+        swap.markFiatPaid(dealId, bytes(""));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WrongCaller.selector);
-        swap.release(1, bytes(""));
+        swap.release(dealId, bytes(""));
     }
 
     function test_NotFiatPayer_SELL() public {
-        _reqSell();
+        bytes32 dealId = _reqSell();
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(dealId, bytes(""));
         vm.prank(maker);
         vm.expectRevert(Swap2p.NotFiatPayer.selector);
-        swap.markFiatPaid(1, bytes(""));
+        swap.markFiatPaid(dealId, bytes(""));
     }
 
     function test_WrongSide_CancelDeal() public {
-        _reqSell();
+        bytes32 dealId = _reqSell();
         vm.prank(maker);
-        swap.maker_acceptRequest(1, bytes(""));
+        swap.maker_acceptRequest(dealId, bytes(""));
         // maker cannot cancel in SELL
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongSide.selector);
-        swap.cancelDeal(1, bytes(""));
+        swap.cancelDeal(dealId, bytes(""));
     }
 
     function test_OfferNotFound_AmountBounds_InsufficientReserve() public {
