@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
+const ROW_HEIGHT_PX = 32;
+
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
@@ -33,7 +35,7 @@ export function DataTable<TData, TValue>({
   title = "Items",
   emptyMessage = "No data available.",
   onRowClick,
-  pageSize = 8,
+  pageSize = 10,
   isLoading = false,
   skeletonRowCount
 }: DataTableProps<TData, TValue>) {
@@ -78,10 +80,14 @@ export function DataTable<TData, TValue>({
     const rows = skeletonRowCount ?? pageSize;
     const columnCount = columns.length || 1;
     return Array.from({ length: rows }).map((_, rowIndex) => (
-      <TableRow key={`skeleton-${rowIndex}`} className="hover:bg-transparent">
+      <TableRow
+        key={`skeleton-${rowIndex}`}
+        style={{ height: ROW_HEIGHT_PX+32 }}
+        className="align-middle hover:bg-transparent"
+      >
         {Array.from({ length: columnCount }).map((__, cellIndex) => (
-          <TableCell key={cellIndex}>
-            <Skeleton className="h-4 w-full" />
+          <TableCell key={cellIndex} className="py-3 align-middle">
+            <Skeleton className="h-5 w-full rounded-full" />
           </TableCell>
         ))}
       </TableRow>
@@ -143,14 +149,15 @@ export function DataTable<TData, TValue>({
               return (
                 <TableRow
                   key={row.id}
+                  style={{ height: ROW_HEIGHT_PX }}
                   className={cn(
-                    "border-transparent transition hover:bg-muted/20",
+                    "border-transparent align-middle transition hover:bg-muted/20",
                     onRowClick ? "cursor-pointer" : ""
                   )}
                   onClick={handleClick}
                 >
                   {row.getVisibleCells().map(cell => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-3 align-middle">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
