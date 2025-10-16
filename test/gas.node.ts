@@ -28,9 +28,13 @@ function padRight(s: string | number, w: number) {
   const str = String(s);
   return str.length >= w ? str : str + " ".repeat(w - str.length);
 }
+function padLeft(s: string | number, w: number) {
+  const str = String(s);
+  return str.length >= w ? str : " ".repeat(w - str.length) + str;
+}
 function row(op: string, gas: string | number, delta: string | number, prev: string | number) {
   // eslint-disable-next-line no-console
-  console.log(`| ${padRight(op, 26)} | ${padRight(gas, 10)} | ${padRight(delta, 10)} | ${padRight(prev, 10)} |`);
+  console.log(`| ${padRight(op, 26)} | ${padLeft(gas, 10)} | ${padLeft(delta, 10)} | ${padLeft(prev, 10)} |`);
 }
 function header() {
   // eslint-disable-next-line no-console
@@ -142,10 +146,10 @@ test("Gas report (Node test runner, TS)", async () => {
   header();
   for (const [key, label] of KEYS) {
     const newGas = latest[key];
-    const oldGas = prev[key];
-    const delta = typeof newGas === "number" && typeof oldGas === "number" ? newGas - oldGas : "n/a";
-    const deltaStr = typeof delta === "number" ? (delta >= 0 ? `+${delta}` : `${delta}`) : "n/a";
-    row(label, newGas ?? "n/a", deltaStr, typeof oldGas === "number" ? oldGas : "n/a");
+    const oldGas = prev[key] || 0;
+    const delta = newGas - oldGas;
+    const deltaStr = delta >= 0 ? `+${delta}` : `${delta}`;
+    row(label, newGas ?? "n/a", deltaStr, oldGas);
   }
   footer();
 
