@@ -118,12 +118,13 @@ export function DataTable<TData, TValue>({
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map(header => {
                 const meta = header.column.columnDef.meta as ColumnMeta | undefined;
-                const alignClass =
-                  meta?.align === "right"
+                const headerAlignClass =
+                  meta?.headerClassName ??
+                  (meta?.align === "right"
                     ? "text-right"
                     : meta?.align === "center"
                       ? "text-center"
-                      : undefined;
+                      : undefined);
 
                 return (
                   <TableHead
@@ -132,8 +133,7 @@ export function DataTable<TData, TValue>({
                     className={cn(
                       header.column.getCanSort() ? "cursor-pointer select-none" : "",
                       "whitespace-nowrap",
-                      alignClass,
-                      meta?.headerClassName
+                      headerAlignClass
                     )}
                     onClick={header.column.getToggleSortingHandler()}
                   >

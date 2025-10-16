@@ -24,7 +24,12 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
         const side = row.getValue<string>("side");
         return <Badge variant={side === "BUY" ? "secondary" : "default"}>{side}</Badge>;
       },
-      size: 80
+      size: 80,
+      meta: {
+        align: "center",
+        headerClassName: "text-center",
+        cellClassName: "text-center"
+      }
     },
     {
       accessorKey: "token",
@@ -38,7 +43,10 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
           </span>
         );
       },
-      size: 80
+      size: 80,
+      meta: {
+        headerClassName: "text-center"
+      }
     },
     {
       accessorKey: "fiat",
@@ -52,7 +60,10 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
           </span>
         );
       },
-      size: 80
+      size: 80,
+      meta: {
+        headerClassName: "text-center"
+      }
     },
     {
       accessorKey: "price",
@@ -67,7 +78,7 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       ),
       meta: {
         align: "right",
-        headerClassName: "text-right",
+        headerClassName: "text-center",
         cellClassName: "text-right"
       }
     },
@@ -81,7 +92,7 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       ),
       meta: {
         align: "right",
-        headerClassName: "text-right",
+        headerClassName: "text-center",
         cellClassName: "text-right"
       }
     },
@@ -95,7 +106,7 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       ),
       meta: {
         align: "right",
-        headerClassName: "text-right",
+        headerClassName: "text-center",
         cellClassName: "text-right"
       }
     },
@@ -103,13 +114,18 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       accessorKey: "paymentMethods",
       header: "Payment methods",
       cell: ({ row }) => (
-        <span className="text-sm text-muted-foreground/80">
+        <span className="block text-center text-sm text-muted-foreground/80">
           {String(row.getValue("paymentMethods") ?? "")
             .split(",")
             .filter(Boolean)
             .join(" · ")}
         </span>
-      )
+      ),
+      meta: {
+        align: "center",
+        headerClassName: "text-center",
+        cellClassName: "text-center"
+      }
     },
     {
       accessorKey: "updatedAt",
@@ -143,7 +159,10 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
         >
           <ShoppingBasket className="h-4 w-4" />
         </Button>
-      )
+      ),
+      meta: {
+        headerClassName: "text-center"
+      }
     }
   ];
 }
