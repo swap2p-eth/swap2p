@@ -64,19 +64,12 @@ contract Swap2p is ReentrancyGuard {
         uint128  maxAmt;
         uint96   reserve;             // token amount reserved for offers
         uint96   priceFiatPerToken;   // fiat/token price ratio
-        FiatCode fiat;
         uint32   ts;                  // last update timestamp
+        FiatCode fiat;
         Side     side;
         address  token;               // ERC20 token address
+        address  maker;
         string   paymentMethods;      // supported fiat payment systems/banks
-    }
-
-    /// @notice Pointer data to locate an offer in storage by its ID.
-    struct OfferLocator {
-        address token;
-        address maker;
-        Side    side;
-        FiatCode fiat;
     }
 
     /// @notice Offer details returned from view helpers.
@@ -106,6 +99,11 @@ contract Swap2p is ReentrancyGuard {
         address   token;
     }
 
+    struct DealInfo {
+        bytes32 id;
+        Deal    deal;
+    }
+
     /// @notice Maker's online status and working hours (UTC).
     struct MakerProfile {
         bool   online;
@@ -120,14 +118,13 @@ contract Swap2p is ReentrancyGuard {
     // Immutable params
     address private immutable author; // protocol fee receiver
 
-    // offers[token][maker][side][fiat]
-    mapping(address => mapping(address => mapping(Side => mapping(FiatCode => Offer)))) public offers;
+    // offers by id
+    mapping(bytes32 => Offer) private _offers;
     mapping(bytes32 => Deal) public deals;
 
     // offer ids and indexes
     mapping(address => uint64) private _makerOfferNonce;
     mapping(address => mapping(address => mapping(Side => mapping(FiatCode => bytes32)))) private _offerId;
-    mapping(bytes32 => OfferLocator) private _offerLoc;
 
     // deal ids
     mapping(address => uint64) private _takerDealNonce;
@@ -140,8 +137,10 @@ contract Swap2p is ReentrancyGuard {
     mapping(bytes32 => bool) private _nicknameTaken;
 
     // offer indexes
-    mapping(address => mapping(Side => mapping(FiatCode => address[]))) private _offerKeys;
-    mapping(address => mapping(address => mapping(Side => mapping(FiatCode => uint)))) private _offerPos; // +1
+    mapping(bytes32 => bytes32[]) private _marketOffers;
+    mapping(bytes32 => mapping(bytes32 => uint)) private _marketOfferPos; // +1
+    mapping(address => bytes32[]) private _makerOffers;
+    mapping(address => mapping(bytes32 => uint)) private _makerOfferPos; // +1
 
     // open deals
     mapping(address => bytes32[]) private _openDeals;
@@ -228,13 +227,9 @@ contract Swap2p is ReentrancyGuard {
     // Non-reentrancy is provided by OpenZeppelin ReentrancyGuard
 
     // ────────────────────────────────────────────────────────────────────────
-    // Offer-key helpers
-    /// @dev Adds a maker address into the offer keys index if absent.
-    function _addOfferKey(address token, address m, Side s, FiatCode f) private {
-        if (_offerPos[token][m][s][f] == 0) {
-            _offerPos[token][m][s][f] = _offerKeys[token][s][f].length + 1;
-            _offerKeys[token][s][f].push(m);
-        }
+    // Offer index helpers
+    function _marketKey(address token, Side s, FiatCode f) private pure returns (bytes32) {
+        return keccak256(abi.encode(token, s, FiatCode.unwrap(f)));
     }
 
     /// @dev Returns existing offer id or creates a new one for the maker/token/side/fiat tuple.
@@ -244,29 +239,55 @@ contract Swap2p is ReentrancyGuard {
             uint64 next = ++_makerOfferNonce[maker];
             oid = keccak256(abi.encodePacked(maker, next));
             _offerId[token][maker][s][f] = oid;
-            _offerLoc[oid] = OfferLocator({
-                token: token,
-                maker: maker,
-                side: s,
-                fiat: f
-            });
         }
     }
 
-    /// @dev Removes a maker address from the offer keys index if present.
-    function _removeOfferKey(address token, address m, Side s, FiatCode f) private {
-        uint pos = _offerPos[token][m][s][f];
+    /// @dev Adds offer id into market index if absent.
+    function _addMarketOffer(bytes32 marketKey, bytes32 id) private {
+        mapping(bytes32 => uint) storage posMap = _marketOfferPos[marketKey];
+        if (posMap[id] != 0) return;
+        posMap[id] = _marketOffers[marketKey].length + 1;
+        _marketOffers[marketKey].push(id);
+    }
+
+    /// @dev Removes offer id from market index if present.
+    function _removeMarketOffer(bytes32 marketKey, bytes32 id) private {
+        mapping(bytes32 => uint) storage posMap = _marketOfferPos[marketKey];
+        uint pos = posMap[id];
         if (pos == 0) return;
-        address[] storage arr = _offerKeys[token][s][f];
+        bytes32[] storage arr = _marketOffers[marketKey];
         uint idx = pos - 1;
         uint last = arr.length - 1;
         if (idx != last) {
-            address lastA = arr[last];
-            arr[idx] = lastA;
-            _offerPos[token][lastA][s][f] = pos;
+            bytes32 lastId = arr[last];
+            arr[idx] = lastId;
+            posMap[lastId] = pos;
         }
         arr.pop();
-        delete _offerPos[token][m][s][f];
+        delete posMap[id];
+    }
+
+    /// @dev Adds offer id into maker index if absent.
+    function _addMakerOffer(address maker, bytes32 id) private {
+        if (_makerOfferPos[maker][id] != 0) return;
+        _makerOfferPos[maker][id] = _makerOffers[maker].length + 1;
+        _makerOffers[maker].push(id);
+    }
+
+    /// @dev Removes offer id from maker index if present.
+    function _removeMakerOffer(address maker, bytes32 id) private {
+        uint pos = _makerOfferPos[maker][id];
+        if (pos == 0) return;
+        bytes32[] storage arr = _makerOffers[maker];
+        uint idx = pos - 1;
+        uint last = arr.length - 1;
+        if (idx != last) {
+            bytes32 lastId = arr[last];
+            arr[idx] = lastId;
+            _makerOfferPos[maker][lastId] = pos;
+        }
+        arr.pop();
+        delete _makerOfferPos[maker][id];
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -471,10 +492,10 @@ contract Swap2p is ReentrancyGuard {
         uint128 maxAmt,
         MakerOfferTexts calldata texts
     ) private {
-        _addOfferKey(token, maker, s, f);
         bytes32 oid = _getOrCreateOfferId(token, maker, s, f);
 
-        Offer storage o = offers[token][maker][s][f];
+        Offer storage o = _offers[oid];
+        bool isNew = o.ts == 0;
         o.minAmt = minAmt;
         o.maxAmt = maxAmt;
         o.reserve = reserve;
@@ -483,7 +504,14 @@ contract Swap2p is ReentrancyGuard {
         o.ts = uint32(block.timestamp);
         o.side = s;
         o.token = token;
+        o.maker = maker;
         o.paymentMethods = texts.paymentMethods;
+
+        bytes32 marketKey = _marketKey(token, s, f);
+        if (isNew) {
+            _addMarketOffer(marketKey, oid);
+            _addMakerOffer(maker, oid);
+        }
 
         _updateRequirements(maker, texts.requirements);
 
@@ -493,10 +521,14 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Deletes caller's offer for (token, side, fiat).
     function maker_deleteOffer(address token, Side s, FiatCode f) external {
         bytes32 oid = _offerId[token][msg.sender][s][f];
-        delete offers[token][msg.sender][s][f];
-        _removeOfferKey(token, msg.sender, s, f);
         if (oid != bytes32(0)) {
-            delete _offerLoc[oid];
+            Offer storage off = _offers[oid];
+            if (off.ts != 0) {
+                bytes32 marketKey = _marketKey(token, s, f);
+                _removeMarketOffer(marketKey, oid);
+                _removeMakerOffer(msg.sender, oid);
+                delete _offers[oid];
+            }
             delete _offerId[token][msg.sender][s][f];
         }
         emit OfferDeleted(oid, token, msg.sender, s, f);
@@ -526,8 +558,8 @@ contract Swap2p is ReentrancyGuard {
         string calldata details,
         address  partner
     ) external nonReentrant touchActivity {
-        Offer storage off = offers[token][maker][s][f];
-        if (off.maxAmt == 0) revert OfferNotFound();
+        Offer storage off = _offers[_offerId[token][maker][s][f]];
+        if (off.maker != maker) revert OfferNotFound();
 
         // availability (no locals kept)
         if (!makerInfo[maker].online) revert MakerOffline();
@@ -593,8 +625,11 @@ contract Swap2p is ReentrancyGuard {
         d.tsLast = uint40(block.timestamp);
         _addRecent(d.maker, id);
         _addRecent(d.taker, id);
-        Offer storage off = offers[d.token][d.maker][d.side][d.fiat];
-        if (off.maxAmt != 0) off.reserve += uint96(d.amount);
+        bytes32 oid = _offerId[d.token][d.maker][d.side][d.fiat];
+        if (oid != bytes32(0)) {
+            Offer storage off = _offers[oid];
+            if (off.ts != 0) off.reserve += uint96(d.amount);
+        }
         uint128 back = d.side == Side.BUY ? d.amount * 2 : d.amount;
         _push(d.token, d.taker, back);
         _closeBoth(d.maker, d.taker, id);
@@ -661,8 +696,11 @@ contract Swap2p is ReentrancyGuard {
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
         // restore maker offer reserve
-        Offer storage off = offers[d.token][d.maker][d.side][d.fiat];
-        if (off.maxAmt != 0) off.reserve += uint96(d.amount);
+        bytes32 oid = _offerId[d.token][d.maker][d.side][d.fiat];
+        if (oid != bytes32(0)) {
+            Offer storage off = _offers[oid];
+            if (off.ts != 0) off.reserve += uint96(d.amount);
+        }
         _addRecent(d.maker, id);
         _addRecent(d.taker, id);
         if (d.side == Side.BUY) {
@@ -734,26 +772,58 @@ contract Swap2p is ReentrancyGuard {
     // ────────────────────────────────────────────────────────────────────────
     // View helpers
     /// @notice Returns number of offers for given token/side/fiat.
-    /// @notice Returns the number of makers with an offer for (token, side, fiat).
     function getOfferCount(address token, Side s, FiatCode f) external view returns (uint) {
-        return _offerKeys[token][s][f].length;
+        return _marketOffers[_marketKey(token, s, f)].length;
     }
 
     /// @notice Returns subset of offer maker addresses for pagination.
-    /// @notice Returns a paginated slice of maker addresses for (token, side, fiat).
     /// @param off Offset in the index.
     /// @param lim Max number of items to return.
     function getOfferKeys(address token, Side s, FiatCode f, uint off, uint lim)
-    external view returns (address[] memory out) {
-        address[] storage arr = _offerKeys[token][s][f];
+        external
+        view
+        returns (address[] memory out)
+    {
+        bytes32[] storage arr = _marketOffers[_marketKey(token, s, f)];
         uint len = arr.length;
-        if (off >= len) return out;
+        if (off >= len || lim == 0) return out;
         uint end = off + lim;
-        if (end > len) end = len;
-        out = new address[](end - off);
-        for (uint i = off; i < end; i++) {
-            out[i - off] = arr[i];
+        if (end < off || end > len) end = len;
+        uint slice = end - off;
+        out = new address[](slice);
+        for (uint i; i < slice; i++) {
+            Offer storage offer_ = _offers[arr[off + i]];
+            out[i] = offer_.maker;
         }
+    }
+
+    /// @notice Returns paginated slice of offer IDs for a market (token/side/fiat).
+    function getMarketOfferIds(address token, Side s, FiatCode f, uint off, uint lim)
+        external
+        view
+        returns (bytes32[] memory out)
+    {
+        bytes32[] storage arr = _marketOffers[_marketKey(token, s, f)];
+        uint len = arr.length;
+        if (off >= len || lim == 0) return out;
+        uint end = off + lim;
+        if (end < off || end > len) end = len;
+        uint slice = end - off;
+        out = new bytes32[](slice);
+        for (uint i; i < slice; i++) {
+            out[i] = arr[off + i];
+        }
+    }
+
+    /// @notice Returns paginated slice of offers for a market (token/side/fiat).
+    function getMarketOffers(address token, Side s, FiatCode f, uint off, uint lim)
+        external
+        view
+        returns (OfferInfo[] memory out)
+    {
+        bytes32[] storage ids = _marketOffers[_marketKey(token, s, f)];
+        if (lim == 0) return out;
+        out = _collectOfferInfos(ids, off, lim);
     }
 
     /// @notice Returns the ID of maker offer for provided coordinates.
@@ -775,36 +845,106 @@ contract Swap2p is ReentrancyGuard {
 
     /// @notice Returns offer details by its ID.
     function getOfferById(bytes32 id) external view returns (OfferInfo memory info) {
-        OfferLocator storage loc = _offerLoc[id];
-        if (loc.maker == address(0)) revert OfferNotFound();
-        Offer storage o = offers[loc.token][loc.maker][loc.side][loc.fiat];
+        Offer storage o = _offers[id];
         if (o.ts == 0) revert OfferNotFound();
         info.id = id;
-        info.maker = loc.maker;
+        info.maker = o.maker;
         info.offer = o;
     }
 
     /// @notice Returns all offers for specified token/side/fiat triple.
     function listOffers(address token, Side s, FiatCode f) external view returns (OfferInfo[] memory out) {
-        address[] storage makers = _offerKeys[token][s][f];
-        uint len = makers.length;
+        bytes32[] storage ids = _marketOffers[_marketKey(token, s, f)];
+        uint len = ids.length;
+        if (len == 0) return out;
+        out = _collectOfferInfos(ids, 0, len);
+    }
+
+    /// @notice Returns the number of offers created by `maker`.
+    function getMakerOfferCount(address maker) external view returns (uint) {
+        return _makerOffers[maker].length;
+    }
+
+    /// @notice Returns paginated slice of offer IDs created by `maker`.
+    function getMakerOfferIds(address maker, uint off, uint lim)
+        external
+        view
+        returns (bytes32[] memory out)
+    {
+        bytes32[] storage arr = _makerOffers[maker];
+        uint len = arr.length;
+        if (off >= len || lim == 0) return out;
+        uint end = off + lim;
+        if (end < off || end > len) end = len;
+        uint slice = end - off;
+        out = new bytes32[](slice);
+        for (uint i; i < slice; i++) {
+            out[i] = arr[off + i];
+        }
+    }
+
+    /// @notice Returns paginated slice of offers created by `maker`.
+    function getMakerOffers(address maker, uint off, uint lim)
+        external
+        view
+        returns (OfferInfo[] memory out)
+    {
+        bytes32[] storage ids = _makerOffers[maker];
+        if (lim == 0) return out;
+        out = _collectOfferInfos(ids, off, lim);
+    }
+
+    function _collectOfferInfos(bytes32[] storage ids, uint off, uint lim)
+        private
+        view
+        returns (OfferInfo[] memory out)
+    {
+        uint len = ids.length;
+        if (off >= len || lim == 0) return out;
+        uint end = off + lim;
+        if (end < off || end > len) end = len;
         uint valid;
-        for (uint i; i < len; i++) {
-            bytes32 oid = _offerId[token][makers[i]][s][f];
-            Offer storage o = offers[token][makers[i]][s][f];
-            if (oid != bytes32(0) && o.ts != 0) {
-                valid++;
-            }
+        for (uint i = off; i < end; i++) {
+            bytes32 id = ids[i];
+            Offer storage o = _offers[id];
+            if (o.ts == 0) continue;
+            valid++;
         }
         out = new OfferInfo[](valid);
         uint pos;
-        for (uint i; i < len; i++) {
-            address maker = makers[i];
-            bytes32 oid = _offerId[token][maker][s][f];
-            Offer storage o = offers[token][maker][s][f];
-            if (oid == bytes32(0) || o.ts == 0) continue;
+        for (uint i = off; i < end; i++) {
+            bytes32 id = ids[i];
+            Offer storage o = _offers[id];
+            if (o.ts == 0) continue;
             Offer memory copy = o;
-            out[pos] = OfferInfo({id: oid, maker: maker, offer: copy});
+            out[pos] = OfferInfo({id: id, maker: o.maker, offer: copy});
+            pos++;
+        }
+    }
+
+    function _collectDealInfos(bytes32[] storage ids, uint off, uint lim)
+        private
+        view
+        returns (DealInfo[] memory out)
+    {
+        uint len = ids.length;
+        if (off >= len || lim == 0) return out;
+        uint end = off + lim;
+        if (end < off || end > len) end = len;
+        uint valid;
+        for (uint i = off; i < end; i++) {
+            Deal storage d = deals[ids[i]];
+            if (d.state == DealState.NONE) continue;
+            valid++;
+        }
+        out = new DealInfo[](valid);
+        uint pos;
+        for (uint i = off; i < end; i++) {
+            bytes32 id = ids[i];
+            Deal storage d = deals[id];
+            if (d.state == DealState.NONE) continue;
+            Deal memory copy = d;
+            out[pos] = DealInfo({id: id, deal: copy});
             pos++;
         }
     }
@@ -825,11 +965,21 @@ contract Swap2p is ReentrancyGuard {
         uint len = arr.length;
         if (off >= len) return out;
         uint end = off + lim;
-        if (end > len) end = len;
+        if (end < off || end > len) end = len;
         out = new bytes32[](end - off);
         for (uint i = off; i < end; i++) {
             out[i - off] = arr[i];
         }
+    }
+
+    /// @notice Returns paginated slice of open deals with details.
+    function getOpenDealsDetailed(address u, uint off, uint lim)
+        external
+        view
+        returns (DealInfo[] memory out)
+    {
+        if (lim == 0) return out;
+        out = _collectDealInfos(_openDeals[u], off, lim);
     }
 
     /// @notice Returns maker profiles for the provided addresses.
@@ -867,11 +1017,21 @@ contract Swap2p is ReentrancyGuard {
         uint len = arr.length;
         if (off >= len) return out;
         uint end = off + lim;
-        if (end > len) end = len;
+        if (end < off || end > len) end = len;
         out = new bytes32[](end - off);
         for (uint i = off; i < end; i++) {
             out[i - off] = arr[i];
         }
+    }
+
+    /// @notice Returns paginated slice of recent (closed) deals with details.
+    function getRecentDealsDetailed(address u, uint off, uint lim)
+        external
+        view
+        returns (DealInfo[] memory out)
+    {
+        if (lim == 0) return out;
+        out = _collectDealInfos(_recentDeals[u], off, lim);
     }
 
     /// @notice Deletes closed deals older than the provided age in hours (min 48h).
