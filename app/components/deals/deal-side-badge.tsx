@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 
 interface DealSideBadgeProps {
-  side: "BUY" | "SELL" | string;
+  side: string;
 }
 
 export function DealSideBadge({ side }: DealSideBadgeProps) {

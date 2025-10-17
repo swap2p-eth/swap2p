@@ -1,11 +1,12 @@
 import Jazzicon from "react-jazzicon";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { OfferRow } from "@/lib/mock-offers";
-import { TokenIcon } from "@/components/token-icon";
-import { FiatFlag } from "@/components/fiat-flag";
 import { RelativeTime } from "@/components/relative-time";
 import { formatAddressShort, seedFromAddress } from "@/lib/utils";
 import { DealSideBadge } from "@/components/deals/deal-side-badge";
+import { TokenAmountCell } from "@/components/deals/token-amount-cell";
+import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
+import { PriceCell } from "@/components/deals/price-cell";
 
 interface OfferColumnOptions {
   showMerchant?: boolean;
@@ -62,12 +63,7 @@ export function createOfferColumns(
       header: "Token",
       cell: ({ row }) => {
         const token = row.getValue<string>("token");
-        return (
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <TokenIcon symbol={token} size={20} />
-            {token}
-          </span>
-        );
+        return <TokenAmountCell token={token} amountLabel={token} />;
       },
       size: 80,
       meta: {
@@ -79,12 +75,7 @@ export function createOfferColumns(
       header: "Fiat",
       cell: ({ row }) => {
         const fiat = row.getValue<string>("fiat");
-        return (
-          <span className="flex items-center gap-2 text-sm">
-            <FiatFlag fiat={fiat} size={20} />
-            {fiat}
-          </span>
-        );
+        return <FiatAmountCell fiat={fiat} amountLabel={fiat} />;
       },
       size: 80,
       meta: {
@@ -97,15 +88,7 @@ export function createOfferColumns(
       cell: ({ row }) => {
         const fiat = (row.original as OfferRow).fiat;
         const price = Number(row.getValue("price"));
-        return (
-          <span className="flex items-center justify-end gap-2 text-sm font-medium text-foreground tabular-nums">
-            {price.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 3
-            })}
-            <span className="text-xs uppercase text-muted-foreground/80">{fiat}</span>
-          </span>
-        );
+        return <PriceCell price={price} fiat={fiat} fractionDigits={{ min: 2, max: 3 }} />;
       },
       meta: {
         align: "right",

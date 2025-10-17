@@ -2,13 +2,13 @@ import { ArrowUpDown, MessageCircle } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import type { DealRow } from "@/lib/mock-data";
-import { TokenIcon } from "@/components/token-icon";
-import { FiatFlag } from "@/components/fiat-flag";
 import { RelativeTime } from "@/components/relative-time";
 import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
 import { createMockRng } from "@/lib/mock-clock";
 import { DealSideBadge } from "@/components/deals/deal-side-badge";
 import { Badge } from "@/components/ui/badge";
+import { TokenAmountCell } from "@/components/deals/token-amount-cell";
+import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
 
 function getFiatAmount(deal: DealRow): number | null {
   const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
@@ -46,16 +46,14 @@ export const dealColumns: ColumnDef<DealRow>[] = [
     accessorKey: "amount",
     header: "Amount",
     cell: ({ row }) => (
-      <span className="flex items-center gap-2 font-medium">
-        <TokenIcon symbol={(row.original as DealRow).token} size={18} />
-        {Number(row.getValue("amount")).toLocaleString("en-US", {
+      <TokenAmountCell
+        token={(row.original as DealRow).token}
+        amountLabel={Number(row.getValue("amount")).toLocaleString("en-US", {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2
         })}
-        <span className="text-xs uppercase text-muted-foreground/80">
-          {(row.original as DealRow).token}
-        </span>
-      </span>
+        mutedToken
+      />
     )
   },
   {
@@ -65,22 +63,18 @@ export const dealColumns: ColumnDef<DealRow>[] = [
       const fiat = row.getValue<string>("fiatCode");
       const deal = row.original as DealRow;
       const fiatAmount = getFiatAmount(deal);
-      return (
-        <span className="flex items-center gap-2 text-sm font-medium">
-          <FiatFlag fiat={fiat} size={18} />
-          {fiatAmount ? (
-            <span className="flex items-center gap-2">
-              {fiatAmount.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
-              <span className="text-xs uppercase text-muted-foreground/80">{fiat}</span>
-            </span>
-          ) : (
-            fiat
-          )}
-        </span>
-      );
+      if (fiatAmount) {
+        return (
+          <FiatAmountCell
+            fiat={fiat}
+            amountLabel={fiatAmount.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })}
+          />
+        );
+      }
+      return <FiatAmountCell fiat={fiat} amountLabel="—" />;
     }
   },
   {
