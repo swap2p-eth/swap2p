@@ -206,7 +206,7 @@ export function DataTable<TData, TValue>({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-full"
+            className="h-8 w-8 rounded-full text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setPage(page - 1)}
             disabled={page === 1 || isLoading}
           >
@@ -216,11 +216,13 @@ export function DataTable<TData, TValue>({
             <Button
               key={pageNumber}
               type="button"
-              variant={pageNumber === page ? "default" : "ghost"}
+              variant="ghost"
               size="icon"
               className={cn(
-                "h-9 w-9 rounded-full",
-                pageNumber === page ? "shadow-[0_8px_20px_-12px_rgba(37,99,235,0.8)]" : ""
+                "h-8 w-8 rounded-full text-xs hover:bg-muted/60 hover:text-foreground",
+                pageNumber === page
+                  ? "font-semibold text-foreground"
+                  : "text-muted-foreground font-normal"
               )}
               onClick={() => setPage(pageNumber)}
               disabled={isLoading}
@@ -232,7 +234,7 @@ export function DataTable<TData, TValue>({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-full"
+            className="h-8 w-8 rounded-full text-xs text-muted-foreground hover:text-foreground"
             onClick={() => setPage(page + 1)}
             disabled={page === totalPages || isLoading}
           >
