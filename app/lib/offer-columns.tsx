@@ -1,3 +1,4 @@
+import Jazzicon from "react-jazzicon";
 import { ShoppingBasket } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { OfferRow } from "@/lib/mock-offers";
@@ -6,6 +7,30 @@ import { Button } from "@/components/ui/button";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 import { RelativeTime } from "@/components/relative-time";
+
+function formatMakerAddress(address?: string) {
+  if (!address) {
+    return "????..????";
+  }
+  const normalized = address.replace(/^0x/i, "");
+  if (normalized.length <= 8) {
+    return normalized.toUpperCase();
+  }
+  const start = normalized.slice(0, 4).toUpperCase();
+  const end = normalized.slice(-4).toUpperCase();
+  return `${start}..${end}`;
+}
+
+function createSeedFromAddress(address?: string) {
+  // Jazzicon expects a numeric seed; mock addresses can include non-hex characters.
+  if (!address) return 0;
+  let hash = 0;
+  for (let index = 0; index < address.length; index += 1) {
+    hash = (hash << 5) - hash + address.charCodeAt(index);
+    hash |= 0;
+  }
+  return hash >>> 0;
+}
 
 export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): ColumnDef<OfferRow>[] {
   const columns: ColumnDef<OfferRow>[] = [
@@ -16,6 +41,20 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
         <span className="font-mono text-xs text-muted-foreground">#{row.getValue("id")}</span>
       ),
       size: 60
+    },
+    {
+      accessorKey: "maker",
+      header: "Maker",
+      cell: ({ row }) => {
+        const maker = row.getValue<string>("maker");
+        return (
+          <span className="flex items-center gap-2 text-sm font-medium">
+            <Jazzicon diameter={20} seed={createSeedFromAddress(maker)} />
+            {formatMakerAddress(maker)}
+          </span>
+        );
+      },
+      size: 140
     },
     {
       accessorKey: "side",
