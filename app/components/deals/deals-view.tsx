@@ -29,8 +29,10 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
   );
 
   const filteredDeals = React.useMemo(() => {
-    const activeDeals = userDeals.filter(deal => deal.state !== "PAID");
-    const closedDeals = userDeals.filter(deal => deal.state === "PAID");
+    const activeStates = new Set(["REQUESTED", "ACCEPTED"]);
+    const closedStates = new Set(["PAID", "RELEASED", "CANCELED"]);
+    const activeDeals = userDeals.filter(deal => activeStates.has(deal.state));
+    const closedDeals = userDeals.filter(deal => closedStates.has(deal.state));
     const source = status === "closed" ? closedDeals : activeDeals;
     return source.slice(0, 5);
   }, [userDeals, status]);

@@ -1,17 +1,19 @@
 "use client";
 
-import { ArrowUpRight, Coins, Wallet } from "lucide-react";
+import Jazzicon from "react-jazzicon";
 
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
-import { cn } from "@/lib/utils";
+import { cn, formatAddressShort, seedFromAddress } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { useDeals } from "./deals-provider";
 import { RelativeTime } from "@/components/relative-time";
+import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
+import { createMockRng } from "@/lib/mock-clock";
 
 const sideCopy = {
   BUY: {
@@ -61,6 +63,28 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   }
 
   const summary = sideCopy[deal.side];
+  const counterpartyValue = formatAddressShort(deal.taker);
+  const counterpartySeed = seedFromAddress(deal.taker);
+  const isMaker = deal.maker.toLowerCase() === CURRENT_USER_ADDRESS.toLowerCase();
+  const userSide = isMaker ? deal.side : deal.side === "SELL" ? "BUY" : "SELL";
+  const yourSideLabel = userSide === "SELL" ? "You SELL crypto" : "You BUY crypto";
+  const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
+  const fiatConfig = mockFiatCurrencies.find(config => config.code === deal.fiatCode);
+  const varianceSample = createMockRng(`deal-overview:${deal.id}`)();
+  const pricePerToken = tokenConfig && fiatConfig ? computeTokenPriceInFiat(tokenConfig, fiatConfig, varianceSample) : null;
+  const fiatAmount = pricePerToken ? deal.amount * pricePerToken : null;
+  const fiatAmountLabel = fiatAmount
+    ? `${fiatAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${deal.fiatCode}`
+    : `— ${deal.fiatCode}`;
+  const priceLabel = pricePerToken
+    ? `${pricePerToken.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${deal.fiatCode} / ${deal.token}`
+    : "—";
+
+  const tokenDecimals = tokenConfig?.decimals ?? 4;
+  const tokenAmountLabel = `${deal.amount.toLocaleString("en-US", {
+    minimumFractionDigits: Math.min(2, tokenDecimals),
+    maximumFractionDigits: tokenDecimals
+  })} ${deal.token}`;
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
@@ -73,59 +97,65 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
       />
 
       <DealSummaryCard
-        title="Settlement overview"
-        description={summary.tone}
+        title="Deal overview"
+        description={<p className="text-sm text-muted-foreground">{summary.tone}</p>}
         pills={[
           {
-            id: "amount",
-            className: "bg-primary/10 text-primary",
+            id: "counterparty",
+            className:
+              "bg-transparent px-0 py-0 shadow-none text-secondary-foreground flex flex-col items-end gap-1 text-right",
             content: (
               <>
-                <Coins className="h-4 w-4" />
-                {deal.amount.toLocaleString("en-US")}
-                <TokenIcon symbol={deal.token} size={18} className="rounded-full bg-white" />
-                <span className="text-xs uppercase">{deal.token}</span>
-              </>
-            )
-          },
-          {
-            id: "maker",
-            className: "bg-secondary text-secondary-foreground",
-            content: (
-              <>
-                <Wallet className="h-4 w-4" /> Maker: {deal.maker.slice(0, 6)}…
-              </>
-            )
-          },
-          {
-            id: "taker",
-            className: "bg-muted/70",
-            content: (
-              <>
-                <ArrowUpRight className="h-4 w-4" /> Taker: {deal.taker.slice(0, 6)}…
+                <span className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground/70">
+                  Counterparty
+                </span>
+                <span className="flex items-center justify-end gap-2 text-sm font-medium text-foreground">
+                  <Jazzicon diameter={20} seed={counterpartySeed} />
+                  {counterpartyValue}
+                </span>
               </>
             )
           }
         ]}
         metaItems={[
-          { id: "side", label: "Side", value: deal.side },
-          { id: "token", label: "Token", value: deal.token },
+          { id: "side", label: "Your Side", value: yourSideLabel },
           {
-            id: "fiat",
-            label: "Fiat",
+            id: "token",
+            label: "Token",
             value: (
-              <span className="flex items-center gap-2">
-                <FiatFlag fiat={deal.fiatCode} size={18} />
-                {deal.fiatCode}
+              <span className="flex items-center gap-3">
+                <TokenIcon symbol={deal.token} size={18} />
+                <span className="text-sm font-medium text-foreground">{tokenAmountLabel}</span>
               </span>
             )
           },
           {
-            id: "updated",
-            label: "Last update",
-            value: <RelativeTime value={deal.updatedAt} className="text-sm text-muted-foreground" />
+            id: "fiat",
+            label: "Fiat",
+            value: (
+              <span className="flex items-center gap-3">
+                <FiatFlag fiat={deal.fiatCode} size={18} />
+                <span className="text-sm font-medium text-foreground">≈ {fiatAmountLabel}</span>
+              </span>
+            )
+          },
+          {
+            id: "price",
+            label: "Price",
+            value: priceLabel
           }
         ]}
+        extraContent={
+          <div className="flex flex-col gap-2">
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Deal context</span>
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+              <span>
+                Last update: <RelativeTime value={deal.updatedAt} className="text-sm text-muted-foreground" />
+              </span>
+              <span>Counterparty: {formatAddressShort(deal.taker)}</span>
+            </div>
+          </div>
+        }
       />
 
       <div className="rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">

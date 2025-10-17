@@ -20,20 +20,6 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       size: 60
     },
     {
-      accessorKey: "maker",
-      header: "Maker",
-      cell: ({ row }) => {
-        const maker = row.getValue<string>("maker");
-        return (
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <Jazzicon diameter={20} seed={seedFromAddress(maker)} />
-            {formatAddressShort(maker)}
-          </span>
-        );
-      },
-      size: 140
-    },
-    {
       accessorKey: "side",
       header: "Side",
       cell: ({ row }) => {
@@ -84,14 +70,19 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
     {
       accessorKey: "price",
       header: "Price",
-      cell: ({ row }) => (
-        <span className="block text-right text-sm font-medium text-foreground tabular-nums">
-          {Number(row.getValue("price")).toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 3
-          })}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const fiat = (row.original as OfferRow).fiat;
+        const price = Number(row.getValue("price"));
+        return (
+          <span className="flex items-center justify-end gap-2 text-sm font-medium text-foreground tabular-nums">
+            {price.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 3
+            })}
+            <span className="text-xs uppercase text-muted-foreground/80">{fiat}</span>
+          </span>
+        );
+      },
       meta: {
         align: "right",
         headerClassName: "text-center",

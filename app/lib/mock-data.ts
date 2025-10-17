@@ -3,7 +3,7 @@ import { createMockRng, MOCK_NOW_MS } from "@/lib/mock-clock";
 import { mockFiatCurrencies, mockTokenConfigs, sampleAmountInRange } from "@/lib/mock-market";
 
 export type DealSide = "BUY" | "SELL";
-export type DealState = "REQUESTED" | "ACCEPTED" | "PAID";
+export type DealState = "REQUESTED" | "ACCEPTED" | "PAID" | "RELEASED" | "CANCELED";
 
 export interface DealRow {
   id: number;
@@ -18,7 +18,7 @@ export interface DealRow {
   token: string;
 }
 
-const stateCycle: DealState[] = ["REQUESTED", "ACCEPTED", "PAID"];
+const stateCycle: DealState[] = ["REQUESTED", "ACCEPTED", "PAID", "RELEASED", "CANCELED"];
 const fiatCycle = mockFiatCurrencies.map((fiat) => fiat.code);
 const tokenCycle = mockTokenConfigs.map((token) => token.symbol);
 const MIN_OFFSET_SECONDS = 5;

@@ -12,7 +12,12 @@ const badgeVariants = cva(
         default: "bg-primary/90 text-primary-foreground",
         secondary: "bg-secondary text-secondary-foreground",
         destructive: "bg-destructive text-destructive-foreground",
-        outline: "bg-muted/60 text-muted-foreground"
+        outline: "bg-muted/60 text-muted-foreground",
+        warning: "bg-orange-500/90 text-white",
+        info: "bg-sky-500/90 text-white",
+        success: "bg-emerald-500/90 text-white",
+        muted: "bg-slate-400/80 text-white",
+        purple: "bg-purple-500/90 text-white"
       }
     },
     defaultVariants: {

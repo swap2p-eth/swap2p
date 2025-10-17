@@ -19,6 +19,20 @@ export function DealHeader({
   subtitle,
   badge
 }: DealHeaderProps) {
+  const normalizedBadge = badge?.toLowerCase() ?? "";
+  const badgeVariant =
+    normalizedBadge === "requested"
+      ? "warning"
+      : normalizedBadge === "accepted"
+        ? "info"
+        : normalizedBadge === "paid"
+          ? "purple"
+          : normalizedBadge === "released"
+            ? "success"
+            : normalizedBadge === "canceled"
+              ? "muted"
+              : "outline";
+  const badgeLabel = badge?.toUpperCase();
   return (
     <div className="flex flex-col gap-3">
       <Link
@@ -38,8 +52,11 @@ export function DealHeader({
           {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
         {badge ? (
-          <Badge variant="outline" className="rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em]">
-            {badge}
+          <Badge
+            variant={badgeVariant as any}
+            className="rounded-full px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.2em]"
+          >
+            {badgeLabel}
           </Badge>
         ) : null}
       </div>
