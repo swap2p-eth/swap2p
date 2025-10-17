@@ -14,6 +14,7 @@ import { useDeals } from "./deals-provider";
 import { RelativeTime } from "@/components/relative-time";
 import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
 import { createMockRng } from "@/lib/mock-clock";
+import { DealSideBadge } from "@/components/deals/deal-side-badge";
 import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
 
 const sideCopy = {
@@ -68,7 +69,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const counterpartySeed = seedFromAddress(deal.taker);
   const isMaker = deal.maker.toLowerCase() === CURRENT_USER_ADDRESS.toLowerCase();
   const userSide = isMaker ? deal.side : deal.side === "SELL" ? "BUY" : "SELL";
-  const yourSideLabel = userSide === "SELL" ? "You SELL crypto" : "You BUY crypto";
+  const yourSideLabel = userSide.toUpperCase();
   const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
   const fiatConfig = mockFiatCurrencies.find(config => config.code === deal.fiatCode);
   const varianceSample = createMockRng(`deal-overview:${deal.id}`)();
@@ -119,7 +120,16 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
           }
         ]}
         metaItems={[
-          { id: "side", label: "Your Side", value: yourSideLabel },
+          {
+            id: "side",
+            label: "Your Side",
+            value: (
+              <span className="flex items-center gap-2 text-sm text-foreground">
+                <DealSideBadge side={userSide} />
+                <span className="text-muted-foreground/80">You {userSide === "SELL" ? "sell" : "buy"} crypto</span>
+              </span>
+            )
+          },
           {
             id: "token",
             label: "Token",

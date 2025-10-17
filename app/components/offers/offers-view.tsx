@@ -136,9 +136,10 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
     const trimmedAmount = amount.trim();
     const amountValue = trimmedAmount === "" ? null : Number(trimmedAmount);
     const hasAmountFilter = amountValue !== null && !Number.isNaN(amountValue);
+    const merchantSide = side === "BUY" ? "SELL" : "BUY";
 
     return offers.filter(offer => {
-      if (offer.side !== side) return false;
+      if (offer.side !== merchantSide) return false;
       if (token !== ANY_OPTION && offer.token !== token) return false;
       if (offer.fiat !== fiat) return false;
       if (paymentMethod !== ANY_OPTION) {
