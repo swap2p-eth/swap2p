@@ -1,15 +1,22 @@
 import Jazzicon from "react-jazzicon";
-import { ShoppingBasket } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { OfferRow } from "@/lib/mock-offers";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 import { RelativeTime } from "@/components/relative-time";
 import { formatAddressShort, seedFromAddress } from "@/lib/utils";
+import { DealSideBadge } from "@/components/deals/deal-side-badge";
 
-export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): ColumnDef<OfferRow>[] {
+interface OfferColumnOptions {
+  showMerchant?: boolean;
+}
+
+export function createOfferColumns(
+  onStartDeal?: (offer: OfferRow) => void,
+  options: OfferColumnOptions = {}
+): ColumnDef<OfferRow>[] {
+  const { showMerchant = false } = options;
+
   const columns: ColumnDef<OfferRow>[] = [
     {
       accessorKey: "id",
@@ -19,12 +26,29 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       ),
       size: 60
     },
+    ...(showMerchant
+      ? ([
+          {
+            accessorKey: "maker",
+            header: "Merchant",
+            cell: ({ row }) => {
+              const maker = row.getValue<string>("maker");
+              return (
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Jazzicon diameter={20} seed={seedFromAddress(maker)} />
+                  {formatAddressShort(maker)}
+                </span>
+              );
+            },
+            size: 160
+          }
+        ] as ColumnDef<OfferRow>[]) : []),
     {
       accessorKey: "side",
       header: "Side",
       cell: ({ row }) => {
         const side = row.getValue<string>("side");
-        return <Badge variant={side === "BUY" ? "secondary" : "default"}>{side}</Badge>;
+        return <DealSideBadge side={side} />;
       },
       size: 80,
       meta: {
@@ -150,31 +174,6 @@ export function createOfferColumns(onStartDeal?: (offer: OfferRow) => void): Col
       }
     }
   ];
-
-  if (onStartDeal) {
-    columns.push({
-      id: "actions",
-      header: "",
-      cell: ({ row }) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground"
-          aria-label="Create deal"
-          onClick={event => {
-            event.stopPropagation();
-            onStartDeal(row.original);
-          }}
-        >
-          <ShoppingBasket className="h-4 w-4" />
-        </Button>
-      ),
-      meta: {
-        headerClassName: "text-center"
-      }
-    });
-  }
 
   return columns;
 }

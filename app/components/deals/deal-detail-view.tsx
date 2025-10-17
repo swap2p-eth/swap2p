@@ -14,6 +14,7 @@ import { useDeals } from "./deals-provider";
 import { RelativeTime } from "@/components/relative-time";
 import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
 import { createMockRng } from "@/lib/mock-clock";
+import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
 
 const sideCopy = {
   BUY: {

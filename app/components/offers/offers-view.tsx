@@ -94,14 +94,14 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
 
   const columns = React.useMemo(() => {
     const hiddenAccessorKeys = new Set(["side", "fiat"]);
-    return createOfferColumns().filter(column => {
+    return createOfferColumns(onStartDeal, { showMerchant: true }).filter(column => {
       const accessorKey = column.accessorKey;
       if (typeof accessorKey === "string" && hiddenAccessorKeys.has(accessorKey)) {
         return false;
       }
       return true;
     });
-  }, []);
+  }, [onStartDeal]);
   const paymentMethodOptions = React.useMemo(() => {
     const options = new Set<string>();
     for (const offer of offers) {

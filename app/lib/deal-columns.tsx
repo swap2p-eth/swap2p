@@ -1,6 +1,5 @@
 import { ArrowUpDown, MessageCircle } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { DealRow } from "@/lib/mock-data";
 import { TokenIcon } from "@/components/token-icon";
@@ -8,6 +7,8 @@ import { FiatFlag } from "@/components/fiat-flag";
 import { RelativeTime } from "@/components/relative-time";
 import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
 import { createMockRng } from "@/lib/mock-clock";
+import { DealSideBadge } from "@/components/deals/deal-side-badge";
+import { Badge } from "@/components/ui/badge";
 
 function getFiatAmount(deal: DealRow): number | null {
   const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
@@ -38,8 +39,7 @@ export const dealColumns: ColumnDef<DealRow>[] = [
     header: "Side",
     cell: ({ row }) => {
       const side = row.getValue<string>("side");
-      const variant = side === "BUY" ? "default" : "secondary";
-      return <Badge variant={variant}>{side}</Badge>;
+      return <DealSideBadge side={side} />;
     }
   },
   {
