@@ -11,14 +11,32 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
         swap.setOnline(true);
     }
 
-    function test_Requirements_SetterAndOffer() public {
-        // default empty
-        assertEq(bytes(_makerProfile(maker).requirements).length, 0);
-
+    function test_OfferRequirementsStoredPerOffer() public {
         vm.prank(maker);
-        swap.setRequirements("KYC + selfie");
-        assertEq(_makerProfile(maker).requirements, "KYC + selfie");
+        swap.maker_makeOffer(
+            address(token),
+            Swap2p.Side.SELL,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            1_000e18,
+            1e18,
+            500e18,
+            Swap2p.MakerOfferTexts({
+                paymentMethods: "wire",
+                requirements: "KYC + selfie",
+                comment: ""
+            })
+        );
+        bytes32 usdOffer = _offerId(
+            address(token),
+            maker,
+            Swap2p.Side.SELL,
+            Swap2p.FiatCode.wrap(840)
+        );
+        Swap2p.OfferInfo memory usdInfo = swap.getOfferById(usdOffer);
+        assertEq(usdInfo.offer.requirements, "KYC + selfie");
 
+        // updating with empty requirements clears the field for this offer
         vm.prank(maker);
         swap.maker_makeOffer(
             address(token),
@@ -34,25 +52,36 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
                 comment: ""
             })
         );
-        // empty requirements keep previous value
-        assertEq(_makerProfile(maker).requirements, "KYC + selfie");
+        usdInfo = swap.getOfferById(usdOffer);
+        assertEq(usdInfo.offer.requirements, "");
 
+        // another market keeps its own requirements string
         vm.prank(maker);
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840),
+            Swap2p.FiatCode.wrap(978),
             100e18,
             1_000e18,
             1e18,
             500e18,
             Swap2p.MakerOfferTexts({
-                paymentMethods: "wire",
+                paymentMethods: "sepa",
                 requirements: "passport only",
                 comment: ""
             })
         );
-        assertEq(_makerProfile(maker).requirements, "passport only");
+        bytes32 eurOffer = _offerId(
+            address(token),
+            maker,
+            Swap2p.Side.SELL,
+            Swap2p.FiatCode.wrap(978)
+        );
+        Swap2p.OfferInfo memory eurInfo = swap.getOfferById(eurOffer);
+        assertEq(eurInfo.offer.requirements, "passport only");
+        // original offer remains cleared
+        usdInfo = swap.getOfferById(usdOffer);
+        assertEq(usdInfo.offer.requirements, "");
     }
 
     function test_Nickname_Set_UniqueAndClear() public {

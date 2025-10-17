@@ -17,7 +17,6 @@ import {
   type ReleaseDealArgs,
   type SendMessageArgs,
   type SetOnlineArgs,
-  type SetRequirementsArgs,
   type SetNicknameArgs,
   type Swap2pAdapter,
   type TakerRequestOfferArgs,
@@ -80,7 +79,6 @@ const cloneOffer = (offer: Offer): Offer => ({
 const makeEmptyProfile = (): MakerProfile => ({
   online: false,
   lastActivity: 0,
-  requirements: "",
   nickname: "",
   dealsCancelled: 0,
   dealsCompleted: 0,
@@ -135,7 +133,6 @@ const buildInitialState = (): MockState => {
     makerInfo.set(address, {
       online: seed.online,
       lastActivity: applyHoursAgo(seed.lastActiveHoursAgo),
-      requirements: seed.requirements ?? "",
       nickname: seed.nickname ?? "",
       dealsCancelled: seed.dealsCancelled ?? 0,
       dealsCompleted: seed.dealsCompleted ?? 0,
@@ -165,6 +162,7 @@ const buildInitialState = (): MockState => {
       side: seed.side,
       token: key.token,
       paymentMethods: seed.paymentMethods,
+      requirements: seed.requirements ?? "",
       updatedAt: applyHoursAgo(seed.updatedHoursAgo),
       maker: key.maker,
     };
@@ -405,14 +403,6 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     return this.nextHash();
   }
 
-  async setRequirements({ account, requirements }: SetRequirementsArgs) {
-    const normalized = getAddress(account);
-    const profile = this.ensureMakerInfo(normalized);
-    profile.requirements = requirements;
-    this.touchActivity(normalized);
-    return this.nextHash();
-  }
-
   async setNickname({ account, nickname }: SetNicknameArgs) {
     const normalized = getAddress(account);
     const desired = nickname.trim();
@@ -470,15 +460,12 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
       side,
       token,
       paymentMethods,
+      requirements: requirements ?? "",
       updatedAt: now(),
       maker,
     };
     this.state.offers.set(makeOfferKey(key), updated);
     addMakerIndex(this.state.offerIndex, key);
-    if (requirements && requirements.length !== 0) {
-      const profile = this.ensureMakerInfo(maker, false);
-      profile.requirements = requirements;
-    }
     this.touchActivity(maker);
     void comment;
     return this.nextHash();

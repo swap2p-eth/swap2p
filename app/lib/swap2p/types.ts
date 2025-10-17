@@ -38,6 +38,7 @@ export type Offer = {
   side: SwapSide;
   token: Address;
   paymentMethods: string;
+  requirements: string;
   updatedAt: number;
   maker: Address;
 };
@@ -64,7 +65,6 @@ export type Deal = {
 export type MakerProfile = {
   online: boolean;
   lastActivity: number;
-  requirements: string;
   nickname: string;
   dealsCancelled: number;
   dealsCompleted: number;
@@ -126,11 +126,6 @@ export type CancelDealArgs = {
   reason?: string;
 };
 
-export type SetRequirementsArgs = {
-  account: Address;
-  requirements: string;
-};
-
 export type SetNicknameArgs = {
   account: Address;
   nickname: string;
@@ -177,7 +172,6 @@ export interface Swap2pAdapter {
   getMakerProfile(address: Address): Promise<MakerProfile | null>;
   getMakerProfiles(addresses: Address[]): Promise<MakerProfile[]>;
   setOnline(args: SetOnlineArgs): Promise<Swap2pWriteResult>;
-  setRequirements(args: SetRequirementsArgs): Promise<Swap2pWriteResult>;
   setNickname(args: SetNicknameArgs): Promise<Swap2pWriteResult>;
   makerMakeOffer(args: MakerMakeOfferArgs): Promise<Swap2pWriteResult>;
   makerDeleteOffer(args: MakerDeleteOfferArgs): Promise<Swap2pWriteResult>;

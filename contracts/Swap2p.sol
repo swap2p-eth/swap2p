@@ -70,6 +70,7 @@ contract Swap2p is ReentrancyGuard {
         address  token;               // ERC20 token address
         address  maker;
         string   paymentMethods;      // supported fiat payment systems/banks
+        string   requirements;        // taker requirements text
     }
 
     /// @notice Offer details returned from view helpers.
@@ -108,7 +109,6 @@ contract Swap2p is ReentrancyGuard {
     struct MakerProfile {
         bool   online;
         uint40 lastActivity;          // last interaction timestamp
-        string requirements;          // taker requirements text
         string nickname;              // unique public nickname
         int32  dealsCancelled;        // self-canceled deals count
         int32  dealsCompleted;        // completed deals count
@@ -402,12 +402,6 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
-    function _updateRequirements(address maker, string memory req) private {
-        if (bytes(req).length != 0) {
-            makerInfo[maker].requirements = req;
-        }
-    }
-
     // ────────────────────────────────────────────────────────────────────────
     // Maker profile
     /// @notice Sets caller's online status for availability checks.
@@ -415,12 +409,6 @@ contract Swap2p is ReentrancyGuard {
     function setOnline(bool on) external touchActivity {
         makerInfo[msg.sender].online = on;
         emit MakerOnline(msg.sender, on);
-    }
-
-    /// @notice Updates maker requirements for the caller.
-    /// @param req New requirements text.
-    function setRequirements(string calldata req) external touchActivity {
-        makerInfo[msg.sender].requirements = req;
     }
 
     /// @notice Updates caller's public nickname. Empty string clears nickname.
@@ -506,14 +494,13 @@ contract Swap2p is ReentrancyGuard {
         o.token = token;
         o.maker = maker;
         o.paymentMethods = texts.paymentMethods;
+        o.requirements = texts.requirements;
 
         bytes32 marketKey = _marketKey(token, s, f);
         if (isNew) {
             _addMarketOffer(marketKey, oid);
             _addMakerOffer(maker, oid);
         }
-
-        _updateRequirements(maker, texts.requirements);
 
         emit OfferUpsert(oid, token, maker, f, o, texts.comment);
     }
@@ -994,7 +981,6 @@ contract Swap2p is ReentrancyGuard {
             MakerProfile storage src = makerInfo[accounts[i]];
             profiles[i].online = src.online;
             profiles[i].lastActivity = src.lastActivity;
-            profiles[i].requirements = src.requirements;
             profiles[i].nickname = src.nickname;
             profiles[i].dealsCancelled = src.dealsCancelled;
             profiles[i].dealsCompleted = src.dealsCompleted;

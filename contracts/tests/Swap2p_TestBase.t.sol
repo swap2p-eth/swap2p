@@ -57,7 +57,6 @@ contract Swap2p_TestBase is Test {
         return profiles.length != 0 ? profiles[0] : Swap2p.MakerProfile({
             online: false,
             lastActivity: 0,
-            requirements: "",
             nickname: "",
             dealsCancelled: 0,
             dealsCompleted: 0

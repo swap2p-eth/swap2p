@@ -29,7 +29,6 @@ import type {
   ReleaseDealArgs,
   SendMessageArgs,
   SetOnlineArgs,
-  SetRequirementsArgs,
   SetNicknameArgs,
   Swap2pAdapter,
   TakerRequestOfferArgs,
@@ -117,6 +116,7 @@ const mapOffer = (key: OfferKey, raw: any): Offer | null => {
     side: toSide(raw.side ?? key.side),
     token: getAddress(raw.token ?? key.token),
     paymentMethods: raw.paymentMethods ?? "",
+    requirements: raw.requirements !== undefined ? String(raw.requirements) : "",
     updatedAt: toNumber(raw.ts ?? 0),
     maker: key.maker,
   };
@@ -143,15 +143,13 @@ const mapDeal = (id: bigint, raw: any): Deal | null => {
 
 const mapMakerProfile = (_address: Address, raw: any): MakerProfile | null => {
   if (!raw) return null;
-  const requirements = raw.requirements ?? raw[2];
-  const nickname = raw.nickname ?? raw[3];
+  const nickname = raw.nickname ?? raw[2];
   return {
     online: Boolean(raw[0] ?? raw.online ?? false),
     lastActivity: toNumber(raw[1] ?? raw.lastActivity ?? 0),
-    requirements: requirements !== undefined ? String(requirements) : "",
     nickname: nickname !== undefined ? String(nickname) : "",
-    dealsCancelled: Number(raw[4] ?? raw.dealsCancelled ?? 0),
-    dealsCompleted: Number(raw[5] ?? raw.dealsCompleted ?? 0),
+    dealsCancelled: Number(raw[3] ?? raw.dealsCancelled ?? 0),
+    dealsCompleted: Number(raw[4] ?? raw.dealsCompleted ?? 0),
   };
 };
 
@@ -319,7 +317,6 @@ export const createSwap2pViemAdapter = (
         return addresses.map(() => ({
           online: false,
           lastActivity: 0,
-          requirements: "",
           nickname: "",
           dealsCancelled: 0,
           dealsCompleted: 0,
@@ -329,7 +326,6 @@ export const createSwap2pViemAdapter = (
         mapMakerProfile(addr, raw[index]) ?? {
           online: false,
           lastActivity: 0,
-          requirements: "",
           nickname: "",
           dealsCancelled: 0,
           dealsCompleted: 0,
@@ -349,24 +345,6 @@ export const createSwap2pViemAdapter = (
         address,
         "setOnline",
         [online] as const,
-        sender,
-      );
-    },
-
-    async setRequirements({ account, requirements }: SetRequirementsArgs) {
-      const sender = withAccount(account);
-      const signer = ensureWalletClient(walletClient, "setRequirements");
-      if (!sender) {
-        throw new Error(
-          "Swap2pViemAdapter: account is required for setRequirements",
-        );
-      }
-      return simulateAndWrite(
-        signer,
-        publicClient,
-        address,
-        "setRequirements",
-        [requirements] as const,
         sender,
       );
     },

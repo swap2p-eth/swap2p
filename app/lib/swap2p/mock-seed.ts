@@ -11,6 +11,7 @@ export type MockOfferSeed = {
   reserve: bigint;
   priceFiatPerToken: bigint;
   paymentMethods: string;
+  requirements?: string;
   updatedHoursAgo: number;
 };
 
@@ -98,6 +99,7 @@ export const mockOffers: MockOfferSeed[] = [
     reserve: 8_000n * 10n ** 6n,
     priceFiatPerToken: 100_500n,
     paymentMethods: "Wise, Revolut",
+    requirements: "ID + selfie",
     updatedHoursAgo: 2,
   },
   {
@@ -110,6 +112,7 @@ export const mockOffers: MockOfferSeed[] = [
     reserve: 3_200n * 10n ** 6n,
     priceFiatPerToken: 99_800n,
     paymentMethods: "SEPA Instant, Revolut Business",
+    requirements: "ID + selfie",
     updatedHoursAgo: 5,
   },
   {
@@ -122,6 +125,7 @@ export const mockOffers: MockOfferSeed[] = [
     reserve: 10_000n * 10n ** 6n,
     priceFiatPerToken: 502_000n,
     paymentMethods: "PIX, TED",
+    requirements: "Video call",
     updatedHoursAgo: 8,
   },
   {
@@ -134,6 +138,7 @@ export const mockOffers: MockOfferSeed[] = [
     reserve: 6_500n * 10n ** 18n,
     priceFiatPerToken: 100_000n,
     paymentMethods: "ACH, Zelle",
+    requirements: "",
     updatedHoursAgo: 26,
   },
 ];
