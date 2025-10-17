@@ -1,20 +1,17 @@
 "use client";
 
-import Jazzicon from "react-jazzicon";
-
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FiatFlag } from "@/components/fiat-flag";
-import { TokenIcon } from "@/components/token-icon";
-import { cn, formatAddressShort, seedFromAddress } from "@/lib/utils";
+import { cn, formatAddressShort } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { useDeals } from "./deals-provider";
 import { RelativeTime } from "@/components/relative-time";
 import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
 import { createMockRng } from "@/lib/mock-clock";
-import { DealSideBadge } from "@/components/deals/deal-side-badge";
+import { ParticipantPill } from "@/components/deals/participant-pill";
+import { createFiatMetaItem, createSideMetaItem, createTokenMetaItem } from "@/components/deals/summary-meta";
 import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
 
 const sideCopy = {
@@ -65,11 +62,9 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   }
 
   const summary = sideCopy[deal.side];
-  const counterpartyValue = formatAddressShort(deal.taker);
-  const counterpartySeed = seedFromAddress(deal.taker);
   const isMaker = deal.maker.toLowerCase() === CURRENT_USER_ADDRESS.toLowerCase();
-  const userSide = isMaker ? deal.side : deal.side === "SELL" ? "BUY" : "SELL";
-  const yourSideLabel = userSide.toUpperCase();
+  const userSide = (isMaker ? deal.side : deal.side === "SELL" ? "BUY" : "SELL").toUpperCase();
+  const userAction = userSide === "SELL" ? "sell" : "buy";
   const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
   const fiatConfig = mockFiatCurrencies.find(config => config.code === deal.fiatCode);
   const varianceSample = createMockRng(`deal-overview:${deal.id}`)();
@@ -88,6 +83,20 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     maximumFractionDigits: tokenDecimals
   })} ${deal.token}`;
 
+  const fiatAmountDisplay = fiatAmount ? `≈ ${fiatAmountLabel}` : fiatAmountLabel;
+
+  const metaItems = [
+    createSideMetaItem({
+      id: "your-side",
+      label: "Your Side",
+      side: userSide,
+      description: `You ${userAction} crypto`
+    }),
+    createTokenMetaItem({ token: deal.token, amountLabel: tokenAmountLabel }),
+    createFiatMetaItem({ fiat: deal.fiatCode, amountLabel: fiatAmountDisplay }),
+    { id: "price", label: "Price", value: priceLabel }
+  ];
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
       <DealHeader
@@ -100,62 +109,16 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
 
       <DealSummaryCard
         title="Deal overview"
-        description={<p className="text-sm text-muted-foreground">{summary.tone}</p>}
+        description={<span className="text-sm text-muted-foreground">{summary.tone}</span>}
         pills={[
           {
             id: "counterparty",
             className:
               "bg-transparent px-0 py-0 shadow-none text-secondary-foreground flex flex-col items-end gap-1 text-right",
-            content: (
-              <>
-                <span className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground/70">
-                  Counterparty
-                </span>
-                <span className="flex items-center justify-end gap-2 text-sm font-medium text-foreground">
-                  <Jazzicon diameter={20} seed={counterpartySeed} />
-                  {counterpartyValue}
-                </span>
-              </>
-            )
+            content: <ParticipantPill label="Counterparty" address={deal.taker} />
           }
         ]}
-        metaItems={[
-          {
-            id: "side",
-            label: "Your Side",
-            value: (
-              <span className="flex items-center gap-2 text-sm text-foreground">
-                <DealSideBadge side={userSide} />
-                <span className="text-muted-foreground/80">You {userSide === "SELL" ? "sell" : "buy"} crypto</span>
-              </span>
-            )
-          },
-          {
-            id: "token",
-            label: "Token",
-            value: (
-              <span className="flex items-center gap-3">
-                <TokenIcon symbol={deal.token} size={18} />
-                <span className="text-sm font-medium text-foreground">{tokenAmountLabel}</span>
-              </span>
-            )
-          },
-          {
-            id: "fiat",
-            label: "Fiat",
-            value: (
-              <span className="flex items-center gap-3">
-                <FiatFlag fiat={deal.fiatCode} size={18} />
-                <span className="text-sm font-medium text-foreground">≈ {fiatAmountLabel}</span>
-              </span>
-            )
-          },
-          {
-            id: "price",
-            label: "Price",
-            value: priceLabel
-          }
-        ]}
+        metaItems={metaItems}
         extraContent={
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Deal context</span>

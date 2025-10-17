@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { ArrowRight } from "lucide-react";
-import Jazzicon from "react-jazzicon";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,13 +10,14 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
 import type { OfferRow } from "@/lib/mock-offers";
-import { cn, formatAddressShort, seedFromAddress } from "@/lib/utils";
-import { DealSideBadge } from "@/components/deals/deal-side-badge";
+import { cn, formatAddressShort } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { useDeals } from "./deals-provider";
 import { useOffers } from "@/components/offers/offers-provider";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ParticipantPill } from "@/components/deals/participant-pill";
+import { createSideMetaItem } from "@/components/deals/summary-meta";
 
 type AmountKind = "crypto" | "fiat";
 type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
@@ -128,7 +128,6 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const merchantSide = offer.side.toUpperCase();
   const userSide = merchantSide === "SELL" ? "BUY" : "SELL";
   const userAction = userSide === "SELL" ? "sell" : "buy";
-  const merchantAction = merchantSide === "SELL" ? "sells" : "buys";
   const minLabel = `${offer.minAmount.toLocaleString("en-US")} ${offer.token}`;
   const maxLabel = `${offer.maxAmount.toLocaleString("en-US")} ${offer.token}`;
   let amountError: string | null = null;
@@ -246,17 +245,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
             id: "merchant",
             className:
               "bg-transparent px-0 py-0 shadow-none text-secondary-foreground flex flex-col items-end gap-1 text-right",
-            content: (
-              <>
-                <span className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground/70">
-                  Merchant
-                </span>
-                <span className="flex items-center justify-end gap-2 text-sm font-medium text-foreground">
-                  <Jazzicon diameter={20} seed={seedFromAddress(offer.maker)} />
-                  {formatAddressShort(offer.maker)}
-                </span>
-              </>
-            )
+            content: <ParticipantPill label="Merchant" address={offer.maker} />
           }
         ]}
         extraContent={
@@ -266,16 +255,12 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
           </div>
         }
         metaItems={[
-          {
+          createSideMetaItem({
             id: "your-side",
             label: "Your Side",
-            value: (
-              <span className="flex items-center gap-2 text-sm text-foreground">
-                <DealSideBadge side={userSide} />
-                <span className="text-muted-foreground/80">You {userAction} crypto</span>
-              </span>
-            )
-          },
+            side: userSide,
+            description: `You ${userAction} crypto`
+          }),
           {
             id: "token",
             label: "Token",
