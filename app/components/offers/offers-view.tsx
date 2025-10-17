@@ -15,6 +15,7 @@ import { FiatFlag } from "@/components/fiat-flag";
 
 const FILTER_STORAGE_KEY = "swap2p:offers-filters";
 const ANY_OPTION = "any";
+const DEFAULT_FIAT = "USD";
 
 type StoredFilters = {
   side?: "BUY" | "SELL";
@@ -32,7 +33,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
   const { offers, isLoading } = useOffers();
   const [side, setSide] = React.useState("SELL");
   const [token, setToken] = React.useState(ANY_OPTION);
-  const [fiat, setFiat] = React.useState(ANY_OPTION);
+  const [fiat, setFiat] = React.useState(DEFAULT_FIAT);
   const [paymentMethod, setPaymentMethod] = React.useState(ANY_OPTION);
   const [amount, setAmount] = React.useState("");
 
@@ -51,7 +52,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
         setToken(parsed.token);
       }
       if (typeof parsed.fiat === "string") {
-        setFiat(parsed.fiat);
+        setFiat(parsed.fiat === ANY_OPTION ? DEFAULT_FIAT : parsed.fiat);
       }
       if (typeof parsed.paymentMethod === "string") {
         setPaymentMethod(parsed.paymentMethod);
@@ -83,11 +84,12 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
   }, [offers]);
 
   const fiatOptions = React.useMemo(() => {
-    const options = new Set<string>();
+    const options = new Set<string>([DEFAULT_FIAT]);
     for (const offer of offers) {
       options.add(offer.fiat);
     }
-    return [ANY_OPTION, ...Array.from(options).sort((a, b) => a.localeCompare(b))];
+    const sorted = Array.from(options).sort((a, b) => a.localeCompare(b));
+    return [DEFAULT_FIAT, ...sorted.filter(option => option !== DEFAULT_FIAT)];
   }, [offers]);
 
   const columns = React.useMemo(() => {
@@ -120,7 +122,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
 
   React.useEffect(() => {
     if (!fiatOptions.includes(fiat)) {
-      setFiat(ANY_OPTION);
+      setFiat(DEFAULT_FIAT);
     }
   }, [fiatOptions, fiat]);
 
@@ -138,7 +140,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
     return offers.filter(offer => {
       if (offer.side !== side) return false;
       if (token !== ANY_OPTION && offer.token !== token) return false;
-      if (fiat !== ANY_OPTION && offer.fiat !== fiat) return false;
+      if (offer.fiat !== fiat) return false;
       if (paymentMethod !== ANY_OPTION) {
         const methods = offer.paymentMethods
           .split(",")
@@ -235,19 +237,15 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
               <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Fiat</span>
               <Select value={fiat} onValueChange={setFiat}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Any fiat" />
+                  <SelectValue placeholder="Select fiat" />
                 </SelectTrigger>
                 <SelectContent>
                   {fiatOptions.map(option => (
                     <SelectItem key={option} value={option}>
-                      {option === ANY_OPTION ? (
-                        "Any fiat"
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <FiatFlag fiat={option} size={20} />
-                          {option}
-                        </span>
-                      )}
+                      <span className="flex items-center gap-2">
+                        <FiatFlag fiat={option} size={20} />
+                        {option}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
