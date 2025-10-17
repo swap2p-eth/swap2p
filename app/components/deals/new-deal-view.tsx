@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight, Coins } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Jazzicon from "react-jazzicon";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
 import type { OfferRow } from "@/lib/mock-offers";
-import { cn } from "@/lib/utils";
+import { cn, formatAddressShort, seedFromAddress } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { useDeals } from "./deals-provider";
@@ -47,6 +48,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const [amountKind, setAmountKind] = React.useState<AmountKind>("crypto");
   const [amount, setAmount] = React.useState("");
   const [paymentMethod, setPaymentMethod] = React.useState<string>("");
+  const [paymentDetails, setPaymentDetails] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -88,6 +90,9 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
 
   const paymentOptions = parsePaymentMethods(offer.paymentMethods);
   const hasPaymentOptions = paymentOptions.length > 0;
+  const limitsRange = `${offer.minAmount.toLocaleString("en-US")} – ${offer.maxAmount.toLocaleString(
+    "en-US"
+  )} ${offer.token}`;
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -156,7 +161,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
       <DealHeader
         title="New deal"
-        subtitle={`Create a taker request for maker ${offer.maker.slice(0, 6)}…`}
+        subtitle={`Create a taker request for maker ${formatAddressShort(offer.maker)}`}
         backLabel={backLabel}
         onBack={() => onCancel?.()}
       />
@@ -166,27 +171,39 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         description={formatOfferSubtitle(offer)}
         pills={[
           {
-            id: "token",
-            className: "bg-primary/10 text-primary",
+            id: "merchant",
+            className:
+              "bg-transparent px-0 py-0 shadow-none text-secondary-foreground flex flex-col items-end gap-1 text-right",
             content: (
               <>
-                <Coins className="h-4 w-4" />
-                {offer.token}
+                <span className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground/70">
+                  Merchant
+                </span>
+                <span className="flex items-center justify-end gap-2 text-sm font-medium text-foreground">
+                  <Jazzicon diameter={20} seed={seedFromAddress(offer.maker)} />
+                  {formatAddressShort(offer.maker)}
+                </span>
               </>
             )
-          },
-          {
-            id: "maker",
-            className: "bg-secondary text-secondary-foreground",
-            content: `Maker: ${offer.maker.slice(0, 6)}…`
           }
         ]}
+        extraContent={
+          <div className="flex flex-col gap-2">
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Merchant requirements</span>
+            <span className="text-sm text-muted-foreground">{MERCHANT_REQUIREMENTS}</span>
+          </div>
+        }
         metaItems={[
           { id: "side", label: "Side", value: offer.side },
           {
-            id: "amounts",
-            label: "Limits",
-            value: `${offer.minAmount.toLocaleString("en-US")} – ${offer.maxAmount.toLocaleString("en-US")}`
+            id: "token",
+            label: "Token",
+            value: (
+              <span className="flex items-center gap-2">
+                <TokenIcon symbol={offer.token} size={18} />
+                {offer.token}
+              </span>
+            )
           },
           {
             id: "fiat",
@@ -216,31 +233,37 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Amount</span>
-            <SegmentedControl
-              value={amountKind}
-              onChange={value => setAmountKind(value as AmountKind)}
-              options={[
-                {
-                  label: (
-                    <span className="flex items-center gap-2">
-                      <TokenIcon symbol={offer.token} size={16} className="rounded-full bg-white" />
-                      {offer.token}
-                    </span>
-                  ),
-                  value: "crypto"
-                },
-                {
-                  label: (
-                    <span className="flex items-center gap-2">
-                      <FiatFlag fiat={offer.fiat} size={16} />
-                      {offer.fiat}
-                    </span>
-                  ),
-                  value: "fiat"
-                }
-              ]}
-              className="w-fit"
-            />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <SegmentedControl
+                value={amountKind}
+                onChange={value => setAmountKind(value as AmountKind)}
+                options={[
+                  {
+                    label: (
+                      <span className="flex items-center gap-2">
+                        <TokenIcon symbol={offer.token} size={16} className="rounded-full bg-white" />
+                        {offer.token}
+                      </span>
+                    ),
+                    value: "crypto"
+                  },
+                  {
+                    label: (
+                      <span className="flex items-center gap-2">
+                        <FiatFlag fiat={offer.fiat} size={16} />
+                        {offer.fiat}
+                      </span>
+                    ),
+                    value: "fiat"
+                  }
+                ]}
+                className="w-fit"
+              />
+              <div className="flex flex-col items-end gap-1 text-right">
+                <span className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground/70">Limits</span>
+                <span className="text-sm font-medium text-foreground">{limitsRange}</span>
+              </div>
+            </div>
             <div className="relative mt-2">
               <Input
                 type="number"
@@ -283,7 +306,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
               disabled={!hasPaymentOptions}
             >
               <SelectTrigger className="h-14 rounded-2xl bg-background/70 text-left font-medium">
-                <SelectValue placeholder="Select payment rail" />
+                <SelectValue placeholder="Select payment method" />
               </SelectTrigger>
               <SelectContent>
                 {paymentOptions.map(method => (
@@ -299,11 +322,17 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
               </p>
             ) : null}
           </div>
-        </div>
 
-        <div className="rounded-2xl bg-muted/40 px-5 py-4 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Merchant requirements.</span>{" "}
-          <span>{MERCHANT_REQUIREMENTS}</span>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Payment details</span>
+            <Input
+              type="text"
+              value={paymentDetails}
+              onChange={event => setPaymentDetails(event.target.value)}
+              placeholder="Add settlement instructions or reference"
+              className="h-14 rounded-2xl bg-background/70"
+            />
+          </div>
         </div>
 
         {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}

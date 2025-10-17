@@ -21,9 +21,16 @@ interface DealSummaryCardProps {
   description?: string;
   pills?: Pill[];
   metaItems: MetaItem[];
+  extraContent?: React.ReactNode;
 }
 
-export function DealSummaryCard({ title, description, pills = [], metaItems }: DealSummaryCardProps) {
+export function DealSummaryCard({
+  title,
+  description,
+  pills = [],
+  metaItems,
+  extraContent
+}: DealSummaryCardProps) {
   return (
     <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/20">
       <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -48,16 +55,21 @@ export function DealSummaryCard({ title, description, pills = [], metaItems }: D
           </div>
         ) : null}
       </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {metaItems.map(item => (
-          <div
-            key={item.id}
-            className="rounded-2xl bg-card/60 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.6)]"
-          >
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">{item.label}</p>
-            <div className="mt-2 text-sm font-medium">{item.value}</div>
+      <CardContent className="space-y-4">
+        {metaItems.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {metaItems.map(item => (
+              <div
+                key={item.id}
+                className="rounded-2xl bg-card/60 p-4 shadow-[0_16px_40px_-30px_rgba(15,23,42,0.6)]"
+              >
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">{item.label}</p>
+                <div className="mt-2 text-sm font-medium">{item.value}</div>
+              </div>
+            ))}
           </div>
-        ))}
+        ) : null}
+        {extraContent ? <div>{extraContent}</div> : null}
       </CardContent>
     </Card>
   );
