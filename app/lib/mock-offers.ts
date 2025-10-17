@@ -25,14 +25,20 @@ export interface OfferRow {
   updatedAt: string;
 }
 
-const paymentMethods = [
-  "SEPA,Revolut",
-  "Swift,Wire",
-  "Pix,Itau",
-  "FasterPayments,Starling",
-  "Wise,Business",
-  "UPI,IMPS",
-  "AliPay,UnionPay"
+const PAYMENT_METHOD_NAMES = [
+  "SEPA",
+  "Revolut",
+  "SWIFT",
+  "Wire",
+  "Pix",
+  "Itau",
+  "Faster Payments",
+  "Starling",
+  "Wise",
+  "UPI",
+  "IMPS",
+  "AliPay",
+  "UnionPay"
 ];
 const MIN_OFFSET_SECONDS = 5;
 const MAX_OFFSET_SECONDS = 2 * 24 * 60 * 60;
@@ -99,7 +105,16 @@ export function generateMockOffers(count = 32): OfferRow[] {
       reserve,
       minAmount,
       maxAmount,
-      paymentMethods: paymentMethods[index % paymentMethods.length],
+      paymentMethods: (() => {
+        const available = [...PAYMENT_METHOD_NAMES];
+        const count = Math.min(3, Math.max(1, Math.floor(random() * 3) + 1));
+        const selected: string[] = [];
+        for (let iteration = 0; iteration < count && available.length > 0; iteration += 1) {
+          const pickIndex = Math.floor(random() * available.length);
+          selected.push(available.splice(pickIndex, 1)[0]);
+        }
+        return selected.sort((a, b) => a.localeCompare(b)).join(",");
+      })(),
       requirements,
       updatedAt: timestamp
     };

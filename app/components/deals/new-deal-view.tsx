@@ -19,6 +19,7 @@ import { useOffers } from "@/components/offers/offers-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type AmountKind = "crypto" | "fiat";
+type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
 
 interface NewDealViewProps {
   offerId: number;
@@ -38,7 +39,7 @@ const parsePaymentMethods = (raw: string): string[] => {
 const formatOfferSubtitle = (offer: OfferRow) =>
   offer.side === "BUY"
     ? "Maker escrows collateral and waits for your tokens."
-    : "Maker escrows tokens and waits for your fiat rails.";
+    : "Review offer details and provide amount.";
 
 export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers" }: NewDealViewProps) {
   const { offers, isLoading: offersLoading } = useOffers();
@@ -49,14 +50,17 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const [amount, setAmount] = React.useState("");
   const [paymentMethod, setPaymentMethod] = React.useState<string>("");
   const [paymentDetails, setPaymentDetails] = React.useState("");
-  const [error, setError] = React.useState<string | null>(null);
+  const amountInputRef = React.useRef<HTMLInputElement>(null);
+  const paymentMethodTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const paymentDetailsInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!offer) return;
+    setAmountKind("crypto");
     setAmount(offer.minAmount.toString());
     const options = parsePaymentMethods(offer.paymentMethods);
-    setPaymentMethod(options[0] ?? "");
-    setError(null);
+    setPaymentMethod(options.length === 1 ? options[0] : "");
+    setPaymentDetails("");
   }, [offerId, offer]);
 
   if (offersLoading) {
@@ -93,45 +97,96 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const limitsRange = `${offer.minAmount.toLocaleString("en-US")} – ${offer.maxAmount.toLocaleString(
     "en-US"
   )} ${offer.token}`;
+  const amountNumber = Number(amount);
+  const amountEntered = amount.trim().length > 0 && Number.isFinite(amountNumber) && amountNumber > 0;
+  const rawTokenAmount =
+    amountEntered && offer.price > 0
+      ? amountKind === "crypto"
+        ? amountNumber
+        : amountNumber / offer.price
+      : null;
+  const tokenAmount =
+    rawTokenAmount !== null && Number.isFinite(rawTokenAmount) && rawTokenAmount > 0 ? rawTokenAmount : null;
+  const amountValid =
+    tokenAmount !== null && tokenAmount >= offer.minAmount && tokenAmount <= offer.maxAmount;
+  const paymentMethodValid = !hasPaymentOptions || paymentMethod.trim().length > 0;
+  const paymentDetailsValid = paymentDetails.trim().length >= 5;
+  const isFormValid = amountValid && paymentMethodValid && paymentDetailsValid;
+  const amountHeadingClass = cn(
+    "text-xs uppercase tracking-[0.2em] text-muted-foreground/70",
+    amountValid ? "text-emerald-500" : undefined
+  );
+  const paymentMethodHeadingClass = cn(
+    "text-xs uppercase tracking-[0.2em] text-muted-foreground/70",
+    paymentMethodValid && hasPaymentOptions ? "text-emerald-500" : undefined
+  );
+  const paymentDetailsHeadingClass = cn(
+    "text-xs uppercase tracking-[0.2em] text-muted-foreground/70",
+    paymentDetailsValid ? "text-emerald-500" : undefined
+  );
+  const merchantSideValue =
+    offer.side === "SELL" ? "SELL (You BUY crypto)" : "BUY (You SELL crypto)";
+  const minLabel = `${offer.minAmount.toLocaleString("en-US")} ${offer.token}`;
+  const maxLabel = `${offer.maxAmount.toLocaleString("en-US")} ${offer.token}`;
+  let amountError: string | null = null;
+  if (!amountValid) {
+    if (!amountEntered) {
+      amountError = `Enter an amount between ${minLabel} and ${maxLabel}.`;
+    } else if (tokenAmount === null) {
+      amountError = "Enter a valid amount.";
+    } else if (tokenAmount < offer.minAmount) {
+      amountError = `Minimum amount is ${minLabel}.`;
+    } else if (tokenAmount > offer.maxAmount) {
+      amountError = `Maximum amount is ${maxLabel}.`;
+    } else {
+      amountError = `Enter an amount between ${minLabel} and ${maxLabel}.`;
+    }
+  }
+  const paymentMethodError =
+    hasPaymentOptions && !paymentMethod ? "Choose a payment method." : null;
+  const paymentDetailsError = paymentDetailsValid ? null : "Payment details must be at least 5 characters.";
+  const validationIssues: Array<{ field: ValidationField; message: string }> = [];
+  if (amountError) {
+    validationIssues.push({ field: "amount", message: amountError });
+  }
+  if (paymentMethodError) {
+    validationIssues.push({ field: "paymentMethod", message: paymentMethodError });
+  }
+  if (paymentDetailsError) {
+    validationIssues.push({ field: "paymentDetails", message: paymentDetailsError });
+  }
+  const focusField = (field: ValidationField) => {
+    const options: Record<ValidationField, (() => void) | undefined> = {
+      amount: () => {
+        if (amountInputRef.current) {
+          amountInputRef.current.focus();
+          amountInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      },
+      paymentMethod: () => {
+        if (paymentMethodTriggerRef.current) {
+          paymentMethodTriggerRef.current.focus();
+          paymentMethodTriggerRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      },
+      paymentDetails: () => {
+        if (paymentDetailsInputRef.current) {
+          paymentDetailsInputRef.current.focus();
+          paymentDetailsInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }
+    };
+    options[field]?.();
+  };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const numericAmount = Number(amount);
-
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      setError("Enter a positive amount.");
+    if (!isFormValid || tokenAmount === null) {
+      if (validationIssues.length > 0) {
+        focusField(validationIssues[0].field);
+      }
       return;
     }
-
-    if (hasPaymentOptions && !paymentMethod) {
-      setError("Select a payment method.");
-      return;
-    }
-
-    const tokenAmount =
-      amountKind === "crypto" ? numericAmount : numericAmount / offer.price;
-
-    if (!Number.isFinite(tokenAmount) || tokenAmount <= 0) {
-      setError("Enter a valid amount.");
-      return;
-    }
-
-    if (tokenAmount < offer.minAmount) {
-      setError(
-        `Amount must be at least ${offer.minAmount.toLocaleString("en-US")} ${offer.token}.`
-      );
-      return;
-    }
-
-    if (tokenAmount > offer.maxAmount) {
-      setError(
-        `Amount must not exceed ${offer.maxAmount.toLocaleString("en-US")} ${offer.token}.`
-      );
-      return;
-    }
-
-    setError(null);
-
     const deal = createDeal({
       offer,
       amount: tokenAmount,
@@ -154,6 +209,20 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         <span className="text-xs uppercase">{offer.fiat}</span>
       </>
     );
+  const conversionDisplay = (() => {
+    if (!tokenAmount || tokenAmount <= 0) {
+      return amountKind === "crypto"
+        ? `≈ 0 ${offer.fiat}`
+        : `≈ 0 ${offer.token}`;
+    }
+    const displayValue =
+      amountKind === "crypto" ? tokenAmount * offer.price : tokenAmount;
+    const targetCurrency = amountKind === "crypto" ? offer.fiat : offer.token;
+    return `≈ ${displayValue.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })} ${targetCurrency}`;
+  })();
 
   const backLabel = returnHash === "dashboard" ? "Back to dashboard" : "Back to offers";
 
@@ -194,7 +263,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
           </div>
         }
         metaItems={[
-          { id: "side", label: "Side", value: offer.side },
+          { id: "side", label: "Merchant Side", value: merchantSideValue },
           {
             id: "token",
             label: "Token",
@@ -232,7 +301,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       >
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Amount</span>
+            <span className={amountHeadingClass}>Amount</span>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <SegmentedControl
                 value={amountKind}
@@ -270,8 +339,10 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
                 step="any"
                 min={0}
                 required
+                aria-invalid={!amountValid}
                 value={amount}
                 onChange={event => setAmount(event.target.value)}
+                ref={amountInputRef}
                 className="h-14 rounded-2xl bg-background/70 pl-4 pr-32 text-lg font-semibold"
                 placeholder="Enter amount"
               />
@@ -279,33 +350,22 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
                 {amountLabel}
               </span>
             </div>
-            {amount && Number(amount) > 0 ? (
-              <p className="text-xs text-muted-foreground">
-                ≈{" "}
-                {amountKind === "crypto"
-                  ? (Number(amount) * offer.price).toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })
-                  : (Number(amount) / offer.price).toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}{" "}
-                {amountKind === "crypto" ? offer.fiat : offer.token}
-              </p>
-            ) : null}
+            <p className="text-xs text-muted-foreground">{conversionDisplay}</p>
+            {amountError ? <p className="text-xs text-orange-500">{amountError}</p> : null}
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
-              Payment method
-            </span>
+            <span className={paymentMethodHeadingClass}>Payment method</span>
             <Select
               value={paymentMethod}
               onValueChange={setPaymentMethod}
               disabled={!hasPaymentOptions}
             >
-              <SelectTrigger className="h-14 rounded-2xl bg-background/70 text-left font-medium">
+              <SelectTrigger
+                ref={paymentMethodTriggerRef}
+                className="h-14 rounded-2xl bg-background/70 text-left font-medium"
+                aria-invalid={!paymentMethodValid && hasPaymentOptions}
+              >
                 <SelectValue placeholder="Select payment method" />
               </SelectTrigger>
               <SelectContent>
@@ -321,28 +381,43 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
                 Maker has not published payment methods for this mock offer yet.
               </p>
             ) : null}
+            {paymentMethodError ? <p className="text-xs text-orange-500">{paymentMethodError}</p> : null}
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Payment details</span>
+            <span className={paymentDetailsHeadingClass}>Payment details</span>
             <Input
               type="text"
+              minLength={5}
+              aria-invalid={!paymentDetailsValid}
               value={paymentDetails}
               onChange={event => setPaymentDetails(event.target.value)}
-              placeholder="Add settlement instructions or reference"
+              placeholder="Account number / name etc."
+              ref={paymentDetailsInputRef}
               className="h-14 rounded-2xl bg-background/70"
             />
+            {paymentDetailsError ? <p className="text-xs text-orange-500">{paymentDetailsError}</p> : null}
           </div>
         </div>
-
-        {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
-
+        {!isFormValid ? (
+          <div className="rounded-2xl bg-orange-400/10 p-4 text-sm text-orange-600">
+            <p className="font-medium">Finish the following before creating a deal:</p>
+            <ol className="mt-2 space-y-1 list-decimal pl-4">
+              {validationIssues.map(issue => (
+                <li key={issue.field} onClick={() => focusField(issue.field)} className="cursor-pointer">
+                  {issue.message}
+                </li>
+              ))}
+            </ol>
+          </div>
+        ) : null}
         <Button
           type="submit"
           size="lg"
           className={cn(
-            "w-full rounded-full py-6 text-base font-semibold shadow-[0_24px_60px_-32px_rgba(37,99,235,0.65)]"
+            "w-full rounded-full py-6 text-base font-semibold shadow-[0_24px_60px_-32px_rgba(37,99,235,0.65)] disabled:cursor-not-allowed disabled:opacity-60"
           )}
+          disabled={!isFormValid}
         >
           Create deal
           <ArrowRight className="ml-2 h-4 w-4" />
