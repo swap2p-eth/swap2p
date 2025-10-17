@@ -90,7 +90,16 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
     return [ANY_OPTION, ...Array.from(options).sort((a, b) => a.localeCompare(b))];
   }, [offers]);
 
-  const columns = React.useMemo(() => createOfferColumns(onStartDeal), [onStartDeal]);
+  const columns = React.useMemo(() => {
+    const hiddenAccessorKeys = new Set(["side", "fiat"]);
+    return createOfferColumns().filter(column => {
+      const accessorKey = column.accessorKey;
+      if (typeof accessorKey === "string" && hiddenAccessorKeys.has(accessorKey)) {
+        return false;
+      }
+      return true;
+    });
+  }, []);
   const paymentMethodOptions = React.useMemo(() => {
     const options = new Set<string>();
     for (const offer of offers) {
@@ -282,6 +291,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
               </p>
             </div>*/}
             <DataTable
+              className="[&_td]:py-5"
               columns={columns}
               data={filteredOffers}
               title="Offers"
