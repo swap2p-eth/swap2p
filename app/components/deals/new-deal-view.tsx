@@ -12,6 +12,7 @@ import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
 import type { OfferRow } from "@/lib/mock-offers";
 import { cn, formatAddressShort, seedFromAddress } from "@/lib/utils";
+import { DealSideBadge } from "@/components/deals/deal-side-badge";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { useDeals } from "./deals-provider";
@@ -124,8 +125,10 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     "text-xs uppercase tracking-[0.2em] text-muted-foreground/70",
     paymentDetailsValid ? "text-emerald-500" : undefined
   );
-  const merchantSideValue =
-    offer.side === "SELL" ? "SELL (You BUY crypto)" : "BUY (You SELL crypto)";
+  const merchantSide = offer.side.toUpperCase();
+  const userSide = merchantSide === "SELL" ? "BUY" : "SELL";
+  const userAction = userSide === "SELL" ? "sell" : "buy";
+  const merchantAction = merchantSide === "SELL" ? "sells" : "buys";
   const minLabel = `${offer.minAmount.toLocaleString("en-US")} ${offer.token}`;
   const maxLabel = `${offer.maxAmount.toLocaleString("en-US")} ${offer.token}`;
   let amountError: string | null = null;
@@ -263,7 +266,16 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
           </div>
         }
         metaItems={[
-          { id: "side", label: "Merchant Side", value: merchantSideValue },
+          {
+            id: "your-side",
+            label: "Your Side",
+            value: (
+              <span className="flex items-center gap-2 text-sm text-foreground">
+                <DealSideBadge side={userSide} />
+                <span className="text-muted-foreground/80">You {userAction} crypto</span>
+              </span>
+            )
+          },
           {
             id: "token",
             label: "Token",

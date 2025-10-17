@@ -95,7 +95,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
   const columns = React.useMemo(() => {
     const hiddenAccessorKeys = new Set(["side", "fiat"]);
     return createOfferColumns(onStartDeal, { showMerchant: true }).filter(column => {
-      const accessorKey = column.accessorKey;
+      const accessorKey = (column as { accessorKey?: string }).accessorKey;
       if (typeof accessorKey === "string" && hiddenAccessorKeys.has(accessorKey)) {
         return false;
       }
@@ -204,8 +204,18 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
               value={side}
               onChange={setSide}
               options={[
-                { label: "BUY", value: "BUY" },
-                { label: "SELL", value: "SELL" }
+                {
+                  label: "BUY",
+                  value: "BUY",
+                  activeClassName: "bg-sky-500 text-white shadow-[0_8px_20px_-12px_rgba(14,165,233,0.8)]",
+                  inactiveClassName: "text-sky-600 hover:bg-sky-500/10"
+                },
+                {
+                  label: "SELL",
+                  value: "SELL",
+                  activeClassName: "bg-orange-500 text-white shadow-[0_8px_20px_-12px_rgba(249,115,22,0.8)]",
+                  inactiveClassName: "text-orange-600 hover:bg-orange-500/10"
+                }
               ]}
             />
           </div>

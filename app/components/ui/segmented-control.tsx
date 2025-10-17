@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 export type SegmentedOption = {
   label: React.ReactNode;
   value: string;
+  activeClassName?: string;
+  inactiveClassName?: string;
 };
 
 export interface SegmentedControlProps {
@@ -41,8 +43,8 @@ export function SegmentedControl({
             className={cn(
               "px-4 py-1.5 text-sm font-medium rounded-full transition-colors",
               active
-                ? "bg-primary text-primary-foreground shadow-[0_8px_20px_-12px_rgba(37,99,235,0.8)]"
-                : "text-muted-foreground hover:bg-muted/50"
+                ? option.activeClassName ?? "bg-primary text-primary-foreground shadow-[0_8px_20px_-12px_rgba(37,99,235,0.8)]"
+                : option.inactiveClassName ?? "text-muted-foreground hover:bg-muted/50"
             )}
           >
             {option.label}
