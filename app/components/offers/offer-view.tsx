@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { cn } from "@/lib/utils";
 import { getNetworkConfigForChain } from "@/config";
 import { useOffers } from "./offers-provider";
@@ -16,6 +15,7 @@ import { DealHeader } from "@/components/deals/deal-header";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 import type { OfferRow } from "@/lib/mock-offers";
+import { SideToggle } from "@/components/deals/side-toggle";
 
 type DealSide = "BUY" | "SELL";
 type OfferEditorMode = "create" | "edit";
@@ -299,34 +299,18 @@ export function OfferView({
               Configure price, limits, rails, and taker requirements for this offer.
             </p>
           </div>
-          {isEdit ? (
-            <Button type="button" variant="destructive" className="rounded-full px-6" onClick={handleDelete}>
-              <Trash2 className="mr-2 h-4 w-4" /> Delete offer
-            </Button>
-          ) : null}
+          <div className="flex flex-col items-end gap-3">
+            <SideToggle value={side} onChange={value => !disableImmutable && setSide(value)} disabled={disableImmutable} />
+            {isEdit ? (
+              <Button type="button" variant="destructive" className="rounded-full px-6" onClick={handleDelete}>
+                <Trash2 className="mr-2 h-4 w-4" /> Delete offer
+              </Button>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent>
           <form className="space-y-8" onSubmit={handleSubmit}>
             <section className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-3 rounded-3xl border border-border/60 bg-background/60 p-6">
-                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Side</span>
-                <SegmentedControl
-                  className={cn("mt-2", disableImmutable && "pointer-events-none opacity-60")}
-                  value={side}
-                  onChange={value => {
-                    if (disableImmutable) return;
-                    setSide(value as DealSide);
-                  }}
-                  options={[
-                    { label: "BUY", value: "BUY" },
-                    { label: "SELL", value: "SELL" }
-                  ]}
-                />
-                <p className="text-xs text-muted-foreground">
-                  SELL — you sell crypto and wait for fiat. BUY — you buy crypto and wait for tokens.
-                </p>
-              </div>
-
               <div className="space-y-3 rounded-3xl border border-border/60 bg-background/60 p-6">
                 <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Token</span>
                 <Select
@@ -349,11 +333,8 @@ export function OfferView({
                   </SelectContent>
                 </Select>
               </div>
-            </section>
-
-            <section className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-3">
-                <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Fiat currency</label>
+              <div className="space-y-3 rounded-3xl border border-border/60 bg-background/60 p-6">
+                <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Fiat currency</span>
                 <Select disabled={disableImmutable} value={fiat} onValueChange={code => setFiat(code)}>
                   <SelectTrigger className="rounded-full">
                     <SelectValue placeholder="Select fiat" />
@@ -370,35 +351,23 @@ export function OfferView({
                   </SelectContent>
                 </Select>
               </div>
+            </section>
 
-              <div className="space-y-3">
-                <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
-                  Quoted price ({fiat})
-                </label>
-                <Input
-                  value={price}
-                  onChange={event => setPrice(event.target.value)}
-                  inputMode="decimal"
-                  placeholder="e.g. 1.01"
-                  className="rounded-full"
-                />
-                <p className="text-xs text-muted-foreground">Price per token unit in {fiat}.</p>
-              </div>
+            <section className="space-y-3">
+              <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
+                Quoted price ({fiat})
+              </label>
+              <Input
+                value={price}
+                onChange={event => setPrice(event.target.value)}
+                inputMode="decimal"
+                placeholder="e.g. 1.01"
+                className="rounded-full"
+              />
+              <p className="text-xs text-muted-foreground">Price per token unit in {fiat}.</p>
             </section>
 
             <section className="grid gap-6 md:grid-cols-3">
-              <div className="space-y-3">
-                <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
-                  Reserve (token units)
-                </label>
-                <Input
-                  value={reserve}
-                  onChange={event => setReserve(event.target.value)}
-                  inputMode="decimal"
-                  placeholder="e.g. 2500"
-                  className="rounded-full"
-                />
-              </div>
               <div className="space-y-3">
                 <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Minimum amount</label>
                 <Input
@@ -414,6 +383,18 @@ export function OfferView({
                 <Input
                   value={maxAmount}
                   onChange={event => setMaxAmount(event.target.value)}
+                  inputMode="decimal"
+                  placeholder="e.g. 2500"
+                  className="rounded-full"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
+                  Reserve (token units)
+                </label>
+                <Input
+                  value={reserve}
+                  onChange={event => setReserve(event.target.value)}
                   inputMode="decimal"
                   placeholder="e.g. 2500"
                   className="rounded-full"

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +11,7 @@ import { useOffers } from "@/components/offers/offers-provider";
 import type { OfferRow } from "@/lib/mock-offers";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
+import { SideToggle } from "@/components/deals/side-toggle";
 
 const FILTER_STORAGE_KEY = "swap2p:offers-filters";
 const ANY_OPTION = "any";
@@ -200,24 +200,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
               </CardDescription>
             </div>
             {/*<span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Do you want to buy or sell crypto?</span>*/}
-            <SegmentedControl
-              value={side}
-              onChange={setSide}
-              options={[
-                {
-                  label: "BUY",
-                  value: "BUY",
-                  activeClassName: "bg-sky-500 text-white shadow-[0_8px_20px_-12px_rgba(14,165,233,0.8)]",
-                  inactiveClassName: "text-sky-600 hover:bg-sky-500/10"
-                },
-                {
-                  label: "SELL",
-                  value: "SELL",
-                  activeClassName: "bg-orange-500 text-white shadow-[0_8px_20px_-12px_rgba(249,115,22,0.8)]",
-                  inactiveClassName: "text-orange-600 hover:bg-orange-500/10"
-                }
-              ]}
-            />
+            <SideToggle value={side as "BUY" | "SELL"} onChange={setSide} />
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
