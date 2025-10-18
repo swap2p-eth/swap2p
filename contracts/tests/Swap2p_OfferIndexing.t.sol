@@ -221,6 +221,15 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             if (usdMakers[i] == makerB) seenMakerB = true;
         }
         assertTrue(seenMakerA && seenMakerB);
+        bytes32[] memory usdIds = swap.getMarketOfferIds(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        assertEq(usdIds.length, 2);
+        Swap2p.OfferInfo[] memory usdInfos = swap.getMarketOffers(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        assertEq(usdInfos.length, 2);
+        for (uint256 i; i < usdInfos.length; i++) {
+            assertEq(uint8(usdInfos[i].offer.side), uint8(Swap2p.Side.SELL));
+            assertEq(Swap2p.FiatCode.unwrap(usdInfos[i].offer.fiat), Swap2p.FiatCode.unwrap(Swap2p.FiatCode.wrap(840)));
+            assertTrue(usdInfos[i].maker == maker || usdInfos[i].maker == makerB);
+        }
 
         assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(978)), 1);
         address[] memory eurMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(978), 0, 10);
@@ -243,6 +252,9 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         usdMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
         assertEq(usdMakers.length, 1);
         assertEq(usdMakers[0], maker);
+        usdIds = swap.getMarketOfferIds(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        assertEq(usdIds.length, 1);
+        assertEq(swap.getMarketOffers(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10)[0].maker, maker);
 
         // maker now has only one offer remaining
         assertEq(swap.getMakerOfferCount(maker), 1);
@@ -348,6 +360,9 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         assertEq(uint256(openDetailed[0].deal.state), uint256(Swap2p.DealState.REQUESTED));
         assertEq(openDetailed[0].deal.amount, 120e18);
         assertEq(openDetailed[0].deal.token, address(token));
+        Swap2p.DealInfo[] memory openDetailedTaker = swap.getOpenDealsDetailed(taker, 0, 10);
+        assertEq(openDetailedTaker.length, 1);
+        assertEq(openDetailedTaker[0].id, deal3);
 
         bytes32[] memory recentMakerDeals = swap.getRecentDeals(maker, 0, 10);
         assertEq(recentMakerDeals.length, 2);
@@ -365,6 +380,12 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             assertTrue(recentDetailed[i].id == deal1 || recentDetailed[i].id == deal2);
             assertTrue(recentDetailed[i].deal.state != Swap2p.DealState.REQUESTED);
         }
+        Swap2p.DealInfo[] memory recentDetailedTaker = swap.getRecentDealsDetailed(taker, 0, 10);
+        assertEq(recentDetailedTaker.length, 1);
+        assertEq(recentDetailedTaker[0].id, deal1);
+        Swap2p.DealInfo[] memory recentDetailedTaker2 = swap.getRecentDealsDetailed(taker2, 0, 10);
+        assertEq(recentDetailedTaker2.length, 1);
+        assertEq(recentDetailedTaker2[0].id, deal2);
 
         // ensure active offer still reflects reserve adjustments
         Swap2p.OfferInfo memory active = swap.getOfferById(activeOffer);
