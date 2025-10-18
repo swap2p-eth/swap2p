@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
@@ -35,8 +36,15 @@ export function SiteHeader() {
             event.preventDefault();
             setHash("offers");
           }}
-          className="text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground"
+          className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground"
         >
+          <Image
+            src="/swap2p-icon.svg"
+            alt="Swap2p logo"
+            width={32}
+            height={32}
+            priority
+          />
           Swap2p
         </Link>
         <nav className="flex items-center gap-1 rounded-full bg-card/70 p-1 shadow-[0_12px_32px_-24px_rgba(15,23,42,0.55)]">
