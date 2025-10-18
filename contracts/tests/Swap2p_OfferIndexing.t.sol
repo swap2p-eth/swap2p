@@ -11,6 +11,42 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.setOnline(true);
     }
 
+    struct Market {
+        address token;
+        Swap2p.Side side;
+        Swap2p.FiatCode fiat;
+    }
+
+    bytes32[] private _trackedDeals;
+    mapping(bytes32 => bool) private _dealSeen;
+
+    function _getDeal(bytes32 id) private view returns (Swap2p.Deal memory d) {
+        (
+            uint128 amount,
+            uint96 price,
+            Swap2p.DealState state,
+            Swap2p.Side side,
+            address makerAddr,
+            address takerAddr,
+            Swap2p.FiatCode fiat,
+            uint40 tsRequest,
+            uint40 tsLast,
+            address tokenAddr
+        ) = swap.deals(id);
+        d = Swap2p.Deal({
+            amount: amount,
+            price: price,
+            state: state,
+            side: side,
+            maker: makerAddr,
+            taker: takerAddr,
+            fiat: fiat,
+            tsRequest: tsRequest,
+            tsLast: tsLast,
+            token: tokenAddr
+        });
+    }
+
     function _setupMaker(address account) private {
         token.mint(account, 1e24);
         vm.startPrank(account);
@@ -24,6 +60,164 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         vm.startPrank(account);
         token.approve(address(swap), type(uint256).max);
         vm.stopPrank();
+    }
+
+    function _trackDeal(bytes32 id) private {
+        if (!_dealSeen[id]) {
+            _dealSeen[id] = true;
+            _trackedDeals.push(id);
+        }
+    }
+
+    function _contains(bytes32[] memory arr, bytes32 id) private pure returns (bool) {
+        for (uint256 i; i < arr.length; i++) {
+            if (arr[i] == id) return true;
+        }
+        return false;
+    }
+
+    function _contains(bytes32[] memory arr, bytes32 id, uint256 limit) private pure returns (bool) {
+        uint256 stop = arr.length < limit ? arr.length : limit;
+        for (uint256 i; i < stop; i++) {
+            if (arr[i] == id) return true;
+        }
+        return false;
+    }
+
+    function _assertMarketInvariant(
+        Market memory market,
+        address[] memory makerAccounts
+    ) private view {
+        uint256 count = swap.getOfferCount(market.token, market.side, market.fiat);
+        bytes32[] memory ids = swap.getMarketOfferIds(market.token, market.side, market.fiat, 0, count + 1);
+        Swap2p.OfferInfo[] memory infos = swap.getMarketOffers(market.token, market.side, market.fiat, 0, count + 1);
+        assertEq(ids.length, count);
+        assertEq(infos.length, count);
+        for (uint256 i; i < infos.length; i++) {
+            bool idMatches = false;
+            for (uint256 j; j < ids.length; j++) {
+                if (ids[j] == infos[i].id) {
+                    idMatches = true;
+                    break;
+                }
+            }
+            assertTrue(idMatches);
+            assertEq(uint8(infos[i].offer.side), uint8(market.side));
+            assertEq(Swap2p.FiatCode.unwrap(infos[i].offer.fiat), Swap2p.FiatCode.unwrap(market.fiat));
+            // timestamp non-zero indicates active offer
+            assertTrue(infos[i].offer.ts != 0);
+        }
+
+        // ensure getOfferKeys matches maker lists
+        address[] memory keys = swap.getOfferKeys(market.token, market.side, market.fiat, 0, count + 1);
+        assertEq(keys.length, count);
+        for (uint256 i; i < keys.length; i++) {
+            bool isKnownMaker;
+            for (uint256 j; j < makerAccounts.length; j++) {
+                if (keys[i] == makerAccounts[j]) {
+                    isKnownMaker = true;
+                    break;
+                }
+            }
+            assertTrue(isKnownMaker);
+        }
+    }
+
+    function _assertMakerInvariant(address makerAccount) private view {
+        uint256 count = swap.getMakerOfferCount(makerAccount);
+        bytes32[] memory ids = swap.getMakerOfferIds(makerAccount, 0, count + 1);
+        Swap2p.OfferInfo[] memory offers = swap.getMakerOffers(makerAccount, 0, count + 1);
+        assertEq(ids.length, count);
+        assertEq(offers.length, count);
+        for (uint256 i; i < offers.length; i++) {
+            assertEq(offers[i].maker, makerAccount);
+            bool containsId = false;
+            for (uint256 j; j < ids.length; j++) {
+                if (ids[j] == offers[i].id) {
+                    containsId = true;
+                    break;
+                }
+            }
+            assertTrue(containsId);
+        }
+    }
+
+    function _assertUserDealsInvariant(address user) private view {
+        uint256 openCount = swap.getOpenDealCount(user);
+        bytes32[] memory openIds = swap.getOpenDeals(user, 0, openCount + 5);
+        Swap2p.DealInfo[] memory openDetailed = swap.getOpenDealsDetailed(user, 0, openCount + 5);
+        assertEq(openIds.length, openCount);
+        assertEq(openDetailed.length, openCount);
+        for (uint256 i; i < openDetailed.length; i++) {
+            Swap2p.DealInfo memory info = openDetailed[i];
+            assertTrue(info.deal.state == Swap2p.DealState.REQUESTED ||
+                info.deal.state == Swap2p.DealState.ACCEPTED ||
+                info.deal.state == Swap2p.DealState.PAID);
+            assertTrue(_contains(openIds, info.id));
+        }
+
+        uint256 recentCount = swap.getRecentDealCount(user);
+        bytes32[] memory recentIds = swap.getRecentDeals(user, 0, recentCount + 5);
+        Swap2p.DealInfo[] memory recentDetailed = swap.getRecentDealsDetailed(user, 0, recentCount + 5);
+        assertEq(recentIds.length, recentCount);
+        assertEq(recentDetailed.length, recentCount);
+        for (uint256 i; i < recentDetailed.length; i++) {
+            Swap2p.DealInfo memory info = recentDetailed[i];
+            assertTrue(info.deal.state == Swap2p.DealState.RELEASED ||
+                info.deal.state == Swap2p.DealState.CANCELED);
+            assertTrue(_contains(recentIds, info.id));
+        }
+    }
+
+    function _assertDealMembership(bytes32 id) private view {
+        Swap2p.Deal memory d = _getDeal(id);
+        if (d.state == Swap2p.DealState.NONE) {
+            return;
+        }
+        bytes32[] memory makerOpen = swap.getOpenDeals(d.maker, 0, 20);
+        bytes32[] memory makerRecent = swap.getRecentDeals(d.maker, 0, 20);
+        bytes32[] memory takerOpen = swap.getOpenDeals(d.taker, 0, 20);
+        bytes32[] memory takerRecent = swap.getRecentDeals(d.taker, 0, 20);
+
+        bool makerHasOpen = _contains(makerOpen, id);
+        bool makerHasRecent = _contains(makerRecent, id);
+        bool takerHasOpen = _contains(takerOpen, id);
+        bool takerHasRecent = _contains(takerRecent, id);
+
+        if (d.state == Swap2p.DealState.REQUESTED ||
+            d.state == Swap2p.DealState.ACCEPTED ||
+            d.state == Swap2p.DealState.PAID) {
+            assertTrue(makerHasOpen);
+            assertTrue(takerHasOpen);
+            assertFalse(makerHasRecent);
+            assertFalse(takerHasRecent);
+        } else if (d.state == Swap2p.DealState.RELEASED ||
+            d.state == Swap2p.DealState.CANCELED) {
+            assertFalse(makerHasOpen);
+            assertFalse(takerHasOpen);
+            assertTrue(makerHasRecent);
+            assertTrue(takerHasRecent);
+        }
+    }
+
+    function _assertAllInvariants(
+        Market[] memory markets,
+        address[] memory makerAccounts,
+        address[] memory takerAccounts
+    ) private view {
+        for (uint256 i; i < markets.length; i++) {
+            _assertMarketInvariant(markets[i], makerAccounts);
+        }
+        for (uint256 i; i < makerAccounts.length; i++) {
+            _assertMakerInvariant(makerAccounts[i]);
+            _assertUserDealsInvariant(makerAccounts[i]);
+        }
+        for (uint256 i; i < takerAccounts.length; i++) {
+            _assertUserDealsInvariant(takerAccounts[i]);
+        }
+        for (uint256 i; i < _trackedDeals.length; i++) {
+            _assertDealMembership(_trackedDeals[i]);
+        }
     }
 
     function test_Index_RemoveMiddleMaker() public {
@@ -299,6 +493,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             "",
             address(0)
         );
+        _trackDeal(deal1);
         assertEq(swap.getOpenDealCount(maker), 1);
         assertEq(swap.getOpenDealCount(taker), 1);
 
@@ -326,6 +521,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             "",
             address(0)
         );
+        _trackDeal(deal2);
         assertEq(swap.getOpenDealCount(maker), 1);
         assertEq(swap.getOpenDealCount(taker2), 1);
 
@@ -347,6 +543,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             "",
             address(0)
         );
+        _trackDeal(deal3);
         assertEq(swap.getOpenDealCount(maker), 1);
         assertEq(swap.getOpenDealCount(taker), 1);
 
@@ -391,5 +588,172 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         Swap2p.OfferInfo memory active = swap.getOfferById(activeOffer);
         uint256 expectedReserve = 5_000e18 - 200e18 - 150e18 - 120e18 + 150e18;
         assertEq(active.offer.reserve, expectedReserve);
+    }
+
+    function test_Churn_Invariants() public {
+        address maker2 = makeAddr("maker2");
+        address maker3 = makeAddr("maker3");
+        address taker2 = makeAddr("taker2");
+
+        _setupMaker(maker2);
+        _setupMaker(maker3);
+        _setupTaker(taker2);
+
+        address[] memory makersList = new address[](3);
+        makersList[0] = maker;
+        makersList[1] = maker2;
+        makersList[2] = maker3;
+
+        address[] memory takersList = new address[](2);
+        takersList[0] = taker;
+        takersList[1] = taker2;
+
+        Market[] memory marketsList = new Market[](3);
+        marketsList[0] = Market({token: address(token), side: Swap2p.Side.SELL, fiat: Swap2p.FiatCode.wrap(840)});
+        marketsList[1] = Market({token: address(token), side: Swap2p.Side.BUY, fiat: Swap2p.FiatCode.wrap(978)});
+        marketsList[2] = Market({token: address(token), side: Swap2p.Side.SELL, fiat: Swap2p.FiatCode.wrap(826)});
+
+        // bootstrap offers for each maker/market combination
+        for (uint256 i; i < makersList.length; i++) {
+            for (uint256 j; j < marketsList.length; j++) {
+                address currentMaker = makersList[i];
+                Market memory mkt = marketsList[j];
+                Swap2p.MakerOfferTexts memory initTexts = Swap2p.MakerOfferTexts({
+                    paymentMethods: "init",
+                    requirements: "",
+                    comment: ""
+                });
+                vm.prank(currentMaker);
+                swap.maker_makeOffer(
+                    mkt.token,
+                    mkt.side,
+                    mkt.fiat,
+                    uint96(100e18 + i * 5e18 + j * 3e18),
+                    uint96(4_000e18 + j * 500e18),
+                    uint128(20e18),
+                    uint128(2_000e18),
+                    initTexts
+                );
+            }
+        }
+
+        _assertAllInvariants(marketsList, makersList, takersList);
+
+        uint256 amount = 120e18;
+        for (uint256 iter; iter < 40; iter++) {
+            Market memory market = marketsList[iter % marketsList.length];
+            address currentMaker = makersList[iter % makersList.length];
+            address currentTaker = takersList[(iter + 1) % takersList.length];
+            uint256 scenario = iter % 6;
+
+            if (scenario == 0) {
+                Swap2p.MakerOfferTexts memory updateTexts = Swap2p.MakerOfferTexts({
+                    paymentMethods: "update",
+                    requirements: iter % 2 == 0 ? "kyc" : "",
+                    comment: ""
+                });
+                vm.prank(currentMaker);
+                swap.maker_makeOffer(
+                    market.token,
+                    market.side,
+                    market.fiat,
+                    uint96(90e18 + iter * 1e18),
+                    uint96(5_000e18 + iter * 100e18),
+                    uint128(10e18),
+                    uint128(2_500e18),
+                    updateTexts
+                );
+            } else if (scenario == 1) {
+                bytes32 offerId = swap.getOfferId(market.token, currentMaker, market.side, market.fiat);
+                if (offerId != bytes32(0)) {
+                    Swap2p.OfferInfo memory info = swap.getOfferById(offerId);
+                    if (info.offer.reserve >= amount) {
+                        bytes32 dealId = _requestDealAs(
+                            currentTaker,
+                            market.token,
+                            market.side,
+                            currentMaker,
+                            uint128(amount),
+                            market.fiat,
+                            uint96(info.offer.priceFiatPerToken),
+                            "",
+                            address(0)
+                        );
+                        _trackDeal(dealId);
+                    }
+                }
+            } else if (scenario == 2) {
+                bytes32[] memory makerOpen = swap.getOpenDeals(currentMaker, 0, 10);
+                if (makerOpen.length != 0) {
+                bytes32 id = makerOpen[0];
+                Swap2p.Deal memory d = _getDeal(id);
+                    if (d.state == Swap2p.DealState.REQUESTED) {
+                        vm.prank(d.maker);
+                        swap.maker_acceptRequest(id, bytes(""));
+                        d = _getDeal(id);
+                    }
+                    if (d.state == Swap2p.DealState.ACCEPTED) {
+                        if (d.side == Swap2p.Side.SELL) {
+                            vm.prank(d.taker);
+                            swap.markFiatPaid(id, bytes(""));
+                            d = _getDeal(id);
+                            vm.prank(d.maker);
+                            swap.release(id, bytes(""));
+                        } else {
+                            vm.prank(d.maker);
+                            swap.markFiatPaid(id, bytes(""));
+                            d = _getDeal(id);
+                            vm.prank(d.taker);
+                            swap.release(id, bytes(""));
+                        }
+                    }
+                }
+            } else if (scenario == 3) {
+                bytes32[] memory takerOpen = swap.getOpenDeals(currentTaker, 0, 10);
+                if (takerOpen.length != 0) {
+                    bytes32 id = takerOpen[0];
+                    Swap2p.Deal memory d = _getDeal(id);
+                    if (d.state == Swap2p.DealState.REQUESTED) {
+                        vm.prank(d.taker);
+                        swap.cancelRequest(id, bytes(""));
+                    } else if (d.state == Swap2p.DealState.ACCEPTED) {
+                        if (d.side == Swap2p.Side.SELL) {
+                            vm.prank(d.taker);
+                            swap.cancelDeal(id, bytes(""));
+                        } else {
+                            vm.prank(d.maker);
+                            swap.cancelDeal(id, bytes(""));
+                        }
+                    }
+                }
+            } else if (scenario == 4) {
+                bytes32 offerId = swap.getOfferId(market.token, currentMaker, market.side, market.fiat);
+                if (offerId != bytes32(0)) {
+                    vm.prank(currentMaker);
+                    swap.maker_deleteOffer(market.token, market.side, market.fiat);
+                }
+            } else if (scenario == 5) {
+                vm.warp(block.timestamp + 50 hours);
+                uint256 count;
+                bytes32[] memory candidates = new bytes32[]( _trackedDeals.length);
+                for (uint256 k; k < _trackedDeals.length; k++) {
+                    Swap2p.Deal memory d = _getDeal(_trackedDeals[k]);
+                    if (d.state == Swap2p.DealState.RELEASED || d.state == Swap2p.DealState.CANCELED) {
+                        candidates[count++] = _trackedDeals[k];
+                    }
+                }
+                if (count != 0) {
+                    bytes32[] memory cleanup = new bytes32[](count);
+                    for (uint256 k; k < count; k++) {
+                        cleanup[k] = candidates[k];
+                    }
+                    vm.prank(maker);
+                    swap.cleanupDeals(cleanup, 48);
+                }
+            }
+
+            vm.warp(block.timestamp + 1 hours);
+            _assertAllInvariants(marketsList, makersList, takersList);
+        }
     }
 }
