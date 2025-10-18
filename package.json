@@ -23,6 +23,7 @@
     "sync:app-contracts": "node scripts/sync-app-contracts.mjs",
     "size": "npx hardhat size-contracts",
     "test": "npx hardhat test",
+    "echidna": "PATH=/snap/bin:$PATH FOUNDRY_CONFIG=echidna/foundry.toml echidna contracts/tests/invariant/Swap2p_EchidnaHarness.sol --contract Swap2pEchidnaHarness --config echidna/swap2p.yaml",
     "test-gas": "npx hardhat test nodejs test/gas.node.ts",
     "test-gas:update": "UPDATE_GAS_BASELINE=1 npx hardhat test nodejs test/gas.node.ts",
     "test-gas:sol": "npx hardhat test solidity contracts/tests/Swap2p_Gas.t.sol",

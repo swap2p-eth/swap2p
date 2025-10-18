@@ -50,11 +50,11 @@ const config: HardhatUserConfig = {
       accounts: hasUserPrivateKey ? [resolvedPrivateKey] : [],
     },
   },
-  etherscan: {
+/*  etherscan: {
     apiKey: {
       sepolia: process.env.ETHERSCAN_API_KEY,
     },
-  },
+  },*/
   verify: {
     etherscan: {
       apiKey: process.env.ETHERSCAN_API_KEY,

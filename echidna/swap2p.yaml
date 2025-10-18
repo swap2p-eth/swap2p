@@ -1,0 +1,13 @@
+testMode: property
+contract: Swap2pEchidnaHarness
+files:
+  - contracts/tests/invariant/Swap2p_EchidnaHarness.sol
+coverage: false
+seed: 42
+
+defaults:
+  solc: "0.8.25"
+  smt: true
+  cryticArgs:
+    - "--evm-version"
+    - "london"
