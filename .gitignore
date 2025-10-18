@@ -19,6 +19,9 @@
 # Hardhat coverage reports
 /coverage
 
+/crytic-export
+
 # IDE
 /.idea
 /.env
+/slither_results.json

@@ -1,0 +1,8 @@
+files:
+  - contracts/tests/invariant/Swap2p_EchidnaHarness.sol
+contract: Swap2pEchidnaHarness
+coverage: false
+seed: 42
+cryticArgs:
+  - "--evm-version"
+  - "london"
