@@ -71,7 +71,7 @@ export function TokenApprovalButton({
         onClick={handleApproveClick}
         disabled={isDisabled}
         className={cn(
-          "h-full rounded-none rounded-l-full bg-primary px-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary-foreground transition-colors",
+          "h-full rounded-none rounded-l-full bg-primary px-4 text-sm font-semibold uppercase tracking-[0.2em] text-primary-foreground transition-colors",
           "hover:bg-primary/90 focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-60"
         )}
       >
