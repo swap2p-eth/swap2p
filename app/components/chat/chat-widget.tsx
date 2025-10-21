@@ -6,12 +6,7 @@ import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { DealState } from "@/lib/mock-data";
-import {
-  MAX_MESSAGE_LENGTH,
-  createChatMessage,
-  seedMessages,
-  type ChatbotMessage
-} from "./chat-utils";
+import { useChatMessages } from "@/hooks/use-chat-messages";
 
 interface ChatWidgetProps {
   className?: string;
@@ -21,46 +16,21 @@ interface ChatWidgetProps {
 const chatEnabledStates: DealState[] = ["ACCEPTED", "PAID"];
 
 export function ChatWidget({ className, dealState }: ChatWidgetProps) {
-  const [messages, setMessages] = React.useState<ChatbotMessage[]>(seedMessages);
-  const [draft, setDraft] = React.useState("");
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const { messages, draft, setDraft, isTooLong, submitMessage, maxLength } = useChatMessages({ containerRef });
   const isChatEnabled = chatEnabledStates.includes(dealState ?? "REQUESTED");
-  const isTooLong = draft.length > MAX_MESSAGE_LENGTH;
 
   const onSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      const text = draft.trim();
-      if (!text || draft.length > MAX_MESSAGE_LENGTH) return;
-
-      const userMessage = createChatMessage(text);
-      const nextMessages = [...messages, userMessage];
-      setMessages(nextMessages);
-      setDraft("");
+      submitMessage();
       requestAnimationFrame(() => {
         inputRef.current?.focus();
       });
-
-      // Placeholder assistant reply. Replace with real chatbot-kit integration.
-      setTimeout(() => {
-        setMessages(prev => [
-          ...prev,
-          createChatMessage(
-            "Encrypting and relaying to Swap2p — the bot integration is ready to grow.",
-            "assistant"
-          )
-        ]);
-      }, 450);
     },
-    [draft, messages]
+    [submitMessage]
   );
-
-  React.useEffect(() => {
-    const scrollElement = containerRef.current;
-    if (!scrollElement) return;
-    scrollElement.scrollTop = scrollElement.scrollHeight;
-  }, [messages]);
 
   return (
     <ChatContainer
@@ -118,7 +88,7 @@ export function ChatWidget({ className, dealState }: ChatWidgetProps) {
           </div>
           {isTooLong ? (
             <p className="mt-2 text-xs text-orange-500">
-              Message is limited to 128 characters.
+              Message is limited to {maxLength} characters.
             </p>
           ) : null}
         </ChatInput>

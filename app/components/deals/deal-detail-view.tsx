@@ -3,7 +3,7 @@
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, formatAddressShort } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { DealStatusPanel } from "./deal-status-panel";
@@ -12,22 +12,12 @@ import { RelativeTime } from "@/components/relative-time";
 import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
 import { createMockRng } from "@/lib/mock-clock";
 import { ParticipantPill } from "@/components/deals/participant-pill";
-import { createFiatMetaItem, createSideMetaItem, createTokenMetaItem } from "@/components/deals/summary-meta";
+import { buildDealMetaItems } from "@/hooks/use-deal-meta";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import { useDealPerspective } from "@/hooks/use-deal-perspective";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
+import { getDealSideCopy } from "@/lib/deal-copy";
 import type { ApprovalMode } from "./token-approval-button";
-
-const sideCopy = {
-  BUY: {
-    headline: "Maker is buying tokens",
-    tone: "Counterparty wires fiat after escrow."
-  },
-  SELL: {
-    headline: "Maker is selling tokens",
-    tone: "Taker wires fiat after seeing escrowed funds."
-  }
-} as const;
 
 export interface DealDetailViewProps {
   dealId: number;
@@ -44,6 +34,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     releaseDeal
   } = useDeals();
   const deal = deals.find(item => item.id === dealId);
+  const perspective = useDealPerspective(deal ?? null);
 
   if (isLoading) {
     return (
@@ -72,8 +63,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     );
   }
 
-  const summary = sideCopy[deal.side];
-  const perspective = useDealPerspective(deal);
+  const summary = getDealSideCopy(deal.side);
   const role = perspective.role ?? "MAKER";
   const isMaker = perspective.isMaker;
   const userSide = (perspective.userSide ?? deal.side).toUpperCase();
@@ -118,25 +108,17 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     releaseDeal(deal.id, role);
   };
 
-  const metaItems = [
-    createSideMetaItem({
-      id: "your-side",
-      label: "Your Side",
-      side: userSide,
-      description: `You ${userAction} crypto`
-    }),
-    createTokenMetaItem({ token: deal.token, amountLabel: tokenAmountValue }),
-    createFiatMetaItem({ fiat: deal.fiatCode, amountLabel: metaFiatLabel }),
-    {
-      id: "price",
-      label: "Price",
-      value: priceValue ? (
-        <PriceMetaValue priceLabel={priceValue} fiatSymbol={deal.fiatCode} tokenSymbol={deal.token} />
-      ) : (
-        <span className="text-sm text-muted-foreground">—</span>
-      )
-    }
-  ];
+  const metaItems = buildDealMetaItems({
+    userSide,
+    userActionDescription: `You ${userAction} crypto`,
+    tokenSymbol: deal.token,
+    tokenAmountLabel: tokenAmountValue,
+    fiatSymbol: deal.fiatCode,
+    fiatAmountLabel: metaFiatLabel,
+    priceValue: priceValue ? (
+      <PriceMetaValue priceLabel={priceValue} fiatSymbol={deal.fiatCode} tokenSymbol={deal.token} />
+    ) : undefined
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">

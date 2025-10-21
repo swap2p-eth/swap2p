@@ -17,7 +17,7 @@ import { useDeals } from "./deals-provider";
 import { useOffers } from "@/components/offers/offers-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ParticipantPill } from "@/components/deals/participant-pill";
-import { createFiatMetaItem, createSideMetaItem, createTokenMetaItem } from "@/components/deals/summary-meta";
+import { buildDealMetaItems } from "@/hooks/use-deal-meta";
 import { mockTokenConfigs } from "@/lib/mock-market";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
@@ -246,6 +246,22 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const summaryFiatAmount = summaryTokenAmount * offer.price;
   const summaryFiatLabel = `≈ ${formatFiatAmount(summaryFiatAmount)}`;
 
+  const metaItems = buildDealMetaItems({
+    userSide,
+    userActionDescription: `You ${userAction} crypto`,
+    tokenSymbol: offer.token,
+    tokenAmountLabel: summaryTokenLabel,
+    fiatSymbol: offer.fiat,
+    fiatAmountLabel: summaryFiatLabel,
+    priceValue: (
+      <PriceMetaValue
+        priceLabel={formatPrice(offer.price)}
+        fiatSymbol={offer.fiat}
+        tokenSymbol={offer.token}
+      />
+    )
+  });
+
   const backLabel = returnHash === "dashboard" ? "Back to dashboard" : "Back to offers";
 
   return (
@@ -274,27 +290,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
             <span className="text-sm text-muted-foreground">{MERCHANT_REQUIREMENTS}</span>
           </div>
         }
-        metaItems={[
-          createSideMetaItem({
-            id: "your-side",
-            label: "Your Side",
-            side: userSide,
-            description: `You ${userAction} crypto`
-          }),
-          createTokenMetaItem({ token: offer.token, amountLabel: summaryTokenLabel }),
-          createFiatMetaItem({ fiat: offer.fiat, amountLabel: summaryFiatLabel }),
-          {
-            id: "price",
-            label: "Price",
-            value: (
-              <PriceMetaValue
-                priceLabel={formatPrice(offer.price)}
-                fiatSymbol={offer.fiat}
-                tokenSymbol={offer.token}
-              />
-            )
-          }
-        ]}
+        metaItems={metaItems}
       />
 
       <DealStatusPanel
