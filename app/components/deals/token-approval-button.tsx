@@ -3,8 +3,6 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
-import { ChevronDown } from "lucide-react";
-
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +62,7 @@ export function TokenApprovalButton({
   return (
     <div
       className={cn(
-        "inline-flex h-12 items-center overflow-hidden rounded-full bg-muted/20 text-sm shadow-sm",
+        "inline-flex h-10 items-center overflow-hidden rounded-full bg-muted/20 text-sm shadow-sm",
         className
       )}
     >
@@ -73,23 +71,21 @@ export function TokenApprovalButton({
         onClick={handleApproveClick}
         disabled={isDisabled}
         className={cn(
-          "h-full rounded-none rounded-l-full bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors",
+          "h-full rounded-none rounded-l-full bg-primary px-4 text-xs font-semibold uppercase tracking-[0.2em] text-primary-foreground transition-colors",
           "hover:bg-primary/90 focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-60"
         )}
       >
         {label}
       </Button>
-      <span aria-hidden="true" className="h-full w-px bg-background" />
+      <span aria-hidden="true" className="h-full w-px bg-background/60" />
       <Select value={mode} onValueChange={handleModeChange} disabled={isDisabled}>
         <SelectTrigger
           className={cn(
-            "h-full justify-center rounded-none rounded-r-full border-0 bg-primary px-4 text-primary-foreground transition-colors",
+            "h-full justify-center rounded-none rounded-r-full border-0 bg-primary px-3 text-primary-foreground transition-colors",
             "hover:bg-primary/90 focus:outline-none focus:ring-0 focus:ring-offset-0 disabled:opacity-60"
           )}
           aria-label="Select approval amount"
         >
-          <span className="sr-only">{label}</span>
-          <ChevronDown className="h-4 w-4 text-primary-foreground" aria-hidden="true" />
         </SelectTrigger>
         <SelectContent align="end" className="min-w-[12rem]">
           <SelectItem value="max">Approve MAX</SelectItem>
