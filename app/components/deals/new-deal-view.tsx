@@ -18,6 +18,7 @@ import { useOffers } from "@/components/offers/offers-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { createSideMetaItem } from "@/components/deals/summary-meta";
+import type { ApprovalMode } from "./token-approval-button";
 
 type AmountKind = "crypto" | "fiat";
 type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
@@ -209,6 +210,11 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     onCancel?.();
   };
 
+  const handleApproveTokens = (mode: ApprovalMode) => {
+    void mode;
+    // Token allowance integration can be added here.
+  };
+
   const amountLabel =
     amountKind === "crypto" ? (
       <>
@@ -312,6 +318,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         onCommentChange={setPaymentDetails}
         onRequest={handleRequest}
         onCancel={handleCancel}
+        onApproveTokens={handleApproveTokens}
       />
 
       <form

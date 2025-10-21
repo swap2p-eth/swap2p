@@ -14,6 +14,7 @@ import { createMockRng } from "@/lib/mock-clock";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { createFiatMetaItem, createSideMetaItem, createTokenMetaItem } from "@/components/deals/summary-meta";
 import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
+import type { ApprovalMode } from "./token-approval-button";
 
 const sideCopy = {
   BUY: {
@@ -94,6 +95,14 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
 
   const fiatAmountDisplay = fiatAmount ? `≈ ${fiatAmountLabel}` : fiatAmountLabel;
 
+  const counterpartyLabel = isMaker ? "Client" : "Merchant";
+  const counterpartyAddress = isMaker ? deal.taker : deal.maker;
+
+  const handleApproveTokens = (mode: ApprovalMode) => {
+    void mode;
+    // Token allowance integration can be added here.
+  };
+
   const handleAccept = (message: string) => {
     void message;
     acceptDeal(deal.id);
@@ -144,7 +153,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
             id: "counterparty",
             className:
               "bg-transparent px-0 py-0 shadow-none text-secondary-foreground flex flex-col items-end gap-1 text-right",
-            content: <ParticipantPill label="Counterparty" address={deal.taker} />
+            content: <ParticipantPill label={counterpartyLabel} address={counterpartyAddress} />
           }
         ]}
         metaItems={metaItems}
@@ -155,7 +164,9 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
               <span>
                 Last update: <RelativeTime value={deal.updatedAt} className="text-sm text-muted-foreground" />
               </span>
-              <span>Counterparty: {formatAddressShort(deal.taker)}</span>
+              <span>
+                {counterpartyLabel}: {formatAddressShort(counterpartyAddress)}
+              </span>
             </div>
           </div>
         }
@@ -169,6 +180,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
         onCancel={handleCancel}
         onMarkPaid={handleMarkPaid}
         onRelease={handleRelease}
+        onApproveTokens={handleApproveTokens}
       />
 
       <div className="rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">

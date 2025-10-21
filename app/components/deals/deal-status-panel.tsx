@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { TokenApprovalButton, type ApprovalMode } from "./token-approval-button";
 
 type DealProgressState = "NEW" | "REQUESTED" | "ACCEPTED" | "PAID" | "RELEASED" | "CANCELED";
 type DealSideValue = "BUY" | "SELL";
@@ -35,6 +36,9 @@ interface DealStatusPanelProps {
   onCancel?: (comment: string) => void;
   onMarkPaid?: (comment: string) => void;
   onRelease?: (comment: string) => void;
+  onApproveTokens?: (mode: ApprovalMode) => void;
+  approvalBusy?: boolean;
+  approvalModeStorageKey?: string;
 }
 
 interface TimelineStep {
@@ -269,7 +273,10 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
     onCancel,
     onMarkPaid,
     onRelease,
-    onRequest
+    onRequest,
+    onApproveTokens,
+    approvalBusy,
+    approvalModeStorageKey
   } = props;
   const scenario = getScenarioConfig(role, side, state);
 
@@ -341,6 +348,9 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
 
   const progressIndex =
     state === "NEW" ? -1 : TIMELINE_STEPS.findIndex(step => step.id === state);
+  const showApprovalButton =
+    scenario?.primaryAction &&
+    (scenario.primaryAction.type === "REQUEST" || scenario.primaryAction.type === "ACCEPT");
 
   return (
     <section className="rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">
@@ -429,6 +439,15 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
 
               {(scenario.primaryAction || scenario.secondaryAction) ? (
                 <div className="mt-2 flex items-center gap-3">
+                  {showApprovalButton ? (
+                    <TokenApprovalButton
+                      className="flex-shrink-0"
+                      disabled={disabled || busy}
+                      busy={approvalBusy}
+                      onApprove={onApproveTokens}
+                      approvalModeStorageKey={approvalModeStorageKey}
+                    />
+                  ) : null}
                   {scenario.primaryAction ? (
                     <Button
                       type="button"
