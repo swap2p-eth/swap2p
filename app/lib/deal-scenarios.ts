@@ -28,6 +28,13 @@ type ScenarioMap = Record<
   Record<DealSideValue, Partial<Record<DealProgressState, ScenarioStateConfig>>>
 >;
 
+export const invertSide = (side: DealSideValue): DealSideValue => (side === "BUY" ? "SELL" : "BUY");
+
+export const toUserSide = (side: DealSideValue, role: DealUserRole): DealSideValue =>
+  role === "MAKER" ? side : invertSide(side);
+
+// NOTE: scenarios are authored from the user's point of view.
+// For takers we normalize the contract side (maker perspective) into the taker's side before lookup.
 export const scenarioContent: ScenarioMap = {
   MAKER: {
     BUY: {
@@ -170,6 +177,7 @@ export function getScenarioConfig(
   side: DealSideValue,
   state: DealProgressState
 ): ScenarioStateConfig | null {
-  const roleConfig = scenarioContent[role][side];
+  const userSide = toUserSide(side, role);
+  const roleConfig = scenarioContent[role][userSide];
   return roleConfig[state] ?? null;
 }

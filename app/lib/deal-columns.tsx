@@ -9,7 +9,7 @@ import { DealSideBadge } from "@/components/deals/deal-side-badge";
 import { Badge } from "@/components/ui/badge";
 import { TokenAmountCell } from "@/components/deals/token-amount-cell";
 import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
-import { getScenarioConfig, type DealProgressState } from "@/lib/deal-scenarios";
+import { getScenarioConfig, toUserSide, type DealProgressState } from "@/lib/deal-scenarios";
 import { cn } from "@/lib/utils";
 
 const normalizeAddress = (value: string | null | undefined) => value?.toLowerCase() ?? "";
@@ -23,8 +23,6 @@ function getFiatAmount(deal: DealRow): number | null {
   return price * deal.amount;
 }
 
-const invertSide = (side: DealSide): DealSide => (side === "BUY" ? "SELL" : "BUY");
-
 const getUserRole = (deal: DealRow, currentUser: string): "MAKER" | "TAKER" | null => {
   const userAddress = normalizeAddress(currentUser);
   if (normalizeAddress(deal.maker) === userAddress) return "MAKER";
@@ -35,7 +33,7 @@ const getUserRole = (deal: DealRow, currentUser: string): "MAKER" | "TAKER" | nu
 const getUserSide = (deal: DealRow, currentUser: string): DealSide | null => {
   const role = getUserRole(deal, currentUser);
   if (!role) return null;
-  return role === "MAKER" ? deal.side : invertSide(deal.side);
+  return toUserSide(deal.side, role);
 };
 
 const ACTIVE_STATES: DealState[] = ["REQUESTED", "ACCEPTED", "PAID"];
