@@ -14,6 +14,7 @@ import { createMockRng } from "@/lib/mock-clock";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { createFiatMetaItem, createSideMetaItem, createTokenMetaItem } from "@/components/deals/summary-meta";
 import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
+import { getDealPerspective } from "@/lib/deal-utils";
 import type { ApprovalMode } from "./token-approval-button";
 
 const sideCopy = {
@@ -71,9 +72,10 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   }
 
   const summary = sideCopy[deal.side];
-  const isMaker = deal.maker.toLowerCase() === CURRENT_USER_ADDRESS.toLowerCase();
-  const role = isMaker ? "MAKER" : "TAKER";
-  const userSide = (isMaker ? deal.side : deal.side === "SELL" ? "BUY" : "SELL").toUpperCase();
+  const perspective = getDealPerspective(deal, CURRENT_USER_ADDRESS);
+  const role = perspective.role ?? "MAKER";
+  const isMaker = perspective.isMaker;
+  const userSide = (perspective.userSide ?? deal.side).toUpperCase();
   const userAction = userSide === "SELL" ? "sell" : "buy";
   const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
   const fiatConfig = mockFiatCurrencies.find(config => config.code === deal.fiatCode);

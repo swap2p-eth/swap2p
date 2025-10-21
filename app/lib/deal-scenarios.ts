@@ -1,3 +1,4 @@
+import { toUserSide } from "@/lib/deal-utils";
 export type DealProgressState = "NEW" | "REQUESTED" | "ACCEPTED" | "PAID" | "RELEASED" | "CANCELED";
 export type DealSideValue = "BUY" | "SELL";
 export type DealUserRole = "MAKER" | "TAKER";
@@ -28,10 +29,6 @@ type ScenarioMap = Record<
   Record<DealSideValue, Partial<Record<DealProgressState, ScenarioStateConfig>>>
 >;
 
-export const invertSide = (side: DealSideValue): DealSideValue => (side === "BUY" ? "SELL" : "BUY");
-
-export const toUserSide = (side: DealSideValue, role: DealUserRole): DealSideValue =>
-  role === "MAKER" ? side : invertSide(side);
 
 // NOTE: scenarios are authored from the user's point of view.
 // For takers we normalize the contract side (maker perspective) into the taker's side before lookup.

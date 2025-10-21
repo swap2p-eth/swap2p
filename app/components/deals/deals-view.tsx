@@ -8,7 +8,7 @@ import { DataTable } from "@/components/data-table";
 import { createOfferColumns } from "@/lib/offer-columns";
 import { createDealColumns } from "@/lib/deal-columns";
 import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
-import { useDeals } from "./deals-provider";
+import { useCurrentUserDeals } from "@/hooks/use-current-user-deals";
 import { useOffers } from "@/components/offers/offers-provider";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import type { OfferRow } from "@/lib/mock-offers";
@@ -19,22 +19,14 @@ interface DealsViewProps {
 
 export function DealsView({ onSelectDeal }: DealsViewProps) {
   const [status, setStatus] = React.useState("active");
-  const { deals, isLoading: dealsLoading } = useDeals();
+  const { activeDeals, closedDeals, isLoading: dealsLoading } = useCurrentUserDeals();
   const { offers, isLoading: offersLoading } = useOffers();
   const { setHash } = useHashLocation("offers");
 
-  const userDeals = React.useMemo(
-    () => deals.filter(deal => deal.maker === CURRENT_USER_ADDRESS || deal.taker === CURRENT_USER_ADDRESS),
-    [deals]
+  const filteredDeals = React.useMemo(
+    () => (status === "closed" ? closedDeals : activeDeals),
+    [status, activeDeals, closedDeals]
   );
-
-  const filteredDeals = React.useMemo(() => {
-    const activeStates = new Set(["REQUESTED", "ACCEPTED", "PAID"]);
-    const closedStates = new Set(["RELEASED", "CANCELED"]);
-    const activeDeals = userDeals.filter(deal => activeStates.has(deal.state));
-    const closedDeals = userDeals.filter(deal => closedStates.has(deal.state));
-    return status === "closed" ? closedDeals : activeDeals;
-  }, [userDeals, status]);
 
   const myOffers = React.useMemo(
     () => offers.filter(offer => offer.maker === CURRENT_USER_ADDRESS).slice(0, 6),

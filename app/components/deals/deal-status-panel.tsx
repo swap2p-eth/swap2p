@@ -1,28 +1,20 @@
 "use client";
 
 import * as React from "react";
-import {
-  ArrowRight,
-  Banknote,
-  CircleCheckBig,
-  CircleHelp,
-  CircleX,
-  HandCoins,
-  Hourglass,
-  TriangleAlert
-} from "lucide-react";
+import { ArrowRight, Banknote, CircleCheckBig, CircleHelp, CircleX, HandCoins } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import type { DealUserRole } from "@/lib/deal-utils";
 import {
   getScenarioConfig,
   type DealProgressState,
   type DealSideValue,
-  type DealUserRole,
   type ActionConfig
 } from "@/lib/deal-scenarios";
 import { TokenApprovalButton, type ApprovalMode } from "./token-approval-button";
+import { DealInstructionBanner } from "./deal-instruction-banner";
 
 interface DealStatusPanelProps {
   state: DealProgressState;
@@ -241,23 +233,10 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
 
           {scenario ? (
             <div className="flex flex-col gap-4">
-              <div
-                className={cn(
-                  "mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl p-4 text-sm",
-                  scenario.primaryAction
-                    ? "bg-orange-400/10 text-orange-600"
-                    : "bg-gray-200/50 text-muted-foreground"
-                )}
-              >
-                <span>
-                  {scenario.primaryAction ? (
-                    <TriangleAlert className="h-8 w-8 text-orange-500" aria-hidden="true" />
-                  ) : (
-                    <Hourglass className="h-8 w-8 text-muted-foreground/70" aria-hidden="true" />
-                  )}
-                </span>
-                <p className="font-medium">{scenario.instructions}</p>
-              </div>
+              <DealInstructionBanner
+                instructions={scenario.instructions}
+                highlight={Boolean(scenario.primaryAction)}
+              />
               {scenario.comment ? (
                 <div className="flex flex-col gap-2">
                   {scenario.comment.label ? (

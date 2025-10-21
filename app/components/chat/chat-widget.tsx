@@ -1,61 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { ChatContainer, ChatHeader, ChatList, ChatMessage, ChatInput } from "@/components/ui/chat";
+import { ChatContainer, ChatList, ChatMessage, ChatInput } from "@/components/ui/chat";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { DealState } from "@/lib/mock-data";
-
-type ChatbotRole = "user" | "assistant" | "system";
-
-interface ChatbotMessage {
-  id: string;
-  role: ChatbotRole;
-  content: string;
-  timestamp: string;
-}
-
-const seedMessages: ChatbotMessage[] = [
-  {
-    id: "seed-1",
-    role: "assistant",
-    content:
-      "Parties only see each other after a deal is created. Messages will live on-chain as encrypted bytes.",
-    timestamp: "10:00"
-  },
-  {
-    id: "seed-2",
-    role: "user",
-    content: "Great, surface the fresh deals and hook them into chat.",
-    timestamp: "10:02"
-  },
-  {
-    id: "seed-3",
-    role: "assistant",
-    content: "Wiring the contract API — messages are already stored as bytes.",
-    timestamp: "10:03"
-  }
-];
-
-function createMessage(
-  content: string,
-  role: ChatbotMessage["role"] = "user",
-  timestamp?: string
-): ChatbotMessage {
-  const label =
-    timestamp ??
-    new Intl.DateTimeFormat("en-US", {
-      hour: "2-digit",
-      minute: "2-digit"
-    }).format(new Date());
-  return {
-    id: `${role}-${Date.now()}`,
-    role,
-    content,
-    timestamp: label
-  };
-}
+import {
+  MAX_MESSAGE_LENGTH,
+  createChatMessage,
+  seedMessages,
+  type ChatbotMessage
+} from "./chat-utils";
 
 interface ChatWidgetProps {
   className?: string;
@@ -63,7 +19,6 @@ interface ChatWidgetProps {
 }
 
 const chatEnabledStates: DealState[] = ["ACCEPTED", "PAID"];
-const MAX_MESSAGE_LENGTH = 128;
 
 export function ChatWidget({ className, dealState }: ChatWidgetProps) {
   const [messages, setMessages] = React.useState<ChatbotMessage[]>(seedMessages);
@@ -79,7 +34,7 @@ export function ChatWidget({ className, dealState }: ChatWidgetProps) {
       const text = draft.trim();
       if (!text || draft.length > MAX_MESSAGE_LENGTH) return;
 
-      const userMessage = createMessage(text);
+      const userMessage = createChatMessage(text);
       const nextMessages = [...messages, userMessage];
       setMessages(nextMessages);
       setDraft("");
@@ -91,7 +46,10 @@ export function ChatWidget({ className, dealState }: ChatWidgetProps) {
       setTimeout(() => {
         setMessages(prev => [
           ...prev,
-          createMessage("Encrypting and relaying to Swap2p — the bot integration is ready to grow.", "assistant")
+          createChatMessage(
+            "Encrypting and relaying to Swap2p — the bot integration is ready to grow.",
+            "assistant"
+          )
         ]);
       }, 450);
     },

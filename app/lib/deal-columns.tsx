@@ -1,7 +1,7 @@
 import { ArrowUpDown, Hourglass, TriangleAlert } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import type { DealRow, DealSide, DealState } from "@/lib/mock-data";
+import type { DealRow, DealSide } from "@/lib/mock-data";
 import { RelativeTime } from "@/components/relative-time";
 import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
 import { createMockRng } from "@/lib/mock-clock";
@@ -9,10 +9,9 @@ import { DealSideBadge } from "@/components/deals/deal-side-badge";
 import { Badge } from "@/components/ui/badge";
 import { TokenAmountCell } from "@/components/deals/token-amount-cell";
 import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
-import { getScenarioConfig, toUserSide, type DealProgressState } from "@/lib/deal-scenarios";
+import { getScenarioConfig, type DealProgressState } from "@/lib/deal-scenarios";
+import { getDealPerspective, isActiveDealState } from "@/lib/deal-utils";
 import { cn } from "@/lib/utils";
-
-const normalizeAddress = (value: string | null | undefined) => value?.toLowerCase() ?? "";
 
 function getFiatAmount(deal: DealRow): number | null {
   const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
@@ -23,25 +22,16 @@ function getFiatAmount(deal: DealRow): number | null {
   return price * deal.amount;
 }
 
-const getUserRole = (deal: DealRow, currentUser: string): "MAKER" | "TAKER" | null => {
-  const userAddress = normalizeAddress(currentUser);
-  if (normalizeAddress(deal.maker) === userAddress) return "MAKER";
-  if (normalizeAddress(deal.taker) === userAddress) return "TAKER";
-  return null;
-};
+const getUserRole = (deal: DealRow, currentUser: string): "MAKER" | "TAKER" | null =>
+  getDealPerspective(deal, currentUser).role;
 
-const getUserSide = (deal: DealRow, currentUser: string): DealSide | null => {
-  const role = getUserRole(deal, currentUser);
-  if (!role) return null;
-  return toUserSide(deal.side, role);
-};
-
-const ACTIVE_STATES: DealState[] = ["REQUESTED", "ACCEPTED", "PAID"];
+const getUserSide = (deal: DealRow, currentUser: string): DealSide | null =>
+  getDealPerspective(deal, currentUser).userSide;
 
 const getScenarioForDeal = (deal: DealRow, currentUser: string) => {
-  const role = getUserRole(deal, currentUser);
-  if (!role) return null;
-  return getScenarioConfig(role, deal.side, deal.state as DealProgressState);
+  const perspective = getDealPerspective(deal, currentUser);
+  if (!perspective.role) return null;
+  return getScenarioConfig(perspective.role, deal.side, deal.state as DealProgressState);
 };
 
 interface DealColumnOptions {
@@ -156,7 +146,7 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
       header: "Action",
       cell: ({ row }) => {
         const deal = row.original as DealRow;
-        if (!ACTIVE_STATES.includes(deal.state)) {
+        if (!isActiveDealState(deal.state)) {
           return <span className="text-sm text-muted-foreground">—</span>;
         }
         const scenario = getScenarioForDeal(deal, currentUser);

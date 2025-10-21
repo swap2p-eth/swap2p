@@ -277,26 +277,8 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
             side: userSide,
             description: `You ${userAction} crypto`
           }),
-          {
-            id: "token",
-            label: "Token",
-            value: (
-              <span className="flex items-center gap-2">
-                <TokenIcon symbol={offer.token} size={18} />
-                {offer.token}
-              </span>
-            )
-          },
-          {
-            id: "fiat",
-            label: "Fiat",
-            value: (
-              <span className="flex items-center gap-2">
-                <FiatFlag fiat={offer.fiat} size={18} />
-                {offer.fiat}
-              </span>
-            )
-          },
+          createTokenMetaItem({ token: offer.token, amountLabel: offer.token }),
+          createFiatMetaItem({ fiat: offer.fiat, amountLabel: offer.fiat }),
           {
             id: "price",
             label: "Price",
