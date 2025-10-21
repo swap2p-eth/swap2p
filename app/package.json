@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3333",
     "dev:mock": "cross-env NEXT_PUBLIC_SWAP2P_MODE=mock next dev",
     "dev:real": "cross-env NEXT_PUBLIC_SWAP2P_MODE=viem next dev",
     "build": "next build",
