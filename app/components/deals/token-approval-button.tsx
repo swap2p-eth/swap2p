@@ -62,7 +62,7 @@ export function TokenApprovalButton({
   return (
     <div
       className={cn(
-        "inline-flex h-10 items-center overflow-hidden rounded-full bg-muted/20 text-sm shadow-sm",
+        "relative inline-flex h-10 items-center overflow-hidden rounded-full bg-muted/20 text-sm shadow-sm",
         className
       )}
     >
@@ -77,11 +77,11 @@ export function TokenApprovalButton({
       >
         {label}
       </Button>
-      <span aria-hidden="true" className="h-full w-px bg-background/60" />
       <Select value={mode} onValueChange={handleModeChange} disabled={isDisabled}>
         <SelectTrigger
           className={cn(
-            "h-full justify-center rounded-none rounded-r-full border-0 bg-primary px-3 text-primary-foreground transition-colors",
+            "relative h-full justify-center rounded-none rounded-r-full border-0 bg-primary px-3 text-primary-foreground transition-colors",
+            "after:absolute after:inset-y-2 after:-left-px after:w-px after:rounded-full after:bg-white/50 after:content-[''] after:dark:bg-muted-foreground/50",
             "hover:bg-primary/90 focus:outline-none focus:ring-0 focus:ring-offset-0 disabled:opacity-60"
           )}
           aria-label="Select approval amount"
