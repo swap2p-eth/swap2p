@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import type { OfferRow } from "@/lib/mock-offers";
 import { cn, formatAddressShort } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
+import { DealStatusPanel } from "./deal-status-panel";
 import { useDeals } from "./deals-provider";
 import { useOffers } from "@/components/offers/offers-provider";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -53,7 +53,6 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const [paymentDetails, setPaymentDetails] = React.useState("");
   const amountInputRef = React.useRef<HTMLInputElement>(null);
   const paymentMethodTriggerRef = React.useRef<HTMLButtonElement>(null);
-  const paymentDetailsInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (!offer) return;
@@ -121,10 +120,6 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     "text-xs uppercase tracking-[0.2em] text-muted-foreground/70",
     paymentMethodValid && hasPaymentOptions ? "text-emerald-500" : undefined
   );
-  const paymentDetailsHeadingClass = cn(
-    "text-xs uppercase tracking-[0.2em] text-muted-foreground/70",
-    paymentDetailsValid ? "text-emerald-500" : undefined
-  );
   const merchantSide = offer.side.toUpperCase();
   const userSide = merchantSide === "SELL" ? "BUY" : "SELL";
   const userAction = userSide === "SELL" ? "sell" : "buy";
@@ -172,17 +167,17 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         }
       },
       paymentDetails: () => {
-        if (paymentDetailsInputRef.current) {
-          paymentDetailsInputRef.current.focus();
-          paymentDetailsInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        const commentField = document.querySelector<HTMLTextAreaElement>("textarea[name='new-deal-comment']");
+        if (commentField) {
+          commentField.focus();
+          commentField.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }
     };
     options[field]?.();
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleCreateDeal = () => {
     if (!isFormValid || tokenAmount === null) {
       if (validationIssues.length > 0) {
         focusField(validationIssues[0].field);
@@ -197,6 +192,21 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     });
 
     onCreated?.(deal.id);
+  };
+
+  const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    handleCreateDeal();
+  };
+
+  const handleRequest = (note: string) => {
+    void note;
+    handleCreateDeal();
+  };
+
+  const handleCancel = (note: string) => {
+    void note;
+    onCancel?.();
   };
 
   const amountLabel =
@@ -292,8 +302,20 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         ]}
       />
 
+      <DealStatusPanel
+        state="NEW"
+        side={offer.side}
+        role="TAKER"
+        comment={paymentDetails}
+        commentName="new-deal-comment"
+        commentError={paymentDetailsValid ? undefined : paymentDetailsError ?? "Payment details must be at least 5 characters."}
+        onCommentChange={setPaymentDetails}
+        onRequest={handleRequest}
+        onCancel={handleCancel}
+      />
+
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleFormSubmit}
         className="space-y-6 rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur"
       >
         <div className="flex flex-col gap-4">
@@ -380,25 +402,10 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
             ) : null}
             {paymentMethodError ? <p className="text-xs text-orange-500">{paymentMethodError}</p> : null}
           </div>
-
-          <div className="flex flex-col gap-2">
-            <span className={paymentDetailsHeadingClass}>Payment details</span>
-            <Input
-              type="text"
-              minLength={5}
-              aria-invalid={!paymentDetailsValid}
-              value={paymentDetails}
-              onChange={event => setPaymentDetails(event.target.value)}
-              placeholder="Account number / name etc."
-              ref={paymentDetailsInputRef}
-              className="h-14 rounded-2xl bg-background/70"
-            />
-            {paymentDetailsError ? <p className="text-xs text-orange-500">{paymentDetailsError}</p> : null}
-          </div>
         </div>
         {!isFormValid ? (
           <div className="rounded-2xl bg-orange-400/10 p-4 text-sm text-orange-600">
-            <p className="font-medium">Finish the following before creating a deal:</p>
+            <p className="font-medium">Finish the following before requesting a deal:</p>
             <ol className="mt-2 space-y-1 list-decimal pl-4">
               {validationIssues.map(issue => (
                 <li key={issue.field} onClick={() => focusField(issue.field)} className="cursor-pointer">
@@ -408,17 +415,6 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
             </ol>
           </div>
         ) : null}
-        <Button
-          type="submit"
-          size="lg"
-          className={cn(
-            "w-full rounded-full py-6 text-base font-semibold shadow-[0_24px_60px_-32px_rgba(37,99,235,0.65)] disabled:cursor-not-allowed disabled:opacity-60"
-          )}
-          disabled={!isFormValid}
-        >
-          Create deal
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </Button>
       </form>
     </div>
   );

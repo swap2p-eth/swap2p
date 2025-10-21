@@ -18,7 +18,7 @@ interface MetaItem {
 
 interface DealSummaryCardProps {
   title: string;
-  description?: string;
+  description?: React.ReactNode;
   pills?: Pill[];
   metaItems: MetaItem[];
   extraContent?: React.ReactNode;

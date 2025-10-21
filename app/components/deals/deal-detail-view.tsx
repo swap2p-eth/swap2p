@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatAddressShort } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
+import { DealStatusPanel } from "./deal-status-panel";
 import { useDeals } from "./deals-provider";
 import { RelativeTime } from "@/components/relative-time";
 import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
@@ -31,7 +32,14 @@ export interface DealDetailViewProps {
 }
 
 export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
-  const { deals, isLoading } = useDeals();
+  const {
+    deals,
+    isLoading,
+    acceptDeal,
+    cancelDeal,
+    markDealPaid,
+    releaseDeal
+  } = useDeals();
   const deal = deals.find(item => item.id === dealId);
 
   if (isLoading) {
@@ -63,6 +71,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
 
   const summary = sideCopy[deal.side];
   const isMaker = deal.maker.toLowerCase() === CURRENT_USER_ADDRESS.toLowerCase();
+  const role = isMaker ? "MAKER" : "TAKER";
   const userSide = (isMaker ? deal.side : deal.side === "SELL" ? "BUY" : "SELL").toUpperCase();
   const userAction = userSide === "SELL" ? "sell" : "buy";
   const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
@@ -84,6 +93,26 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   })} ${deal.token}`;
 
   const fiatAmountDisplay = fiatAmount ? `≈ ${fiatAmountLabel}` : fiatAmountLabel;
+
+  const handleAccept = (message: string) => {
+    void message;
+    acceptDeal(deal.id);
+  };
+
+  const handleCancel = (message: string) => {
+    void message;
+    cancelDeal(deal.id, role);
+  };
+
+  const handleMarkPaid = (message: string) => {
+    void message;
+    markDealPaid(deal.id, role);
+  };
+
+  const handleRelease = (message: string) => {
+    void message;
+    releaseDeal(deal.id, role);
+  };
 
   const metaItems = [
     createSideMetaItem({
@@ -130,6 +159,16 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
             </div>
           </div>
         }
+      />
+
+      <DealStatusPanel
+        state={deal.state}
+        side={deal.side}
+        role={role}
+        onAccept={isMaker ? handleAccept : undefined}
+        onCancel={handleCancel}
+        onMarkPaid={handleMarkPaid}
+        onRelease={handleRelease}
       />
 
       <div className="rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">
