@@ -190,7 +190,10 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
             Secure coordination channel. Messages will be encrypted and stored as bytes on-chain.
           </p>*/}
         </div>
-        <ChatWidget className={cn("min-h-[360px]", "bg-transparent shadow-none")} />
+        <ChatWidget
+          className={cn("min-h-[360px]", "bg-transparent shadow-none")}
+          dealState={deal.state}
+        />
       </div>
     </div>
   );
