@@ -186,9 +186,9 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
       <div className="rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">
         <div className="mb-4">
           <h2 className="text-lg font-semibold">Chat</h2>
-          <p className="text-sm text-muted-foreground">
+{/*          <p className="text-sm text-muted-foreground">
             Secure coordination channel. Messages will be encrypted and stored as bytes on-chain.
-          </p>
+          </p>*/}
         </div>
         <ChatWidget className={cn("min-h-[360px]", "bg-transparent shadow-none")} />
       </div>

@@ -98,11 +98,11 @@ export function ChatWidget({ className }: { className?: string }) {
         className
       )}
     >
-      <ChatHeader
+{/*      <ChatHeader
         title="Swap2p Chat"
         description="Encrypted P2P coordination"
         className="border-0 px-6 py-5 text-sm font-medium text-muted-foreground/80"
-      />
+      />*/}
       <div ref={containerRef} className="flex-1 overflow-y-auto px-6 pb-6">
         <ChatList className="space-y-4 py-4">
           {messages.map(message => (
