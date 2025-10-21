@@ -11,6 +11,7 @@ import { TokenAmountCell } from "@/components/deals/token-amount-cell";
 import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
 import { getScenarioConfig, type DealProgressState } from "@/lib/deal-scenarios";
 import { getDealPerspective, isActiveDealState } from "@/lib/deal-utils";
+import { formatFiatAmount, formatTokenAmount } from "@/lib/number-format";
 import { cn } from "@/lib/utils";
 
 function getFiatAmount(deal: DealRow): number | null {
@@ -33,6 +34,9 @@ const getScenarioForDeal = (deal: DealRow, currentUser: string) => {
   if (!perspective.role) return null;
   return getScenarioConfig(perspective.role, deal.side, deal.state as DealProgressState);
 };
+
+const getTokenDecimals = (symbol: string) =>
+  mockTokenConfigs.find(config => config.symbol === symbol)?.decimals ?? 2;
 
 interface DealColumnOptions {
   includeAction?: boolean;
@@ -84,16 +88,18 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
     {
       accessorKey: "amount",
       header: "Amount",
-      cell: ({ row }) => (
-        <TokenAmountCell
-          token={(row.original as DealRow).token}
-          amountLabel={Number(row.getValue("amount")).toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-          })}
-          mutedToken
-        />
-      )
+      cell: ({ row }) => {
+        const deal = row.original as DealRow;
+        const decimals = getTokenDecimals(deal.token);
+        const amountValue = Number(row.getValue("amount"));
+        return (
+          <TokenAmountCell
+            token={deal.token}
+            amountLabel={formatTokenAmount(amountValue, decimals)}
+            mutedToken
+          />
+        );
+      }
     },
     {
       accessorKey: "fiatCode",
@@ -103,15 +109,7 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
         const deal = row.original as DealRow;
         const fiatAmount = getFiatAmount(deal);
         if (fiatAmount) {
-          return (
-            <FiatAmountCell
-              fiat={fiat}
-              amountLabel={fiatAmount.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-              })}
-            />
-          );
+          return <FiatAmountCell fiat={fiat} amountLabel={formatFiatAmount(fiatAmount)} />;
         }
         return <FiatAmountCell fiat={fiat} amountLabel="—" />;
       }

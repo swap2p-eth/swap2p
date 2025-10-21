@@ -14,6 +14,7 @@ import { createMockRng } from "@/lib/mock-clock";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { createFiatMetaItem, createSideMetaItem, createTokenMetaItem } from "@/components/deals/summary-meta";
 import { useDealPerspective } from "@/hooks/use-deal-perspective";
+import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import type { ApprovalMode } from "./token-approval-button";
 
 const sideCopy = {
@@ -81,18 +82,13 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const varianceSample = createMockRng(`deal-overview:${deal.id}`)();
   const pricePerToken = tokenConfig && fiatConfig ? computeTokenPriceInFiat(tokenConfig, fiatConfig, varianceSample) : null;
   const fiatAmount = pricePerToken ? deal.amount * pricePerToken : null;
-  const fiatAmountLabel = fiatAmount
-    ? `${fiatAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${deal.fiatCode}`
-    : `— ${deal.fiatCode}`;
+  const fiatAmountLabel = fiatAmount ? `${formatFiatAmount(fiatAmount)} ${deal.fiatCode}` : `— ${deal.fiatCode}`;
   const priceLabel = pricePerToken
-    ? `${pricePerToken.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${deal.fiatCode} / ${deal.token}`
+    ? `${formatPrice(pricePerToken)} ${deal.fiatCode} / ${deal.token}`
     : "—";
 
   const tokenDecimals = tokenConfig?.decimals ?? 4;
-  const tokenAmountLabel = `${deal.amount.toLocaleString("en-US", {
-    minimumFractionDigits: Math.min(2, tokenDecimals),
-    maximumFractionDigits: tokenDecimals
-  })} ${deal.token}`;
+  const tokenAmountLabel = `${formatTokenAmount(deal.amount, tokenDecimals)} ${deal.token}`;
 
   const fiatAmountDisplay = fiatAmount ? `≈ ${fiatAmountLabel}` : fiatAmountLabel;
 

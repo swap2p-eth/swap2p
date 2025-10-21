@@ -18,6 +18,8 @@ import { useOffers } from "@/components/offers/offers-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { createSideMetaItem } from "@/components/deals/summary-meta";
+import { mockTokenConfigs } from "@/lib/mock-market";
+import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import type { ApprovalMode } from "./token-approval-button";
 
 type AmountKind = "crypto" | "fiat";
@@ -93,11 +95,12 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     );
   }
 
+  const tokenConfig = mockTokenConfigs.find(config => config.symbol === offer.token);
+  const tokenDecimals = tokenConfig?.decimals ?? 2;
+
   const paymentOptions = parsePaymentMethods(offer.paymentMethods);
   const hasPaymentOptions = paymentOptions.length > 0;
-  const limitsRange = `${offer.minAmount.toLocaleString("en-US")} – ${offer.maxAmount.toLocaleString(
-    "en-US"
-  )} ${offer.token}`;
+  const limitsRange = `${formatTokenAmount(offer.minAmount, tokenDecimals)} – ${formatTokenAmount(offer.maxAmount, tokenDecimals)} ${offer.token}`;
   const amountNumber = Number(amount);
   const amountEntered = amount.trim().length > 0 && Number.isFinite(amountNumber) && amountNumber > 0;
   const rawTokenAmount =
@@ -124,8 +127,8 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const merchantSide = offer.side.toUpperCase();
   const userSide = merchantSide === "SELL" ? "BUY" : "SELL";
   const userAction = userSide === "SELL" ? "sell" : "buy";
-  const minLabel = `${offer.minAmount.toLocaleString("en-US")} ${offer.token}`;
-  const maxLabel = `${offer.maxAmount.toLocaleString("en-US")} ${offer.token}`;
+  const minLabel = `${formatTokenAmount(offer.minAmount, tokenDecimals)} ${offer.token}`;
+  const maxLabel = `${formatTokenAmount(offer.maxAmount, tokenDecimals)} ${offer.token}`;
   let amountError: string | null = null;
   if (!amountValid) {
     if (!amountEntered) {
@@ -229,17 +232,12 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     );
   const conversionDisplay = (() => {
     if (!tokenAmount || tokenAmount <= 0) {
-      return amountKind === "crypto"
-        ? `≈ 0 ${offer.fiat}`
-        : `≈ 0 ${offer.token}`;
+      return amountKind === "crypto" ? `≈ 0 ${offer.fiat}` : `≈ 0 ${offer.token}`;
     }
-    const displayValue =
-      amountKind === "crypto" ? tokenAmount * offer.price : tokenAmount;
-    const targetCurrency = amountKind === "crypto" ? offer.fiat : offer.token;
-    return `≈ ${displayValue.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    })} ${targetCurrency}`;
+    if (amountKind === "crypto") {
+      return `≈ ${formatFiatAmount(tokenAmount * offer.price)} ${offer.fiat}`;
+    }
+    return `≈ ${formatTokenAmount(tokenAmount, tokenDecimals)} ${offer.token}`;
   })();
 
   const backLabel = returnHash === "dashboard" ? "Back to dashboard" : "Back to offers";
@@ -277,15 +275,30 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
             side: userSide,
             description: `You ${userAction} crypto`
           }),
-          createTokenMetaItem({ token: offer.token, amountLabel: offer.token }),
-          createFiatMetaItem({ fiat: offer.fiat, amountLabel: offer.fiat }),
+          {
+            id: "token",
+            label: "Token",
+            value: (
+              <span className="flex items-center gap-2">
+                <TokenIcon symbol={offer.token} size={18} />
+                <span className="text-sm font-medium text-foreground">{offer.token}</span>
+              </span>
+            )
+          },
+          {
+            id: "fiat",
+            label: "Fiat",
+            value: (
+              <span className="flex items-center gap-2">
+                <FiatFlag fiat={offer.fiat} size={18} />
+                <span className="text-sm font-medium text-foreground">{offer.fiat}</span>
+              </span>
+            )
+          },
           {
             id: "price",
             label: "Price",
-            value: `${offer.price.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 4
-            })} ${offer.fiat}`
+            value: `${formatPrice(offer.price)} ${offer.fiat}`
           }
         ]}
       />
