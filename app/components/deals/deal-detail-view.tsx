@@ -167,9 +167,6 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
               <span>
                 Last update: <RelativeTime value={deal.updatedAt} className="text-sm text-muted-foreground" />
               </span>
-              <span>
-                {counterpartyLabel}: {formatAddressShort(counterpartyAddress)}
-              </span>
             </div>
           </div>
         }
