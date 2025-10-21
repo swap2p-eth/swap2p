@@ -7,6 +7,8 @@ import { DealSideBadge } from "@/components/deals/deal-side-badge";
 import { PriceCell } from "@/components/deals/price-cell";
 import { TokenSymbol } from "@/components/deals/token-symbol";
 import { FiatSymbol } from "@/components/deals/fiat-symbol";
+import { mockTokenConfigs } from "@/lib/mock-market";
+import { formatTokenAmount } from "@/lib/number-format";
 
 interface OfferColumnOptions {
   showMerchant?: boolean;
@@ -17,6 +19,9 @@ export function createOfferColumns(
   options: OfferColumnOptions = {}
 ): ColumnDef<OfferRow>[] {
   const { showMerchant = false } = options;
+
+  const getTokenDecimals = (symbol: string) =>
+    mockTokenConfigs.find(config => config.symbol === symbol)?.decimals ?? 2;
 
   const columns: ColumnDef<OfferRow>[] = [
     {
@@ -99,11 +104,15 @@ export function createOfferColumns(
     {
       accessorKey: "minAmount",
       header: "Min",
-      cell: ({ row }) => (
-        <span className="block text-right text-sm text-muted-foreground tabular-nums">
-          {Number(row.getValue("minAmount")).toLocaleString("en-US")}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const deal = row.original as OfferRow;
+        const decimals = getTokenDecimals(deal.token);
+        return (
+          <span className="block text-right text-sm text-muted-foreground tabular-nums">
+            {formatTokenAmount(Number(row.getValue("minAmount")), decimals)}
+          </span>
+        );
+      },
       meta: {
         align: "right",
         headerClassName: "text-center",
@@ -113,11 +122,15 @@ export function createOfferColumns(
     {
       accessorKey: "maxAmount",
       header: "Max",
-      cell: ({ row }) => (
-        <span className="block text-right text-sm text-muted-foreground tabular-nums">
-          {Number(row.getValue("maxAmount")).toLocaleString("en-US")}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const deal = row.original as OfferRow;
+        const decimals = getTokenDecimals(deal.token);
+        return (
+          <span className="block text-right text-sm text-muted-foreground tabular-nums">
+            {formatTokenAmount(Number(row.getValue("maxAmount")), decimals)}
+          </span>
+        );
+      },
       meta: {
         align: "right",
         headerClassName: "text-center",

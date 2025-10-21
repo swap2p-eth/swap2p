@@ -1,5 +1,7 @@
 "use client";
 
+import { formatPrice } from "@/lib/number-format";
+
 interface PriceCellProps {
   price: number;
   fiat: string;
@@ -7,14 +9,15 @@ interface PriceCellProps {
 }
 
 export function PriceCell({ price, fiat, fractionDigits }: PriceCellProps) {
-  const min = fractionDigits?.min ?? 2;
-  const max = fractionDigits?.max ?? 3;
+  const min = fractionDigits?.min;
+  const max = fractionDigits?.max;
+  const formatOptions: Intl.NumberFormatOptions = {
+    ...(min !== undefined ? { minimumFractionDigits: min } : {}),
+    ...(max !== undefined ? { maximumFractionDigits: max } : {})
+  };
   return (
     <span className="flex items-center justify-end gap-2 text-sm font-medium text-foreground tabular-nums">
-      {price.toLocaleString("en-US", {
-        minimumFractionDigits: min,
-        maximumFractionDigits: max
-      })}
+      {formatPrice(price, formatOptions)}
       <span className="text-xs uppercase text-muted-foreground/80">{fiat}</span>
     </span>
   );

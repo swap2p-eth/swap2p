@@ -43,7 +43,7 @@ const PAYMENT_METHOD_NAMES = [
 const MIN_OFFSET_SECONDS = 5;
 const MAX_OFFSET_SECONDS = 2 * 24 * 60 * 60;
 
-export function generateMockOffers(count = 32): OfferRow[] {
+export function generateMockOffers(count = 32, currentUser: string = CURRENT_USER_ADDRESS): OfferRow[] {
   const now = MOCK_NOW_MS;
   const minimumCount = 32;
   const totalCount = Math.max(count, minimumCount);
@@ -88,7 +88,7 @@ export function generateMockOffers(count = 32): OfferRow[] {
     const offsetSeconds = randomOffsetSeconds();
     const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
 
-    const makerAddress = index < 6 ? CURRENT_USER_ADDRESS : `0xMaker${(index + 10).toString(16).padStart(2, "0")}`;
+    const makerAddress = index < 6 ? currentUser : `0xMaker${(index + 10).toString(16).padStart(2, "0")}`;
     const requirements =
       index % 4 === 0
         ? "KYC selfie + proof of address."

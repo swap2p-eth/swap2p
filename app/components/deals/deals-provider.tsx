@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { generateMockDeals, type DealRow } from "@/lib/mock-data";
 import type { OfferRow } from "@/lib/mock-offers";
-import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
+import { useUser } from "@/context/user-context";
 
 type AmountKind = "crypto" | "fiat";
 export type DealParticipant = "MAKER" | "TAKER";
@@ -29,18 +29,17 @@ interface DealsContextValue {
 
 const DealsContext = React.createContext<DealsContextValue | null>(null);
 
-const defaultTakerAddress = CURRENT_USER_ADDRESS;
-
 export function DealsProvider({ children }: { children: React.ReactNode }) {
+  const { address: currentUserAddress } = useUser();
   const [deals, setDeals] = React.useState<DealRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   const loadDeals = React.useCallback(() => {
     setIsLoading(true);
-    const next = generateMockDeals();
+    const next = generateMockDeals(24, currentUserAddress);
     setDeals(next);
     setIsLoading(false);
-  }, []);
+  }, [currentUserAddress]);
 
   React.useEffect(() => {
     loadDeals();
@@ -62,7 +61,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
           state: "REQUESTED",
           updatedAt: timestamp.toISOString(),
           maker: offer.maker,
-          taker: defaultTakerAddress,
+          taker: currentUserAddress,
           token: offer.token
         };
 
@@ -78,7 +77,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
 
       return created;
     },
-    []
+    [currentUserAddress]
   );
 
   const updateDeal = React.useCallback((dealId: number, updater: (deal: DealRow) => DealRow | null) => {

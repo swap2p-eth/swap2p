@@ -24,7 +24,7 @@ const tokenCycle = mockTokenConfigs.map((token) => token.symbol);
 const MIN_OFFSET_SECONDS = 5;
 const MAX_OFFSET_SECONDS = 2 * 24 * 60 * 60;
 
-export function generateMockDeals(count = 24): DealRow[] {
+export function generateMockDeals(count = 24, currentUser: string = CURRENT_USER_ADDRESS): DealRow[] {
   const now = MOCK_NOW_MS;
   const random = createMockRng(`mock-deals:${count}`);
 
@@ -83,10 +83,8 @@ export function generateMockDeals(count = 24): DealRow[] {
     const tokenIndex = index % mockTokenConfigs.length;
     const tokenConfig = mockTokenConfigs[tokenIndex];
     const amount = createAmount(tokenIndex);
-    const maker =
-      combo.role === "MAKER" ? CURRENT_USER_ADDRESS : addressFor("Merchant", index + 64);
-    const taker =
-      combo.role === "MAKER" ? addressFor("Client", index + 21) : CURRENT_USER_ADDRESS;
+    const maker = combo.role === "MAKER" ? currentUser : addressFor("Merchant", index + 64);
+    const taker = combo.role === "MAKER" ? addressFor("Client", index + 21) : currentUser;
     const partnerAddress = combo.role === "MAKER" ? taker : maker;
 
     deals.push({

@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { generateMockOffers, type OfferRow } from "@/lib/mock-offers";
-import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
+import { useUser } from "@/context/user-context";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -37,15 +37,16 @@ interface OfferUpdateInput {
 const OffersContext = React.createContext<OffersContextValue | null>(null);
 
 export function OffersProvider({ children }: { children: React.ReactNode }) {
+  const { address } = useUser();
   const [offers, setOffers] = React.useState<OfferRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   const refresh = React.useCallback(() => {
     setIsLoading(true);
-    const next = generateMockOffers();
+    const next = generateMockOffers(32, address);
     setOffers(next);
     setIsLoading(false);
-  }, []);
+  }, [address]);
 
   React.useEffect(() => {
     refresh();
@@ -69,7 +70,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         created = {
           id: nextId,
           side,
-          maker: CURRENT_USER_ADDRESS,
+          maker: address,
           token,
           fiat,
           price,
@@ -85,7 +86,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       if (!created) throw new Error("Failed to create offer");
       return created;
     },
-    []
+    [address]
   );
 
   const updateOffer = React.useCallback(
