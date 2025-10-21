@@ -4,6 +4,7 @@ import "./globals.css";
 import "@rainbow-me/rainbowkit/styles.css";
 import { Providers } from "@/providers";
 import { SiteHeader } from "@/components/site-header";
+import { DealsProvider } from "@/components/deals/deals-provider";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
@@ -31,12 +32,14 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <div className="flex min-h-screen flex-col">
-            <SiteHeader />
-            <main className="flex-1 bg-transparent">
-              {children}
-            </main>
-          </div>
+          <DealsProvider>
+            <div className="flex min-h-screen flex-col">
+              <SiteHeader />
+              <main className="flex-1 bg-transparent">
+                {children}
+              </main>
+            </div>
+          </DealsProvider>
         </Providers>
       </body>
     </html>

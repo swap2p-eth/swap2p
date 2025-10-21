@@ -4,7 +4,6 @@ import * as React from "react";
 
 import { DealDetailView } from "@/components/deals/deal-detail-view";
 import { DealsView } from "@/components/deals/deals-view";
-import { DealsProvider } from "@/components/deals/deals-provider";
 import { NewDealView } from "@/components/deals/new-deal-view";
 import { OffersView } from "@/components/offers/offers-view";
 import { useHashLocation } from "@/hooks/use-hash-location";
@@ -56,9 +55,7 @@ function parseHash(hash: string): ViewState {
 export default function HomePage() {
   return (
     <OffersProvider>
-      <DealsProvider>
-        <HomePageRouter />
-      </DealsProvider>
+      <HomePageRouter />
     </OffersProvider>
   );
 }

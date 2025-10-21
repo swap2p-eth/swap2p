@@ -5,12 +5,13 @@ import Link from "next/link";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Badge } from "@/components/ui/badge";
+import { useCurrentUserDeals } from "@/hooks/use-current-user-deals";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { hash: "offers", label: "Offers" },
-  { hash: "dashboard", label: "Dashboard" }
+  { hash: "offers", label: "Offers" }
 ] as const;
 
 function deriveActiveSection(hash: string) {
@@ -59,7 +60,7 @@ export function SiteHeader() {
                   setHash(item.hash);
                 }}
                 className={cn(
-                  "rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+                  "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
                   isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"
                 )}
               >
@@ -67,6 +68,10 @@ export function SiteHeader() {
               </a>
             );
           })}
+          <DashboardNavItem
+            isActive={active === "dashboard"}
+            onSelect={() => setHash("dashboard")}
+          />
         </nav>
         <div className="flex items-center gap-3">
           <ThemeToggle />
@@ -74,6 +79,41 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
+  );
+}
+
+interface DashboardNavItemProps {
+  isActive: boolean;
+  onSelect: () => void;
+}
+
+function DashboardNavItem({ isActive, onSelect }: DashboardNavItemProps) {
+  const { activeDeals, isLoading } = useCurrentUserDeals();
+  const activeCount = activeDeals.length;
+  const showBadge = !isLoading && activeCount > 0;
+
+  return (
+    <a
+      href="/#dashboard"
+      onClick={event => {
+        event.preventDefault();
+        onSelect();
+      }}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+        isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"
+      )}
+    >
+      Dashboard
+      {showBadge ? (
+        <Badge
+          variant="warning"
+          className="h-5 min-w-[1.5rem] px-2 py-0 text-xs leading-none"
+        >
+          {activeCount}
+        </Badge>
+      ) : null}
+    </a>
   );
 }
 
