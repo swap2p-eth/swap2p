@@ -55,14 +55,12 @@ export function generateMockDeals(count = 24): DealRow[] {
   const USER_ROLES: Array<"MAKER" | "TAKER"> = ["MAKER", "TAKER"];
   const USER_SIDES: DealSide[] = ["SELL", "BUY"];
 
-  const userCombos: Array<{ role: "MAKER" | "TAKER"; userSide: DealSide; state: DealState; variant: number }> = [];
+  const userCombos: Array<{ role: "MAKER" | "TAKER"; userSide: DealSide; state: DealState }> = [];
 
   for (const role of USER_ROLES) {
     for (const userSide of USER_SIDES) {
       for (const state of ACTIVE_STATES) {
-        for (let variant = 0; variant < 2; variant += 1) {
-          userCombos.push({ state, role, userSide, variant });
-        }
+        userCombos.push({ state, role, userSide });
       }
     }
   }
@@ -70,15 +68,14 @@ export function generateMockDeals(count = 24): DealRow[] {
   for (const state of CLOSED_STATES) {
     for (const role of USER_ROLES) {
       for (const userSide of USER_SIDES) {
-        userCombos.push({ state, role, userSide, variant: 0 });
+        userCombos.push({ state, role, userSide });
       }
     }
   }
 
-  const targetCount = Math.max(count, userCombos.length);
+  const ensuredCount = Math.max(count, userCombos.length);
 
   for (const combo of userCombos) {
-    if (deals.length >= targetCount) break;
     const index = deals.length;
     const makerSide = combo.role === "MAKER" ? combo.userSide : invertSide(combo.userSide);
     const offsetSeconds = randomOffsetSeconds();
@@ -106,13 +103,12 @@ export function generateMockDeals(count = 24): DealRow[] {
     });
   }
 
-  while (deals.length < targetCount) {
+  while (deals.length < ensuredCount) {
     const index = deals.length;
     const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
     const offsetSeconds = randomOffsetSeconds();
     const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
     const tokenIndex = index % mockTokenConfigs.length;
-    const tokenConfig = mockTokenConfigs[tokenIndex];
     const amount = createAmount(tokenIndex);
 
     deals.push({
