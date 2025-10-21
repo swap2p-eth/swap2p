@@ -7,7 +7,9 @@ import {
   CircleCheckBig,
   CircleHelp,
   CircleX,
-  HandCoins
+  HandCoins,
+  Hourglass,
+  TriangleAlert
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -239,10 +241,22 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
 
           {scenario ? (
             <div className="flex flex-col gap-4">
-              <div className="text-center">
-                <div className="mx-auto max-w-xl rounded-2xl bg-sky-500/10 p-4 text-sm text-sky-600">
-                  <p className="font-medium">{scenario.instructions}</p>
-                </div>
+              <div
+                className={cn(
+                  "mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl p-4 text-sm",
+                  scenario.primaryAction
+                    ? "bg-orange-400/10 text-orange-600"
+                    : "bg-gray-200/50 text-muted-foreground"
+                )}
+              >
+                <span>
+                  {scenario.primaryAction ? (
+                    <TriangleAlert className="h-8 w-8 text-orange-500" aria-hidden="true" />
+                  ) : (
+                    <Hourglass className="h-8 w-8 text-muted-foreground/70" aria-hidden="true" />
+                  )}
+                </span>
+                <p className="font-medium">{scenario.instructions}</p>
               </div>
               {scenario.comment ? (
                 <div className="flex flex-col gap-2">
