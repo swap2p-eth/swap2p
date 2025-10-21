@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { useDeals } from "@/components/deals/deals-provider";
-import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
+import { useUser } from "@/context/user-context";
 import { isActiveDealState, isClosedDealState, normalizeAddress } from "@/lib/deal-utils";
 import type { DealRow } from "@/lib/mock-data";
 
@@ -11,9 +11,10 @@ export interface CurrentUserDeals {
   isLoading: boolean;
 }
 
-export function useCurrentUserDeals(currentUser: string = CURRENT_USER_ADDRESS): CurrentUserDeals {
+export function useCurrentUserDeals(): CurrentUserDeals {
   const { deals, isLoading } = useDeals();
-  const normalizedUser = normalizeAddress(currentUser);
+  const { address } = useUser();
+  const normalizedUser = normalizeAddress(address);
 
   const { activeDeals, closedDeals } = React.useMemo(() => {
     const ownedDeals = deals.filter(deal => {

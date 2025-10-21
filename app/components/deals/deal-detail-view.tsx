@@ -15,6 +15,7 @@ import { ParticipantPill } from "@/components/deals/participant-pill";
 import { buildDealMetaItems } from "@/hooks/use-deal-meta";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import { useDealPerspective } from "@/hooks/use-deal-perspective";
+import { useUser } from "@/context/user-context";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import { getDealSideCopy } from "@/lib/deal-copy";
 import type { ApprovalMode } from "./token-approval-button";
@@ -34,7 +35,8 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     releaseDeal
   } = useDeals();
   const deal = deals.find(item => item.id === dealId);
-  const perspective = useDealPerspective(deal ?? null);
+  const { address } = useUser();
+  const perspective = useDealPerspective(deal ?? null, address);
 
   if (isLoading) {
     return (

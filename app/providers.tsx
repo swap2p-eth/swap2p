@@ -8,6 +8,7 @@ import { WagmiProvider } from "wagmi";
 import { getConfig } from "@mezo-org/passport/dist/src/config";
 import { mezoTestnet } from "@mezo-org/passport/dist/src/constants";
 import { ThemeProvider } from "@/components/theme-provider";
+import { UserProvider } from "@/context/user-context";
 import { useTheme } from "next-themes";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -42,16 +43,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [isClient]);
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <WagmiProvider config={wagmiConfig}>
-        <QueryClientProvider client={queryClient}>
-          <RainbowKitThemeProvider>
-            {children}
-            {process.env.NODE_ENV === "development" ? <ReactQueryDevtools initialIsOpen={false} /> : null}
-          </RainbowKitThemeProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </ThemeProvider>
+    <UserProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <WagmiProvider config={wagmiConfig}>
+          <QueryClientProvider client={queryClient}>
+            <RainbowKitThemeProvider>
+              {children}
+              {process.env.NODE_ENV === "development" ? <ReactQueryDevtools initialIsOpen={false} /> : null}
+            </RainbowKitThemeProvider>
+          </QueryClientProvider>
+        </WagmiProvider>
+      </ThemeProvider>
+    </UserProvider>
   );
 }
 

@@ -7,11 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DataTable } from "@/components/data-table";
 import { createOfferColumns } from "@/lib/offer-columns";
 import { createDealColumns } from "@/lib/deal-columns";
-import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
 import { useCurrentUserDeals } from "@/hooks/use-current-user-deals";
 import { useOffers } from "@/components/offers/offers-provider";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import type { OfferRow } from "@/lib/mock-offers";
+import { useUser } from "@/context/user-context";
 
 interface DealsViewProps {
   onSelectDeal?: (dealId: number) => void;
@@ -22,6 +22,7 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
   const { activeDeals, closedDeals, isLoading: dealsLoading } = useCurrentUserDeals();
   const { offers, isLoading: offersLoading } = useOffers();
   const { setHash } = useHashLocation("offers");
+  const { address } = useUser();
 
   const filteredDeals = React.useMemo(
     () => (status === "closed" ? closedDeals : activeDeals),
@@ -29,8 +30,8 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
   );
 
   const myOffers = React.useMemo(
-    () => offers.filter(offer => offer.maker === CURRENT_USER_ADDRESS).slice(0, 6),
-    [offers]
+    () => offers.filter(offer => offer.maker.toLowerCase() === address.toLowerCase()).slice(0, 6),
+    [offers, address]
   );
 
   return (
@@ -59,7 +60,7 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
         </CardHeader>
         <CardContent className="space-y-6">
           <DataTable
-            columns={createDealColumns(CURRENT_USER_ADDRESS, { includeAction: status === "active" })}
+            columns={createDealColumns(address, { includeAction: status === "active" })}
             data={filteredDeals}
             title={status === "active" ? "Active deals" : "Closed deals"}
             emptyMessage="There are no deals in this view yet."

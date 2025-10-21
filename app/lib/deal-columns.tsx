@@ -1,4 +1,4 @@
-import { ArrowUpDown, Hourglass, TriangleAlert } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import type { DealRow, DealSide } from "@/lib/mock-data";
@@ -13,6 +13,7 @@ import { getScenarioConfig, type DealProgressState } from "@/lib/deal-scenarios"
 import { getDealPerspective, isActiveDealState } from "@/lib/deal-utils";
 import { formatFiatAmount, formatTokenAmount } from "@/lib/number-format";
 import { cn } from "@/lib/utils";
+import { DealInstructionIcon } from "@/components/deals/deal-instruction-icon";
 
 function getFiatAmount(deal: DealRow): number | null {
   const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
@@ -145,20 +146,15 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
       cell: ({ row }) => {
         const deal = row.original as DealRow;
         if (!isActiveDealState(deal.state)) {
-          return <span className="text-sm text-muted-foreground">—</span>;
+          return <span className="flex justify-center text-muted-foreground">—</span>;
         }
         const scenario = getScenarioForDeal(deal, currentUser);
         if (!scenario) {
-          return <span className="text-sm text-muted-foreground">—</span>;
+          return <span className="flex justify-center text-muted-foreground">—</span>;
         }
-        const instructions = scenario.instructions;
-        const tooltip = instructions.replace(/\. /g, ".\n");
-        const hasPrimaryAction = Boolean(scenario.primaryAction);
-        const Icon = hasPrimaryAction ? TriangleAlert : Hourglass;
-        const colorClass = hasPrimaryAction ? "text-orange-500" : "text-muted-foreground/60";
         return (
-          <span className="flex justify-center" title={tooltip} aria-label={instructions}>
-            <Icon className={cn("h-4 w-4", colorClass)} aria-hidden="true" />
+          <span className="flex justify-center" title={scenario.instructions.replace(/\. /g, ".\n")} aria-label={scenario.instructions}>
+            <DealInstructionIcon highlight={Boolean(scenario.primaryAction)} size="sm" />
           </span>
         );
       },
