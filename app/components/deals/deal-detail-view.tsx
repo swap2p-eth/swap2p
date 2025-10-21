@@ -13,6 +13,7 @@ import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@
 import { createMockRng } from "@/lib/mock-clock";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { createFiatMetaItem, createSideMetaItem, createTokenMetaItem } from "@/components/deals/summary-meta";
+import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import { useDealPerspective } from "@/hooks/use-deal-perspective";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import type { ApprovalMode } from "./token-approval-button";
@@ -82,15 +83,12 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const varianceSample = createMockRng(`deal-overview:${deal.id}`)();
   const pricePerToken = tokenConfig && fiatConfig ? computeTokenPriceInFiat(tokenConfig, fiatConfig, varianceSample) : null;
   const fiatAmount = pricePerToken ? deal.amount * pricePerToken : null;
-  const fiatAmountLabel = fiatAmount ? `${formatFiatAmount(fiatAmount)} ${deal.fiatCode}` : `— ${deal.fiatCode}`;
-  const priceLabel = pricePerToken
-    ? `${formatPrice(pricePerToken)} ${deal.fiatCode} / ${deal.token}`
-    : "—";
+  const priceValue = pricePerToken ? formatPrice(pricePerToken) : null;
 
   const tokenDecimals = tokenConfig?.decimals ?? 4;
-  const tokenAmountLabel = `${formatTokenAmount(deal.amount, tokenDecimals)} ${deal.token}`;
-
-  const fiatAmountDisplay = fiatAmount ? `≈ ${fiatAmountLabel}` : fiatAmountLabel;
+  const tokenAmountValue = formatTokenAmount(deal.amount, tokenDecimals);
+  const fiatAmountFormatted = fiatAmount ? formatFiatAmount(fiatAmount) : null;
+  const metaFiatLabel = fiatAmountFormatted ? `≈ ${fiatAmountFormatted}` : "—";
 
   const counterpartyLabel = isMaker ? "Client" : "Merchant";
   const counterpartyAddress = isMaker ? deal.taker : deal.maker;
@@ -127,9 +125,17 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
       side: userSide,
       description: `You ${userAction} crypto`
     }),
-    createTokenMetaItem({ token: deal.token, amountLabel: tokenAmountLabel }),
-    createFiatMetaItem({ fiat: deal.fiatCode, amountLabel: fiatAmountDisplay }),
-    { id: "price", label: "Price", value: priceLabel }
+    createTokenMetaItem({ token: deal.token, amountLabel: tokenAmountValue }),
+    createFiatMetaItem({ fiat: deal.fiatCode, amountLabel: metaFiatLabel }),
+    {
+      id: "price",
+      label: "Price",
+      value: priceValue ? (
+        <PriceMetaValue priceLabel={priceValue} fiatSymbol={deal.fiatCode} tokenSymbol={deal.token} />
+      ) : (
+        <span className="text-sm text-muted-foreground">—</span>
+      )
+    }
   ];
 
   return (

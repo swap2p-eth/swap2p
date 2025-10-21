@@ -4,9 +4,9 @@ import type { OfferRow } from "@/lib/mock-offers";
 import { RelativeTime } from "@/components/relative-time";
 import { formatAddressShort, seedFromAddress } from "@/lib/utils";
 import { DealSideBadge } from "@/components/deals/deal-side-badge";
-import { TokenAmountCell } from "@/components/deals/token-amount-cell";
-import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
 import { PriceCell } from "@/components/deals/price-cell";
+import { TokenSymbol } from "@/components/deals/token-symbol";
+import { FiatSymbol } from "@/components/deals/fiat-symbol";
 
 interface OfferColumnOptions {
   showMerchant?: boolean;
@@ -63,7 +63,7 @@ export function createOfferColumns(
       header: "Token",
       cell: ({ row }) => {
         const token = row.getValue<string>("token");
-        return <TokenAmountCell token={token} amountLabel={token} />;
+        return <TokenSymbol symbol={token} />;
       },
       size: 80,
       meta: {
@@ -75,7 +75,7 @@ export function createOfferColumns(
       header: "Fiat",
       cell: ({ row }) => {
         const fiat = row.getValue<string>("fiat");
-        return <FiatAmountCell fiat={fiat} amountLabel={fiat} />;
+        return <FiatSymbol code={fiat} />;
       },
       size: 80,
       meta: {

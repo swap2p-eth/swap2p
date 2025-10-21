@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { TokenIcon } from "@/components/token-icon";
-import { FiatFlag } from "@/components/fiat-flag";
+import { TokenAmountCell } from "@/components/deals/token-amount-cell";
+import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
 import { SideSummaryRow } from "@/components/deals/side-summary-row";
 
 export type SummaryMetaItem = {
@@ -39,12 +39,7 @@ export function createTokenMetaItem({
   return {
     id,
     label: "Token",
-    value: (
-      <span className="flex items-center gap-3 text-sm text-foreground">
-        <TokenIcon symbol={token} size={18} />
-        <span className="font-medium">{amountLabel}</span>
-      </span>
-    )
+    value: <TokenAmountCell token={token} amountLabel={amountLabel} mutedToken />
   };
 }
 
@@ -60,11 +55,6 @@ export function createFiatMetaItem({
   return {
     id,
     label: "Fiat",
-    value: (
-      <span className="flex items-center gap-3 text-sm text-foreground">
-        <FiatFlag fiat={fiat} size={18} />
-        <span className="font-medium">{amountLabel}</span>
-      </span>
-    )
+    value: <FiatAmountCell fiat={fiat} amountLabel={amountLabel} />
   };
 }

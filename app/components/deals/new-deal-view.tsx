@@ -17,9 +17,10 @@ import { useDeals } from "./deals-provider";
 import { useOffers } from "@/components/offers/offers-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ParticipantPill } from "@/components/deals/participant-pill";
-import { createSideMetaItem } from "@/components/deals/summary-meta";
+import { createFiatMetaItem, createSideMetaItem, createTokenMetaItem } from "@/components/deals/summary-meta";
 import { mockTokenConfigs } from "@/lib/mock-market";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
+import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import type { ApprovalMode } from "./token-approval-button";
 
 type AmountKind = "crypto" | "fiat";
@@ -240,6 +241,11 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     return `≈ ${formatTokenAmount(tokenAmount, tokenDecimals)} ${offer.token}`;
   })();
 
+  const summaryTokenAmount = tokenAmount ?? offer.minAmount;
+  const summaryTokenLabel = formatTokenAmount(summaryTokenAmount, tokenDecimals);
+  const summaryFiatAmount = summaryTokenAmount * offer.price;
+  const summaryFiatLabel = `≈ ${formatFiatAmount(summaryFiatAmount)}`;
+
   const backLabel = returnHash === "dashboard" ? "Back to dashboard" : "Back to offers";
 
   return (
@@ -275,30 +281,18 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
             side: userSide,
             description: `You ${userAction} crypto`
           }),
-          {
-            id: "token",
-            label: "Token",
-            value: (
-              <span className="flex items-center gap-2">
-                <TokenIcon symbol={offer.token} size={18} />
-                <span className="text-sm font-medium text-foreground">{offer.token}</span>
-              </span>
-            )
-          },
-          {
-            id: "fiat",
-            label: "Fiat",
-            value: (
-              <span className="flex items-center gap-2">
-                <FiatFlag fiat={offer.fiat} size={18} />
-                <span className="text-sm font-medium text-foreground">{offer.fiat}</span>
-              </span>
-            )
-          },
+          createTokenMetaItem({ token: offer.token, amountLabel: summaryTokenLabel }),
+          createFiatMetaItem({ fiat: offer.fiat, amountLabel: summaryFiatLabel }),
           {
             id: "price",
             label: "Price",
-            value: `${formatPrice(offer.price)} ${offer.fiat}`
+            value: (
+              <PriceMetaValue
+                priceLabel={formatPrice(offer.price)}
+                fiatSymbol={offer.fiat}
+                tokenSymbol={offer.token}
+              />
+            )
           }
         ]}
       />
