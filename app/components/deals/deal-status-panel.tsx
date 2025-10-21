@@ -201,10 +201,10 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
             {TIMELINE_STEPS.map((step, index) => {
               const isCompletedOrCurrent = progressIndex >= index;
               const circleClass = cn(
-                "flex h-16 w-16 items-center justify-center rounded-full border-2 transition-colors",
+                "flex h-16 w-16 items-center justify-center rounded-full transition-colors",
                 isCompletedOrCurrent
-                  ? cn(step.colorClass, step.haloClass, "border-current")
-                  : "border-muted-foreground/30 text-muted-foreground/50"
+                  ? cn(step.colorClass, step.haloClass)
+                  : "bg-muted text-muted-foreground/60"
               );
               const labelClass = cn(
                 "text-xs font-semibold uppercase tracking-[0.24em]",
