@@ -34,23 +34,88 @@ export function generateMockDeals(count = 24): DealRow[] {
     return MIN_OFFSET_SECONDS + Math.floor(sample * span);
   };
 
-  return Array.from({ length: count }).map((_, index) => {
-    const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
-    const offsetSeconds = randomOffsetSeconds();
-    const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
-    const tokenConfig = mockTokenConfigs[index % mockTokenConfigs.length];
-    const amount = sampleAmountInRange(
+  const deals: DealRow[] = [];
+
+  const addressFor = (label: string, value: number) => `0x${label}${value.toString(16).padStart(2, "0")}`;
+
+  const createAmount = (tokenConfigIndex: number) => {
+    const tokenConfig = mockTokenConfigs[tokenConfigIndex % mockTokenConfigs.length];
+    return sampleAmountInRange(
       random(),
       [tokenConfig.minAmountRange[0], tokenConfig.maxAmountRange[1]],
       tokenConfig.decimals,
       tokenConfig.maxStep ?? tokenConfig.minStep
     );
+  };
 
-    const isUserDeal = index < 5;
-    const makerAddress = isUserDeal ? CURRENT_USER_ADDRESS : `0xMaker${(index + 16).toString(16).padStart(2, "0")}`;
-    const takerAddress = isUserDeal ? `0xCounterparty${(index + 21).toString(16).padStart(2, "0")}` : `0xTaker${(index + 42).toString(16).padStart(2, "0")}`;
+  const invertSide = (side: DealSide): DealSide => (side === "BUY" ? "SELL" : "BUY");
 
-    return {
+  const ACTIVE_STATES: DealState[] = ["REQUESTED", "ACCEPTED", "PAID"];
+  const CLOSED_STATES: DealState[] = ["RELEASED", "CANCELED"];
+  const USER_ROLES: Array<"MAKER" | "TAKER"> = ["MAKER", "TAKER"];
+  const USER_SIDES: DealSide[] = ["SELL", "BUY"];
+
+  const userCombos: Array<{ role: "MAKER" | "TAKER"; userSide: DealSide; state: DealState; variant: number }> = [];
+
+  for (const role of USER_ROLES) {
+    for (const userSide of USER_SIDES) {
+      for (const state of ACTIVE_STATES) {
+        for (let variant = 0; variant < 2; variant += 1) {
+          userCombos.push({ state, role, userSide, variant });
+        }
+      }
+    }
+  }
+
+  for (const state of CLOSED_STATES) {
+    for (const role of USER_ROLES) {
+      for (const userSide of USER_SIDES) {
+        userCombos.push({ state, role, userSide, variant: 0 });
+      }
+    }
+  }
+
+  const targetCount = Math.max(count, userCombos.length);
+
+  for (const combo of userCombos) {
+    if (deals.length >= targetCount) break;
+    const index = deals.length;
+    const makerSide = combo.role === "MAKER" ? combo.userSide : invertSide(combo.userSide);
+    const offsetSeconds = randomOffsetSeconds();
+    const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
+    const tokenIndex = index % mockTokenConfigs.length;
+    const tokenConfig = mockTokenConfigs[tokenIndex];
+    const amount = createAmount(tokenIndex);
+    const maker =
+      combo.role === "MAKER" ? CURRENT_USER_ADDRESS : addressFor("Merchant", index + 64);
+    const taker =
+      combo.role === "MAKER" ? addressFor("Client", index + 21) : CURRENT_USER_ADDRESS;
+    const partnerAddress = combo.role === "MAKER" ? taker : maker;
+
+    deals.push({
+      id: index + 1,
+      side: makerSide,
+      amount,
+      fiatCode: fiatCycle[index % fiatCycle.length],
+      partner: partnerAddress,
+      state: combo.state,
+      updatedAt: timestamp,
+      maker,
+      taker,
+      token: tokenConfig.symbol
+    });
+  }
+
+  while (deals.length < targetCount) {
+    const index = deals.length;
+    const side: DealSide = index % 2 === 0 ? "SELL" : "BUY";
+    const offsetSeconds = randomOffsetSeconds();
+    const timestamp = new Date(now - offsetSeconds * 1_000).toISOString();
+    const tokenIndex = index % mockTokenConfigs.length;
+    const tokenConfig = mockTokenConfigs[tokenIndex];
+    const amount = createAmount(tokenIndex);
+
+    deals.push({
       id: index + 1,
       side,
       amount,
@@ -58,9 +123,11 @@ export function generateMockDeals(count = 24): DealRow[] {
       partner: index % 3 === 0 ? "0xPartner" : null,
       state: stateCycle[index % stateCycle.length],
       updatedAt: timestamp,
-      maker: makerAddress,
-      taker: takerAddress,
+      maker: addressFor("Maker", index + 16),
+      taker: addressFor("Taker", index + 42),
       token: tokenCycle[index % tokenCycle.length]
-    };
-  });
+    });
+  }
+
+  return deals;
 }

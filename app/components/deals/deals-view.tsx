@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 import { createOfferColumns } from "@/lib/offer-columns";
-import { dealColumns } from "@/lib/deal-columns";
+import { createDealColumns } from "@/lib/deal-columns";
 import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
 import { useDeals } from "./deals-provider";
 import { useOffers } from "@/components/offers/offers-provider";
@@ -29,12 +29,11 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
   );
 
   const filteredDeals = React.useMemo(() => {
-    const activeStates = new Set(["REQUESTED", "ACCEPTED"]);
-    const closedStates = new Set(["PAID", "RELEASED", "CANCELED"]);
+    const activeStates = new Set(["REQUESTED", "ACCEPTED", "PAID"]);
+    const closedStates = new Set(["RELEASED", "CANCELED"]);
     const activeDeals = userDeals.filter(deal => activeStates.has(deal.state));
     const closedDeals = userDeals.filter(deal => closedStates.has(deal.state));
-    const source = status === "closed" ? closedDeals : activeDeals;
-    return source.slice(0, 5);
+    return status === "closed" ? closedDeals : activeDeals;
   }, [userDeals, status]);
 
   const myOffers = React.useMemo(
@@ -68,7 +67,7 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
         </CardHeader>
         <CardContent className="space-y-6">
           <DataTable
-            columns={dealColumns}
+            columns={createDealColumns(CURRENT_USER_ADDRESS, { includeAction: status === "active" })}
             data={filteredDeals}
             title={status === "active" ? "Active deals" : "Closed deals"}
             emptyMessage="There are no deals in this view yet."
