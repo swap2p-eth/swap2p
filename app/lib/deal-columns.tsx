@@ -1,6 +1,4 @@
-import { ArrowUpDown } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Button } from "@/components/ui/button";
 import type { DealRow, DealSide } from "@/lib/mock-data";
 import { RelativeTime } from "@/components/relative-time";
 import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
@@ -12,7 +10,6 @@ import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
 import { getScenarioConfig, type DealProgressState } from "@/lib/deal-scenarios";
 import { getDealPerspective, isActiveDealState } from "@/lib/deal-utils";
 import { formatFiatAmount, formatTokenAmount } from "@/lib/number-format";
-import { cn } from "@/lib/utils";
 import { DealInstructionIcon } from "@/components/deals/deal-instruction-icon";
 
 function getFiatAmount(deal: DealRow): number | null {
@@ -49,18 +46,12 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
   const columns: ColumnDef<DealRow>[] = [
     {
       accessorKey: "id",
-      header: ({ column }) => (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          className="px-0 text-muted-foreground"
-        >
-          ID
-          <ArrowUpDown className="ml-1 h-4 w-4" />
-        </Button>
-      ),
+      header: "ID",
       cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">#{row.getValue("id")}</span>,
-      size: 72
+      size: 72,
+      meta: {
+        align: "left"
+      }
     },
     {
       id: "userRole",
@@ -128,14 +119,23 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
           CANCELED: "muted"
         };
         return <Badge variant={variants[state] ?? "outline"}>{state}</Badge>;
+      },
+      meta: {
+        align: "center"
       }
     },
     {
       accessorKey: "updatedAt",
       header: "Updated",
       cell: ({ row }) => (
-        <RelativeTime value={row.getValue("updatedAt") as string | number} className="text-sm text-muted-foreground" />
-      )
+        <RelativeTime
+          value={row.getValue("updatedAt") as string | number}
+          className="text-sm text-muted-foreground"
+        />
+      ),
+      meta: {
+        align: "right"
+      }
     }
   ];
 

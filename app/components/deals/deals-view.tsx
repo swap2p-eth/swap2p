@@ -85,7 +85,6 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
         </CardHeader>
         <CardContent>
           <DataTable
-            className="[&_td]:py-5"
             columns={createOfferColumns()}
             data={myOffers}
             title="Published offers"

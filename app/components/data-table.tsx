@@ -18,6 +18,11 @@ const ROW_HEIGHT_BASE_PX = 56;
 const ROW_HEIGHT_EXTRA_PX = 8; // for skeleton
 const ROW_HEIGHT_WITH_CONTENT_PX = ROW_HEIGHT_BASE_PX + ROW_HEIGHT_EXTRA_PX;
 
+const HEADER_BASE_CLASS = "px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground/70";
+const CELL_BASE_CLASS = "px-4 py-3 text-sm text-foreground align-middle whitespace-nowrap";
+
+const skeletonCellClass = cn("py-3 align-middle", CELL_BASE_CLASS);
+
 type ColumnMeta = {
   align?: "left" | "center" | "right";
   headerClassName?: string;
@@ -94,7 +99,7 @@ export function DataTable<TData, TValue>({
         className="align-middle hover:bg-transparent"
       >
         {Array.from({ length: columnCount }).map((__, cellIndex) => (
-          <TableCell key={cellIndex} className="py-3 align-middle">
+          <TableCell key={cellIndex} className={skeletonCellClass}>
             <Skeleton className="h-5 w-full rounded-full" />
           </TableCell>
         ))}
@@ -118,22 +123,22 @@ export function DataTable<TData, TValue>({
             <TableRow key={headerGroup.id} className="hover:bg-transparent">
               {headerGroup.headers.map(header => {
                 const meta = header.column.columnDef.meta as ColumnMeta | undefined;
-                const headerAlignClass =
-                  meta?.headerClassName ??
-                  (meta?.align === "right"
+                const alignClass =
+                  meta?.align === "right"
                     ? "text-right"
                     : meta?.align === "center"
                       ? "text-center"
-                      : undefined);
+                      : "text-left";
 
                 return (
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
                     className={cn(
-                      header.column.getCanSort() ? "cursor-pointer select-none" : "",
-                      "whitespace-nowrap",
-                      headerAlignClass
+                      HEADER_BASE_CLASS,
+                      alignClass,
+                      meta?.headerClassName,
+                      header.column.getCanSort() ? "cursor-pointer select-none" : ""
                     )}
                     onClick={header.column.getToggleSortingHandler()}
                   >
@@ -169,7 +174,7 @@ export function DataTable<TData, TValue>({
               return (
                 <TableRow
                   key={row.id}
-                  style={{ minHeight: ROW_HEIGHT_BASE_PX }}
+                  style={{ height: ROW_HEIGHT_BASE_PX }}
                   className={cn(
                     "border-transparent align-middle transition hover:bg-muted/20",
                     onRowClick ? "cursor-pointer" : ""
@@ -183,10 +188,13 @@ export function DataTable<TData, TValue>({
                         ? "text-right"
                         : meta?.align === "center"
                           ? "text-center"
-                          : undefined;
+                          : "text-left";
 
                     return (
-                      <TableCell key={cell.id} className={cn("py-3 align-middle", alignClass, meta?.cellClassName)}>
+                      <TableCell
+                        key={cell.id}
+                        className={cn(CELL_BASE_CLASS, alignClass, meta?.cellClassName)}
+                      >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     );
