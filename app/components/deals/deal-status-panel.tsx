@@ -239,7 +239,11 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
 
           {scenario ? (
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">{scenario.instructions}</p>
+              <div className="text-center">
+                <div className="mx-auto max-w-xl rounded-2xl bg-sky-500/10 p-4 text-sm text-sky-600">
+                  <p className="font-medium">{scenario.instructions}</p>
+                </div>
+              </div>
               {scenario.comment ? (
                 <div className="flex flex-col gap-2">
                   {scenario.comment.label ? (
