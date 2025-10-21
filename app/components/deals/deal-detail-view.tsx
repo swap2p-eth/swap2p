@@ -13,8 +13,7 @@ import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@
 import { createMockRng } from "@/lib/mock-clock";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { createFiatMetaItem, createSideMetaItem, createTokenMetaItem } from "@/components/deals/summary-meta";
-import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
-import { getDealPerspective } from "@/lib/deal-utils";
+import { useDealPerspective } from "@/hooks/use-deal-perspective";
 import type { ApprovalMode } from "./token-approval-button";
 
 const sideCopy = {
@@ -72,7 +71,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   }
 
   const summary = sideCopy[deal.side];
-  const perspective = getDealPerspective(deal, CURRENT_USER_ADDRESS);
+  const perspective = useDealPerspective(deal);
   const role = perspective.role ?? "MAKER";
   const isMaker = perspective.isMaker;
   const userSide = (perspective.userSide ?? deal.side).toUpperCase();
