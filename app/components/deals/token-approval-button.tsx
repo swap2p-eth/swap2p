@@ -80,7 +80,7 @@ export function TokenApprovalButton({
       <Select value={mode} onValueChange={handleModeChange} disabled={isDisabled}>
         <SelectTrigger
           className={cn(
-            "relative h-full justify-center rounded-none rounded-r-full border-0 bg-primary px-3 text-primary-foreground transition-colors",
+            "relative h-full justify-center rounded-none rounded-r-full border-0 bg-primary pr-3 pl-0 text-primary-foreground transition-colors",
             "after:absolute after:inset-y-2 after:-left-px after:w-px after:rounded-full after:bg-white/50 after:content-[''] after:dark:bg-muted-foreground/50",
             "hover:bg-primary/90 focus:outline-none focus:ring-0 focus:ring-offset-0 disabled:opacity-60"
           )}
