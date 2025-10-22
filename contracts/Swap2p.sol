@@ -88,8 +88,8 @@ contract Swap2p is ReentrancyGuard {
 
     struct ChatMessage {
         uint40    ts;
-        bool      toMaker;
         DealState state;
+        bool      toMaker;
         bytes     text;
     }
 
@@ -97,13 +97,13 @@ contract Swap2p is ReentrancyGuard {
     struct Deal {
         uint128   amount;
         uint96    price;
+        FiatCode  fiat;
         DealState state;
         Side      side;
-        address   maker;
-        address   taker;
-        FiatCode  fiat;
         uint40    tsRequest;          // timestamp when requested
         uint40    tsLast;             // last state update
+        address   maker;
+        address   taker;
         address   token;
         string    paymentMethod;
         ChatMessage[] chat;
@@ -116,11 +116,11 @@ contract Swap2p is ReentrancyGuard {
 
     /// @notice Maker's online status and working hours (UTC).
     struct MakerProfile {
-        bool   online;
         uint40 lastActivity;          // last interaction timestamp
-        string nickname;              // unique public nickname
         int32  dealsCancelled;        // self-canceled deals count
         int32  dealsCompleted;        // completed deals count
+        bool   online;
+        string nickname;              // unique public nickname
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -191,13 +191,6 @@ contract Swap2p is ReentrancyGuard {
     event Chat(bytes32 indexed id, uint32 index);
 
     /// @notice Emitted for each affiliate partner receiving a share of the fee (taker or maker).
-    event FeeDistributed(
-        bytes32 indexed id,
-        address indexed token,
-        address indexed partner,
-        uint128 fee,
-        uint128 partnerShare
-    );
     event PartnerBound(address indexed taker, address indexed partner);
     event MakerOnline(address indexed maker, bool online);
     // removed working hours
@@ -358,7 +351,6 @@ contract Swap2p is ReentrancyGuard {
 
     /// @dev Pays `amt` to `to`, charges protocol fee and splits affiliate share between taker/maker partners.
     function _payWithFee(
-        bytes32 id,
         address token,
         address taker,
         address maker,
@@ -378,9 +370,6 @@ contract Swap2p is ReentrancyGuard {
                 _push(token, takerPartner, takerShare);
                 remaining -= takerShare;
             }
-            emit FeeDistributed(id, token, takerPartner, fee, takerShare);
-        } else {
-            emit FeeDistributed(id, token, address(0), fee, 0);
         }
 
         address makerPartner = affiliates[maker];
@@ -390,7 +379,6 @@ contract Swap2p is ReentrancyGuard {
                 _push(token, makerPartner, makerShare);
                 remaining -= makerShare;
             }
-            emit FeeDistributed(id, token, makerPartner, fee, makerShare);
         }
 
         if (remaining != 0) {
@@ -775,7 +763,7 @@ contract Swap2p is ReentrancyGuard {
 
         // main payout (crypto recipient)
         address payoutTo = (d.side == Side.BUY) ? d.maker : d.taker;
-        _payWithFee(id, d.token, d.taker, d.maker, payoutTo, d.amount);
+        _payWithFee(d.token, d.taker, d.maker, payoutTo, d.amount);
 
         // return both deposits
         _push(d.token, d.taker, d.amount);

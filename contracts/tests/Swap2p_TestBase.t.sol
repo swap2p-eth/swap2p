@@ -55,11 +55,11 @@ contract Swap2p_TestBase is Test {
         addrs[0] = addr;
         Swap2p.MakerProfile[] memory profiles = swap.getMakerProfiles(addrs);
         return profiles.length != 0 ? profiles[0] : Swap2p.MakerProfile({
-            online: false,
             lastActivity: 0,
-            nickname: "",
             dealsCancelled: 0,
-            dealsCompleted: 0
+            dealsCompleted: 0,
+            online: false,
+            nickname: ""
         });
     }
 
