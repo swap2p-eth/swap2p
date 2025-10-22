@@ -31,6 +31,7 @@ import type {
   SendMessageArgs,
   SetOnlineArgs,
   SetNicknameArgs,
+  SetChatPublicKeyArgs,
   Swap2pAdapter,
   TakerRequestOfferArgs,
 } from "./types";
@@ -162,12 +163,15 @@ const mapDeal = (id: bigint, raw: any): Deal | null => {
 const mapMakerProfile = (_address: Address, raw: any): MakerProfile | null => {
   if (!raw) return null;
   const nickname = raw.nickname ?? raw[2];
+  const chatPublicKey = raw.chatPublicKey ?? raw[5];
   return {
     online: Boolean(raw[0] ?? raw.online ?? false),
     lastActivity: toNumber(raw[1] ?? raw.lastActivity ?? 0),
     nickname: nickname !== undefined ? String(nickname) : "",
     dealsCancelled: Number(raw[3] ?? raw.dealsCancelled ?? 0),
     dealsCompleted: Number(raw[4] ?? raw.dealsCompleted ?? 0),
+    chatPublicKey:
+      chatPublicKey !== undefined ? String(chatPublicKey) : "",
   };
 };
 
@@ -381,6 +385,24 @@ export const createSwap2pViemAdapter = (
         address,
         "setNickname",
         [nickname] as const,
+        sender,
+      );
+    },
+
+    async setChatPublicKey({ account, chatPublicKey }: SetChatPublicKeyArgs) {
+      const sender = withAccount(account);
+      const signer = ensureWalletClient(walletClient, "setChatPublicKey");
+      if (!sender) {
+        throw new Error(
+          "Swap2pViemAdapter: account is required for setChatPublicKey",
+        );
+      }
+      return simulateAndWrite(
+        signer,
+        publicClient,
+        address,
+        "setChatPublicKey",
+        [chatPublicKey] as const,
         sender,
       );
     },

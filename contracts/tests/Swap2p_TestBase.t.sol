@@ -59,7 +59,8 @@ contract Swap2p_TestBase is Test {
             dealsCancelled: 0,
             dealsCompleted: 0,
             online: false,
-            nickname: ""
+            nickname: "",
+            chatPublicKey: ""
         });
     }
 

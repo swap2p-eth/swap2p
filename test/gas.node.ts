@@ -115,7 +115,8 @@ test("Gas report (Node test runner, TS)", async () => {
     1_000n * WAD,
     1n * WAD,
     500n * WAD,
-    { paymentMethods: "wire", requirements: "", comment: "" },
+    "wire",
+    "",
     ZERO_ADDRESS,
   ]);
   const amountSell = 100n * WAD;
@@ -143,7 +144,8 @@ test("Gas report (Node test runner, TS)", async () => {
     1_000n * WAD,
     1n * WAD,
     500n * WAD,
-    { paymentMethods: "sepa", requirements: "", comment: "" },
+    "sepa",
+    "",
     ZERO_ADDRESS,
   ]);
   const amountBuy = 200n * WAD;

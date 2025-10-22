@@ -87,6 +87,24 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
         assertEq(_makerProfile(taker).nickname, "alpha");
     }
 
+    function test_ChatPublicKey_SetAndClear() public {
+        vm.prank(maker);
+        swap.setChatPublicKey("ssh-ed25519 AAAA");
+        assertEq(_makerProfile(maker).chatPublicKey, "ssh-ed25519 AAAA");
+
+        vm.prank(maker);
+        swap.setChatPublicKey("");
+        assertEq(_makerProfile(maker).chatPublicKey, "");
+    }
+
+    function test_ChatPublicKey_IsPerUser() public {
+        vm.prank(maker);
+        swap.setChatPublicKey("ssh-ed25519 AAAA");
+
+        // other users remain unchanged
+        assertEq(_makerProfile(taker).chatPublicKey, "");
+    }
+
     function test_DealCounters_OnCancelAndRelease() public {
         vm.prank(maker);
         swap.maker_makeOffer(
@@ -179,8 +197,12 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
     function test_GetProfiles_Batch() public {
         vm.prank(maker);
         swap.setNickname("alpha");
+        vm.prank(maker);
+        swap.setChatPublicKey("pk-maker");
         vm.prank(taker);
         swap.setOnline(true);
+        vm.prank(taker);
+        swap.setChatPublicKey("pk-taker");
 
         address[] memory addrs = new address[](2);
         addrs[0] = maker;
@@ -189,5 +211,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
         assertEq(profiles.length, 2);
         assertEq(profiles[0].nickname, "alpha");
         assertTrue(profiles[1].online);
+        assertEq(profiles[0].chatPublicKey, "pk-maker");
+        assertEq(profiles[1].chatPublicKey, "pk-taker");
     }
 }

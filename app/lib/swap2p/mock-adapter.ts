@@ -19,6 +19,7 @@ import {
   type SendMessageArgs,
   type SetOnlineArgs,
   type SetNicknameArgs,
+  type SetChatPublicKeyArgs,
   type Swap2pAdapter,
   type TakerRequestOfferArgs,
   SwapDealState,
@@ -75,6 +76,7 @@ const makeEmptyProfile = (): MakerProfile => ({
   nickname: "",
   dealsCancelled: 0,
   dealsCompleted: 0,
+  chatPublicKey: "",
 });
 
 const cloneDeal = (deal: MockDealRecord): Deal => ({
@@ -131,6 +133,7 @@ const buildInitialState = (): MockState => {
       nickname: seed.nickname ?? "",
       dealsCancelled: seed.dealsCancelled ?? 0,
       dealsCompleted: seed.dealsCompleted ?? 0,
+      chatPublicKey: seed.chatPublicKey ?? "",
     });
     if (seed.nickname) {
       nicknames.set(seed.nickname.trim().toLowerCase(), address);
@@ -471,6 +474,14 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     }
     this.state.nicknames.set(desiredKey, normalized);
     profile.nickname = desired;
+    this.touchActivity(normalized);
+    return this.nextHash();
+  }
+
+  async setChatPublicKey({ account, chatPublicKey }: SetChatPublicKeyArgs) {
+    const normalized = getAddress(account);
+    const profile = this.ensureMakerInfo(normalized);
+    profile.chatPublicKey = chatPublicKey;
     this.touchActivity(normalized);
     return this.nextHash();
   }

@@ -115,6 +115,7 @@ contract Swap2p is ReentrancyGuard {
         int32  dealsCompleted;        // completed deals count
         bool   online;
         string nickname;              // unique public nickname
+        string chatPublicKey;         // public key used for end-to-end chat
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -384,10 +385,6 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
-    function _stringsEqual(string storage a, string calldata b) private view returns (bool) {
-        return keccak256(bytes(a)) == keccak256(bytes(b));
-    }
-
     // ────────────────────────────────────────────────────────────────────────
     // Maker profile
     /// @notice Sets caller's online status for availability checks.
@@ -431,6 +428,12 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
+    /// @notice Sets caller's chat public key. Empty string clears the key.
+    /// @param key New chat public key (arbitrary UTF-8 string).
+    function setChatPublicKey(string calldata key) external touchActivity {
+        makerInfo[msg.sender].chatPublicKey = key;
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // Offer management
     /// @notice Creates/updates an offer for the caller (maker).
@@ -455,12 +458,11 @@ contract Swap2p is ReentrancyGuard {
         string calldata requirements,
         address  partner
     ) external {
-        _makerMakeOffer(msg.sender, token, s, f, price, reserve, minAmt, maxAmt, paymentMethods, requirements);
+        _makerMakeOffer(token, s, f, price, reserve, minAmt, maxAmt, paymentMethods, requirements);
         _setAffiliateIfNotSet(msg.sender, partner);
     }
 
     function _makerMakeOffer(
-        address maker,
         address token,
         Side s,
         FiatCode f,
@@ -471,47 +473,31 @@ contract Swap2p is ReentrancyGuard {
         string calldata paymentMethods,
         string calldata requirements
     ) private {
-        bytes32 oid = _getOrCreateOfferId(token, maker, s, f);
+        bytes32 oid = _getOrCreateOfferId(token, msg.sender, s, f);
 
-        bool newOffer;
-        {
-            Offer storage o = _offers[oid];
-            bool isNew = o.ts == 0;
+        Offer storage o = _offers[oid];
+        bool isNew = o.ts == 0;
 
-            if (isNew) {
-                o.fiat = f;
-                o.side = s;
-                o.token = token;
-                o.maker = maker;
-            }
-
-            if (o.minAmt != minAmt) {
-                o.minAmt = minAmt;
-            }
-            if (o.maxAmt != maxAmt) {
-                o.maxAmt = maxAmt;
-            }
-            if (o.reserve != reserve) {
-                o.reserve = reserve;
-            }
-            if (o.priceFiatPerToken != price) {
-                o.priceFiatPerToken = price;
-            }
-            if (!_stringsEqual(o.paymentMethods, paymentMethods)) {
-                o.paymentMethods = paymentMethods;
-            }
-            if (!_stringsEqual(o.requirements, requirements)) {
-                o.requirements = requirements;
-            }
-
-            o.ts = uint40(block.timestamp);
-            newOffer = isNew;
+        if (isNew) {
+            o.fiat = f;
+            o.side = s;
+            o.token = token;
+            o.maker = msg.sender;
         }
 
+        o.minAmt = minAmt;
+        o.maxAmt = maxAmt;
+        o.reserve = reserve;
+        o.priceFiatPerToken = price;
+        o.paymentMethods = paymentMethods;
+        o.requirements = requirements;
+
+        o.ts = uint40(block.timestamp);
+
         bytes32 marketKey = _marketKey(token, s, f);
-        if (newOffer) {
+        if (isNew) {
             _addMarketOffer(marketKey, oid);
-            _addMakerOffer(maker, oid);
+            _addMakerOffer(msg.sender, oid);
         }
 
         emit OfferUpsert(oid);
@@ -614,9 +600,7 @@ contract Swap2p is ReentrancyGuard {
 
         _setAffiliateIfNotSet(taker, partner);
 
-        if (paymentDetails.length != 0) {
-            _sendChat(id, paymentDetails, DealState.REQUESTED);
-        }
+        _sendChat(id, paymentDetails, DealState.REQUESTED);
 
         emit DealRequested(id);
     }
@@ -632,9 +616,7 @@ contract Swap2p is ReentrancyGuard {
         if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
         // send reason before changing state to keep chat in allowed states
-        if (reason.length != 0) {
-            _sendChat(id, reason, DealState.CANCELED);
-        }
+        _sendChat(id, reason, DealState.CANCELED);
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
         _addRecent(d.maker, id);
@@ -665,9 +647,7 @@ contract Swap2p is ReentrancyGuard {
         d.state  = DealState.ACCEPTED;
         d.tsLast = uint40(block.timestamp);
         emit DealAccepted(id);
-        if (msg_.length != 0) {
-            _sendChat(id, msg_, DealState.ACCEPTED);
-        }
+        _sendChat(id, msg_, DealState.ACCEPTED);
     }
 
     /// @dev Emits a chat message for REQUESTED/ACCEPTED/PAID if caller is maker or taker.
@@ -688,15 +668,11 @@ contract Swap2p is ReentrancyGuard {
         emit Chat(id, idx);
     }
 
-    function _sendChat(bytes32 id, bytes calldata t) private {
-        _sendChat(id, t, DealState.NONE);
-    }
-
     /// @notice Sends a chat message in REQUESTED/ACCEPTED/PAID.
     /// @param id Deal id.
     /// @param t Message text.
     function sendMessage(bytes32 id, bytes calldata t) external touchActivity {
-        _sendChat(id, t);
+        _sendChat(id, t, DealState.NONE);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -717,9 +693,7 @@ contract Swap2p is ReentrancyGuard {
             revert WrongCaller();
         }
 
-        if (reason.length != 0) {
-            _sendChat(id, reason, DealState.CANCELED);
-        }
+        _sendChat(id, reason, DealState.CANCELED);
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
         // restore maker offer reserve
@@ -755,9 +729,7 @@ contract Swap2p is ReentrancyGuard {
         d.state  = DealState.PAID;
         d.tsLast = uint40(block.timestamp);
         emit DealPaid(id);
-        if (msg_.length != 0) {
-            _sendChat(id, msg_, DealState.PAID);
-        }
+        _sendChat(id, msg_, DealState.PAID);
     }
 
     /// @notice Releases the deal after PAID by the counterparty (BUY: taker; SELL: maker).
@@ -772,10 +744,7 @@ contract Swap2p is ReentrancyGuard {
             revert WrongCaller();
         }
 
-        // Send optional message before changing state
-        if (msg_.length != 0) {
-            _sendChat(id, msg_, DealState.RELEASED);
-        }
+        _sendChat(id, msg_, DealState.RELEASED);
 
         d.state  = DealState.RELEASED;
         d.tsLast = uint40(block.timestamp);
@@ -1037,6 +1006,7 @@ contract Swap2p is ReentrancyGuard {
             profiles[i].nickname = src.nickname;
             profiles[i].dealsCancelled = src.dealsCancelled;
             profiles[i].dealsCompleted = src.dealsCompleted;
+            profiles[i].chatPublicKey = src.chatPublicKey;
         }
     }
 

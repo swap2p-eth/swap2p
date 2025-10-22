@@ -77,6 +77,7 @@ export type MakerProfile = {
   nickname: string;
   dealsCancelled: number;
   dealsCompleted: number;
+  chatPublicKey: string;
 };
 
 export type PaginationArgs = {
@@ -142,6 +143,11 @@ export type SetNicknameArgs = {
   nickname: string;
 };
 
+export type SetChatPublicKeyArgs = {
+  account: Address;
+  chatPublicKey: string;
+};
+
 export type MarkFiatPaidArgs = {
   account: Address;
   id: bigint;
@@ -184,6 +190,7 @@ export interface Swap2pAdapter {
   getMakerProfiles(addresses: Address[]): Promise<MakerProfile[]>;
   setOnline(args: SetOnlineArgs): Promise<Swap2pWriteResult>;
   setNickname(args: SetNicknameArgs): Promise<Swap2pWriteResult>;
+  setChatPublicKey(args: SetChatPublicKeyArgs): Promise<Swap2pWriteResult>;
   makerMakeOffer(args: MakerMakeOfferArgs): Promise<Swap2pWriteResult>;
   makerDeleteOffer(args: MakerDeleteOfferArgs): Promise<Swap2pWriteResult>;
   takerRequestOffer(args: TakerRequestOfferArgs): Promise<Swap2pWriteResult>;

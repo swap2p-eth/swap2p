@@ -46,6 +46,7 @@ export type MockMakerSeed = {
   nickname?: string;
   dealsCancelled?: number;
   dealsCompleted?: number;
+  chatPublicKey?: string;
 };
 
 export type MockAffiliateSeed = {
