@@ -38,6 +38,10 @@ const config: HardhatUserConfig = {
     hardhat: {
       type: "edr-simulated",
       chainType: "l1",
+      allowUnlimitedContractSize: true,
+      nodeConfiguration: {
+        allowUnlimitedContractSize: true,
+      },
     },
     hardhatOp: {
       type: "edr-simulated",

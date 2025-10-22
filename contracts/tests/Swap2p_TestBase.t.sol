@@ -80,12 +80,41 @@ contract Swap2p_TestBase is Test {
         uint128 amount_,
         Swap2p.FiatCode fiat_,
         uint96 expectedPrice_,
+        string memory paymentMethod_,
         string memory details_,
         address partner_
     ) internal returns (bytes32 id) {
         (id, ) = swap.previewNextDealId(taker_);
         vm.prank(taker_);
-        swap.taker_requestOffer(token_, side_, maker_, amount_, fiat_, expectedPrice_, details_, partner_);
+        swap.taker_requestOffer(token_, side_, maker_, amount_, fiat_, expectedPrice_, paymentMethod_, details_, partner_);
+    }
+
+    function _requestDealAs(
+        address taker_,
+        address token_,
+        Swap2p.Side side_,
+        address maker_,
+        uint128 amount_,
+        Swap2p.FiatCode fiat_,
+        uint96 expectedPrice_,
+        string memory details_,
+        address partner_
+    ) internal returns (bytes32 id) {
+        return _requestDealAs(taker_, token_, side_, maker_, amount_, fiat_, expectedPrice_, "", details_, partner_);
+    }
+
+    function _requestDealDefault(
+        address token_,
+        Swap2p.Side side_,
+        address maker_,
+        uint128 amount_,
+        Swap2p.FiatCode fiat_,
+        uint96 expectedPrice_,
+        string memory paymentMethod_,
+        string memory details_,
+        address partner_
+    ) internal returns (bytes32 id) {
+        return _requestDealAs(taker, token_, side_, maker_, amount_, fiat_, expectedPrice_, paymentMethod_, details_, partner_);
     }
 
     function _requestDealDefault(
@@ -98,6 +127,6 @@ contract Swap2p_TestBase is Test {
         string memory details_,
         address partner_
     ) internal returns (bytes32 id) {
-        return _requestDealAs(taker, token_, side_, maker_, amount_, fiat_, expectedPrice_, details_, partner_);
+        return _requestDealDefault(token_, side_, maker_, amount_, fiat_, expectedPrice_, "", details_, partner_);
     }
 }

@@ -43,6 +43,13 @@ export type Offer = {
   maker: Address;
 };
 
+export type DealChatMessage = {
+  timestamp: number;
+  toMaker: boolean;
+  state: SwapDealState;
+  payload: string;
+};
+
 export type OfferWithKey = {
   key: OfferKey;
   offer: Offer;
@@ -60,6 +67,8 @@ export type Deal = {
   requestedAt: number;
   updatedAt: number;
   token: Address;
+  paymentMethod: string;
+  chat: DealChatMessage[];
 };
 
 export type MakerProfile = {
@@ -104,6 +113,7 @@ export type TakerRequestOfferArgs = OfferFilter & {
   maker: Address;
   amount: bigint;
   expectedPrice: bigint;
+  paymentMethod: string;
   details?: string;
   partner?: Address | null;
 };

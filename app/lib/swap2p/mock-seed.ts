@@ -27,6 +27,15 @@ export type MockDealSeed = {
   token: Address;
   requestedHoursAgo: number;
   updatedHoursAgo: number;
+  paymentMethod: string;
+  chat?: MockDealChatSeed[];
+};
+
+export type MockDealChatSeed = {
+  toMaker: boolean;
+  state: SwapDealState;
+  payload: string;
+  hoursAgo: number;
 };
 
 export type MockMakerSeed = {
@@ -156,6 +165,7 @@ export const mockDeals: MockDealSeed[] = [
     state: SwapDealState.REQUESTED,
     requestedHoursAgo: 6,
     updatedHoursAgo: 6,
+    paymentMethod: "Wise",
   },
   {
     id: 2n,
@@ -169,6 +179,15 @@ export const mockDeals: MockDealSeed[] = [
     state: SwapDealState.ACCEPTED,
     requestedHoursAgo: 24,
     updatedHoursAgo: 10,
+    paymentMethod: "PIX",
+    chat: [
+      {
+        toMaker: false,
+        state: SwapDealState.NONE,
+        payload: "Client ready",
+        hoursAgo: 12,
+      },
+    ],
   },
   {
     id: 3n,
@@ -182,6 +201,7 @@ export const mockDeals: MockDealSeed[] = [
     state: SwapDealState.PAID,
     requestedHoursAgo: 40,
     updatedHoursAgo: 3,
+    paymentMethod: "SEPA",
   },
   {
     id: 4n,
@@ -195,6 +215,21 @@ export const mockDeals: MockDealSeed[] = [
     state: SwapDealState.RELEASED,
     requestedHoursAgo: 120,
     updatedHoursAgo: 72,
+    paymentMethod: "ACH",
+    chat: [
+      {
+        toMaker: true,
+        state: SwapDealState.NONE,
+        payload: "Sent receipt",
+        hoursAgo: 80,
+      },
+      {
+        toMaker: false,
+        state: SwapDealState.RELEASED,
+        payload: "Funds confirmed",
+        hoursAgo: 72,
+      },
+    ],
   },
   {
     id: 5n,
@@ -208,5 +243,6 @@ export const mockDeals: MockDealSeed[] = [
     state: SwapDealState.CANCELED,
     requestedHoursAgo: 96,
     updatedHoursAgo: 80,
+    paymentMethod: "Revolut",
   },
 ];

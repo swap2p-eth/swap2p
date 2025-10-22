@@ -1,9 +1,10 @@
-import { getAddress, type Address, type Hash } from "viem";
+import { getAddress, isHex, stringToHex, type Address, type Hash } from "viem";
 import {
   type CancelDealArgs,
   type CancelRequestArgs,
   type CleanupDealsArgs,
   type Deal,
+  type DealChatMessage,
   type DealsQuery,
   type MakerAcceptRequestArgs,
   type MakerDeleteOfferArgs,
@@ -30,15 +31,7 @@ import {
   mockOffers,
 } from "./mock-seed";
 
-type MockMessage = {
-  from: Address;
-  body: string;
-  at: number;
-};
-
-type MockDealRecord = Deal & {
-  messages: MockMessage[];
-};
+type MockDealRecord = Deal;
 
 type MockState = {
   offers: Map<string, Offer>;
@@ -96,6 +89,8 @@ const cloneDeal = (deal: MockDealRecord): Deal => ({
   requestedAt: deal.requestedAt,
   updatedAt: deal.updatedAt,
   token: deal.token,
+  paymentMethod: deal.paymentMethod,
+  chat: deal.chat.map((entry) => ({ ...entry })),
 });
 
 const paginate = <T>(items: readonly T[], offset = 0, limit = 20): T[] => {
@@ -194,7 +189,15 @@ const buildInitialState = (): MockState => {
       requestedAt: applyHoursAgo(seed.requestedHoursAgo),
       updatedAt: applyHoursAgo(seed.updatedHoursAgo),
       token: getAddress(seed.token),
-      messages: [],
+      paymentMethod: seed.paymentMethod,
+      chat: (seed.chat ?? []).map((entry) => ({
+        timestamp: applyHoursAgo(entry.hoursAgo),
+        toMaker: entry.toMaker,
+        state: entry.state,
+        payload: isHex(entry.payload, { strict: false })
+          ? entry.payload
+          : stringToHex(entry.payload),
+      })),
     };
     deals.set(id, deal);
     if (
@@ -317,6 +320,30 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
   private touchActivity(address: Address) {
     const profile = this.ensureMakerInfo(address);
     profile.lastActivity = now();
+  }
+
+  private encodePayload(message: string): string {
+    if (!message) return "0x";
+    if (isHex(message, { strict: false })) {
+      return message;
+    }
+    return stringToHex(message);
+  }
+
+  private appendChat(
+    deal: MockDealRecord,
+    sender: Address,
+    message: string | undefined,
+    context: SwapDealState = SwapDealState.NONE,
+  ) {
+    if (!message || message.length === 0) return;
+    const normalized = getAddress(sender);
+    deal.chat.push({
+      timestamp: now(),
+      toMaker: normalized === deal.taker,
+      state: context,
+      payload: this.encodePayload(message),
+    });
   }
 
   private getOfferRecord(key: OfferKey): Offer | null {
@@ -536,7 +563,8 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
       requestedAt: timestamp,
       updatedAt: timestamp,
       token: offerKey.token,
-      messages: [],
+      paymentMethod: args.paymentMethod ?? "",
+      chat: [],
     };
     this.state.deals.set(id, deal);
     this.state.openDeals.set(
@@ -575,8 +603,8 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     }
     deal.state = SwapDealState.ACCEPTED;
     deal.updatedAt = now();
+    this.appendChat(deal, account, args.message, SwapDealState.ACCEPTED);
     this.touchActivity(account);
-    void args.message;
     return this.nextHash();
   }
 
@@ -592,6 +620,8 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     if (account !== deal.maker && account !== deal.taker) {
       throw new MockSwap2pError("WrongCaller");
     }
+    this.appendChat(deal, account, args.reason, SwapDealState.CANCELED);
+    this.appendChat(deal, account, args.reason, SwapDealState.CANCELED);
     deal.state = SwapDealState.CANCELED;
     deal.updatedAt = now();
     removeId(this.state.openDeals.get(deal.maker), deal.id);
@@ -616,7 +646,6 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     const cancellerProfile = this.ensureMakerInfo(account, false);
     cancellerProfile.dealsCancelled += 1;
     this.touchActivity(account);
-    void args.reason;
     return this.nextHash();
   }
 
@@ -666,7 +695,6 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     const cancellerProfile = this.ensureMakerInfo(account, false);
     cancellerProfile.dealsCancelled += 1;
     this.touchActivity(account);
-    void args.reason;
     return this.nextHash();
   }
 
@@ -687,8 +715,8 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     }
     deal.state = SwapDealState.PAID;
     deal.updatedAt = now();
+    this.appendChat(deal, account, args.message, SwapDealState.PAID);
     this.touchActivity(account);
-    void args.message;
     return this.nextHash();
   }
 
@@ -707,6 +735,7 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     ) {
       throw new MockSwap2pError("WrongCaller");
     }
+    this.appendChat(deal, account, args.message, SwapDealState.RELEASED);
     deal.state = SwapDealState.RELEASED;
     deal.updatedAt = now();
     removeId(this.state.openDeals.get(deal.maker), deal.id);
@@ -724,7 +753,6 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     makerProfile.dealsCompleted += 1;
     takerProfile.dealsCompleted += 1;
     this.touchActivity(account);
-    void args.message;
     return this.nextHash();
   }
 
@@ -744,11 +772,7 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     ) {
       throw new MockSwap2pError("WrongState");
     }
-    deal.messages.push({
-      from: account,
-      body: args.message,
-      at: now(),
-    });
+    this.appendChat(deal, account, args.message, SwapDealState.NONE);
     this.touchActivity(account);
     return this.nextHash();
   }

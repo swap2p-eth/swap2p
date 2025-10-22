@@ -20,7 +20,7 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
         }));
         vm.prank(taker);
         vm.expectRevert(Swap2p.SelfPartnerNotAllowed.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", taker);
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", taker);
     }
 
     function test_Partner_BindsOnce() public {
@@ -40,6 +40,7 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(978),
             100e18,
             "",
+            "",
             partner
         );
         // second request attempts to change partner -> should keep the first
@@ -51,6 +52,7 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
             10e18,
             Swap2p.FiatCode.wrap(978),
             100e18,
+            "",
             "",
             partner2
         );

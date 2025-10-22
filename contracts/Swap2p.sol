@@ -86,6 +86,13 @@ contract Swap2p is ReentrancyGuard {
         string comment;
     }
 
+    struct ChatMessage {
+        uint40    ts;
+        bool      toMaker;
+        DealState state;
+        bytes     text;
+    }
+
     /// @notice Active deal between maker and taker.
     struct Deal {
         uint128   amount;
@@ -98,6 +105,8 @@ contract Swap2p is ReentrancyGuard {
         uint40    tsRequest;          // timestamp when requested
         uint40    tsLast;             // last state update
         address   token;
+        string    paymentMethod;
+        ChatMessage[] chat;
     }
 
     struct DealInfo {
@@ -166,6 +175,7 @@ contract Swap2p is ReentrancyGuard {
     error FeeOnTransferTokenNotSupported();
     error AuthorZero();
     error NicknameTaken();
+    error DealNotFound();
 
     // ────────────────────────────────────────────────────────────────────────
     // Events
@@ -185,6 +195,7 @@ contract Swap2p is ReentrancyGuard {
         address indexed maker,
         address taker,
         uint128 amount,
+        string paymentMethod,
         string paymentDetails
     );
     event DealCanceled(bytes32 indexed id);
@@ -192,7 +203,7 @@ contract Swap2p is ReentrancyGuard {
     event DealPaid(bytes32 indexed id);
     event DealReleased(bytes32 indexed id);
 
-    event Chat(bytes32 indexed id, address indexed from, bytes text);
+    event Chat(bytes32 indexed id, address indexed from, bool toMaker, DealState state, bytes text);
 
     /// @notice Emitted for each affiliate partner receiving a share of the fee (taker or maker).
     event FeeDistributed(
@@ -526,6 +537,53 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Request (taker)
+    function _allocateDeal(
+        address token,
+        Side s,
+        address maker,
+        address taker,
+        uint128 amount,
+        FiatCode f,
+        uint96 expectedPrice,
+        string calldata paymentMethod
+    ) private returns (bytes32 id) {
+        bytes32 oid = _offerId[token][maker][s][f];
+        Offer storage off = _offers[oid];
+        if (off.maker != maker) revert OfferNotFound();
+
+        if (!makerInfo[maker].online) revert MakerOffline();
+
+        if (s == Side.BUY) {
+            if (off.priceFiatPerToken < expectedPrice) revert WorsePrice();
+        } else {
+            if (off.priceFiatPerToken > expectedPrice) revert WorsePrice();
+        }
+
+        if (amount < off.minAmt || amount > off.maxAmt) revert AmountOutOfBounds();
+        if (off.reserve < uint96(amount)) revert InsufficientReserve();
+        off.reserve -= uint96(amount);
+
+        uint128 need = s == Side.BUY ? amount * 2 : amount;
+        _pull(token, taker, need);
+
+        uint64 nextNonce = ++_takerDealNonce[taker];
+        id = keccak256(abi.encodePacked(taker, nextNonce));
+
+        Deal storage d = deals[id];
+        uint40 ts = uint40(block.timestamp);
+        d.amount        = amount;
+        d.price         = off.priceFiatPerToken;
+        d.state         = DealState.REQUESTED;
+        d.side          = s;
+        d.maker         = maker;
+        d.taker         = taker;
+        d.fiat          = f;
+        d.tsRequest     = ts;
+        d.tsLast        = ts;
+        d.token         = token;
+        d.paymentMethod = paymentMethod;
+    }
+
     /// @notice Requests an offer and escrows taker deposit (BUY: 2×, SELL: 1×).
     /// @param token ERC20 token address.
     /// @param s Side.
@@ -533,6 +591,7 @@ contract Swap2p is ReentrancyGuard {
     /// @param amount Trade amount.
     /// @param f Fiat code.
     /// @param expectedPrice Price guard (BUY: offer >= expected; SELL: offer <= expected).
+    /// @param paymentMethod Negotiated fiat method chosen by taker.
     /// @param details Free-form details emitted in DealRequested.
     /// @param partner Optional affiliate to bind (first non-zero value wins).
     function taker_requestOffer(
@@ -542,56 +601,23 @@ contract Swap2p is ReentrancyGuard {
         uint128  amount,
         FiatCode f,
         uint96   expectedPrice,
+        string calldata paymentMethod,
         string calldata details,
         address  partner
     ) external nonReentrant touchActivity {
-        Offer storage off = _offers[_offerId[token][maker][s][f]];
-        if (off.maker != maker) revert OfferNotFound();
-
-        // availability (no locals kept)
-        if (!makerInfo[maker].online) revert MakerOffline();
-
-        // price guards
-        if (s == Side.BUY) {
-            if (off.priceFiatPerToken < expectedPrice) revert WorsePrice();
-        } else {
-            if (off.priceFiatPerToken > expectedPrice) revert WorsePrice();
-        }
-
-        // bounds & reserve
-        if (amount < off.minAmt || amount > off.maxAmt) revert AmountOutOfBounds();
-        if (off.reserve < uint96(amount)) revert InsufficientReserve();
-        off.reserve -= uint96(amount);
-
-        // taker deposit (double-collateral)
-        uint128 need = s == Side.BUY ? amount * 2 : amount;
-        _pull(token, msg.sender, need);
-
-        // create deal without struct literal to avoid stack pressure
-        uint64 nextNonce = ++_takerDealNonce[msg.sender];
-        bytes32 id = keccak256(abi.encodePacked(msg.sender, nextNonce));
-        Deal storage d = deals[id];
-        d.amount    = amount;
-        d.price     = off.priceFiatPerToken;
-        d.state     = DealState.REQUESTED;
-        d.side      = s;
-        d.maker     = maker;
-        d.taker     = msg.sender;
-        d.fiat      = f;
-        d.tsRequest = uint40(block.timestamp);
-        d.tsLast    = uint40(block.timestamp);
-        d.token     = token;
+        address taker = msg.sender;
+        bytes32 id = _allocateDeal(token, s, maker, taker, amount, f, expectedPrice, paymentMethod);
 
         _addOpen(maker, id);
-        _addOpen(msg.sender, id);
+        _addOpen(taker, id);
 
-        if (affiliates[msg.sender] == address(0) && partner != address(0)) {
-            if (partner == msg.sender) revert SelfPartnerNotAllowed();
-            affiliates[msg.sender] = partner;
-            emit PartnerBound(msg.sender, partner);
+        if (affiliates[taker] == address(0) && partner != address(0)) {
+            if (partner == taker) revert SelfPartnerNotAllowed();
+            affiliates[taker] = partner;
+            emit PartnerBound(taker, partner);
         }
 
-        emit DealRequested(id, token, maker, msg.sender, amount, details);
+        emit DealRequested(id, token, maker, taker, amount, paymentMethod, details);
     }
 
 
@@ -606,7 +632,7 @@ contract Swap2p is ReentrancyGuard {
         if (d.state != DealState.REQUESTED) revert WrongState();
         // send reason before changing state to keep chat in allowed states
         if (reason.length != 0) {
-            _sendChat(id, reason);
+            _sendChat(id, reason, DealState.CANCELED);
         }
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
@@ -639,17 +665,29 @@ contract Swap2p is ReentrancyGuard {
         d.tsLast = uint40(block.timestamp);
         emit DealAccepted(id);
         if (msg_.length != 0) {
-            _sendChat(id, msg_);
+            _sendChat(id, msg_, DealState.ACCEPTED);
         }
     }
 
     /// @dev Emits a chat message for REQUESTED/ACCEPTED/PAID if caller is maker or taker.
-    function _sendChat(bytes32 id, bytes calldata t) private {
+    function _sendChat(bytes32 id, bytes calldata t, DealState context) private {
         Deal storage d = deals[id];
         if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
         DealState st = d.state;
         if (st != DealState.REQUESTED && st != DealState.ACCEPTED && st != DealState.PAID) revert WrongState();
-        emit Chat(id, msg.sender, t);
+        bool toMaker = msg.sender == d.taker;
+        DealState chatState = context;
+        d.chat.push(ChatMessage({
+            ts: uint40(block.timestamp),
+            toMaker: toMaker,
+            state: chatState,
+            text: t
+        }));
+        emit Chat(id, msg.sender, toMaker, chatState, t);
+    }
+
+    function _sendChat(bytes32 id, bytes calldata t) private {
+        _sendChat(id, t, DealState.NONE);
     }
 
     /// @notice Sends a chat message in REQUESTED/ACCEPTED/PAID.
@@ -678,7 +716,7 @@ contract Swap2p is ReentrancyGuard {
         }
 
         if (reason.length != 0) {
-            _sendChat(id, reason);
+            _sendChat(id, reason, DealState.CANCELED);
         }
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
@@ -716,7 +754,7 @@ contract Swap2p is ReentrancyGuard {
         d.tsLast = uint40(block.timestamp);
         emit DealPaid(id);
         if (msg_.length != 0) {
-            _sendChat(id, msg_);
+            _sendChat(id, msg_, DealState.PAID);
         }
     }
 
@@ -734,7 +772,7 @@ contract Swap2p is ReentrancyGuard {
 
         // Send optional message before changing state
         if (msg_.length != 0) {
-            _sendChat(id, msg_);
+            _sendChat(id, msg_, DealState.RELEASED);
         }
 
         d.state  = DealState.RELEASED;
@@ -957,6 +995,19 @@ contract Swap2p is ReentrancyGuard {
         for (uint i = off; i < end; i++) {
             out[i - off] = arr[i];
         }
+    }
+
+    /// @notice Returns deal details by id.
+    function getDeal(bytes32 id) external view returns (DealInfo memory info) {
+        Deal storage d = deals[id];
+        if (d.state == DealState.NONE) revert DealNotFound();
+        info.id = id;
+        info.deal = d;
+    }
+
+    /// @notice Returns the full chat history for a deal.
+    function getDealChat(bytes32 id) external view returns (ChatMessage[] memory out) {
+        out = deals[id].chat;
     }
 
     /// @notice Returns paginated slice of open deals with details.

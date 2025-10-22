@@ -36,7 +36,7 @@ contract Swap2p_ReentrancyTest is Swap2p_TestBase {
         rtoken.setReenter(address(swap), expectedId, bytes("re"), true);
         vm.startPrank(taker);
         vm.expectRevert();
-        swap.taker_requestOffer(address(rtoken), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        swap.taker_requestOffer(address(rtoken), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
         vm.stopPrank();
     }
 }

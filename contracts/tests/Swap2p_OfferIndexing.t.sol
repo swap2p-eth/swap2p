@@ -21,30 +21,24 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
     mapping(bytes32 => bool) private _dealSeen;
 
     function _getDeal(bytes32 id) private view returns (Swap2p.Deal memory d) {
-        (
-            uint128 amount,
-            uint96 price,
-            Swap2p.DealState state,
-            Swap2p.Side side,
-            address makerAddr,
-            address takerAddr,
-            Swap2p.FiatCode fiat,
-            uint40 tsRequest,
-            uint40 tsLast,
-            address tokenAddr
-        ) = swap.deals(id);
-        d = Swap2p.Deal({
-            amount: amount,
-            price: price,
-            state: state,
-            side: side,
-            maker: makerAddr,
-            taker: takerAddr,
-            fiat: fiat,
-            tsRequest: tsRequest,
-            tsLast: tsLast,
-            token: tokenAddr
-        });
+        try swap.getDeal(id) returns (Swap2p.DealInfo memory info) {
+            return info.deal;
+        } catch {
+            return Swap2p.Deal({
+                amount: 0,
+                price: 0,
+                state: Swap2p.DealState.NONE,
+                side: Swap2p.Side.BUY,
+                maker: address(0),
+                taker: address(0),
+                fiat: Swap2p.FiatCode.wrap(0),
+                tsRequest: 0,
+                tsLast: 0,
+                token: address(0),
+                paymentMethod: "",
+                chat: new Swap2p.ChatMessage[](0)
+            });
+        }
     }
 
     function _setupMaker(address account) private {
@@ -285,6 +279,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         // delete offer before cancel
@@ -303,7 +298,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         // reserve is 0, request of 50 should fail with InsufficientReserve
         vm.prank(taker);
         vm.expectRevert(Swap2p.InsufficientReserve.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 50e18, Swap2p.FiatCode.wrap(840), 100e18, "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 50e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
     }
 
     function test_ListOffers_ReturnsOfferInfoWithIds() public {
@@ -491,6 +486,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             101e18,
             "",
+            "",
             address(0)
         );
         _trackDeal(deal1);
@@ -519,6 +515,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             101e18,
             "",
+            "",
             address(0)
         );
         _trackDeal(deal2);
@@ -540,6 +537,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             120e18,
             Swap2p.FiatCode.wrap(840),
             101e18,
+            "",
             "",
             address(0)
         );
@@ -676,6 +674,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
                             uint128(amount),
                             market.fiat,
                             uint96(info.offer.priceFiatPerToken),
+                            "",
                             "",
                             address(0)
                         );

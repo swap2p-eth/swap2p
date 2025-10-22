@@ -51,7 +51,7 @@ contract ActorProxy {
         Swap2p.FiatCode fiat,
         uint96 expectedPrice
     ) external {
-        swap.taker_requestOffer(tokenAddr, side, maker_, amount, fiat, expectedPrice, "", address(0));
+        swap.taker_requestOffer(tokenAddr, side, maker_, amount, fiat, expectedPrice, "", "", address(0));
     }
 
     function makerAcceptRequest(bytes32 id) external {
@@ -153,30 +153,24 @@ contract Swap2pEchidnaHarness {
     }
 
     function _getDeal(bytes32 id) internal view returns (Swap2p.Deal memory d) {
-        (
-            uint128 amount,
-            uint96 price,
-            Swap2p.DealState state,
-            Swap2p.Side side,
-            address makerAddr,
-            address takerAddr,
-            Swap2p.FiatCode fiat,
-            uint40 tsRequest,
-            uint40 tsLast,
-            address tokenAddr
-        ) = swap.deals(id);
-        d = Swap2p.Deal({
-            amount: amount,
-            price: price,
-            state: state,
-            side: side,
-            maker: makerAddr,
-            taker: takerAddr,
-            fiat: fiat,
-            tsRequest: tsRequest,
-            tsLast: tsLast,
-            token: tokenAddr
-        });
+        try swap.getDeal(id) returns (Swap2p.DealInfo memory info) {
+            return info.deal;
+        } catch {
+            return Swap2p.Deal({
+                amount: 0,
+                price: 0,
+                state: Swap2p.DealState.NONE,
+                side: Swap2p.Side.BUY,
+                maker: address(0),
+                taker: address(0),
+                fiat: Swap2p.FiatCode.wrap(0),
+                tsRequest: 0,
+                tsLast: 0,
+                token: address(0),
+                paymentMethod: "",
+                chat: new Swap2p.ChatMessage[](0)
+            });
+        }
     }
 
     // ─────────────────────────── stateful entry points ───────────────────────────

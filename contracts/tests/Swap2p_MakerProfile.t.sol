@@ -126,6 +126,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         vm.prank(taker);
@@ -155,6 +156,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             15e18,
             Swap2p.FiatCode.wrap(978),
             100e18,
+            "",
             "",
             address(0)
         );
@@ -187,6 +189,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             25e18,
             Swap2p.FiatCode.wrap(840),
             100e18,
+            "",
             "",
             address(0)
         );

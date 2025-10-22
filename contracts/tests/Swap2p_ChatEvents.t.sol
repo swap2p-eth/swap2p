@@ -25,6 +25,7 @@ contract Swap2p_ChatEventsTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
     }

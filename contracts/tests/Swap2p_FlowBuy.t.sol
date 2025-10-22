@@ -27,6 +27,7 @@ contract Swap2p_FlowBuyTest is Swap2p_TestBase {
             amount,
             Swap2p.FiatCode.wrap(978),
             100e18,
+            "sepa",
             "details",
             partner
         );

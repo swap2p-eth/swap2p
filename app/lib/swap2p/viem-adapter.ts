@@ -17,6 +17,7 @@ import type {
   CancelRequestArgs,
   CleanupDealsArgs,
   Deal,
+  DealChatMessage,
   MakerAcceptRequestArgs,
   MakerDeleteOfferArgs,
   MakerMakeOfferArgs,
@@ -126,6 +127,21 @@ const mapDeal = (id: bigint, raw: any): Deal | null => {
   if (!raw) return null;
   const state = toDealState(raw.state ?? SwapDealState.NONE);
   if (state === SwapDealState.NONE) return null;
+  const paymentMethod =
+    raw.paymentMethod !== undefined ? String(raw.paymentMethod) : "";
+  const chatRaw = Array.isArray(raw.chat) ? raw.chat : [];
+  const chat: DealChatMessage[] = chatRaw.map((entry: any) => {
+    const ts = toNumber(entry?.ts ?? entry?.[0] ?? 0);
+    const toMaker = Boolean(entry?.toMaker ?? entry?.[1] ?? false);
+    const rawState = entry?.state ?? entry?.[2] ?? SwapDealState.NONE;
+    const payload = asHex(entry?.text ?? entry?.[3]) ?? "0x";
+    return {
+      timestamp: ts,
+      toMaker,
+      state: toDealState(rawState),
+      payload,
+    };
+  });
   return {
     id,
     amount: BigInt(raw.amount ?? 0),
@@ -138,6 +154,8 @@ const mapDeal = (id: bigint, raw: any): Deal | null => {
     requestedAt: toNumber(raw.tsRequest ?? 0),
     updatedAt: toNumber(raw.tsLast ?? raw.tsRequest ?? 0),
     token: getAddress(raw.token ?? "0x0000000000000000000000000000000000000000"),
+    paymentMethod,
+    chat,
   };
 };
 
@@ -439,6 +457,7 @@ export const createSwap2pViemAdapter = (
         amount,
         fiat,
         expectedPrice,
+        paymentMethod,
         details,
         partner,
       } = args;
@@ -461,6 +480,7 @@ export const createSwap2pViemAdapter = (
           amount,
           fiat,
           expectedPrice,
+          paymentMethod ?? "",
           details ?? "",
           partner ?? "0x0000000000000000000000000000000000000000",
         ] as const,

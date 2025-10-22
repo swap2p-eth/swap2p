@@ -31,6 +31,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         vm.prank(taker);
@@ -59,6 +60,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         vm.prank(maker);
@@ -82,6 +84,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             6e18,
             Swap2p.FiatCode.wrap(978),
             100e18,
+            "",
             "",
             address(0)
         );
@@ -107,6 +110,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             7e18,
             Swap2p.FiatCode.wrap(840),
             100e18,
+            "",
             "",
             address(0)
         );
@@ -139,6 +143,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         vm.prank(taker);
@@ -165,6 +170,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         vm.prank(taker);
@@ -185,6 +191,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             10e18,
             Swap2p.FiatCode.wrap(840),
             100e18,
+            "",
             "",
             address(0)
         );
@@ -211,6 +218,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         vm.prank(maker);
@@ -222,14 +230,14 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         swap.cleanupDeals(ids, 48);
 
         // A deleted
-        (,,Swap2p.DealState stA,,,,,,,) = swap.deals(dealA);
-        assertEq(uint(stA), uint(Swap2p.DealState.NONE));
+        vm.expectRevert(Swap2p.DealNotFound.selector);
+        swap.getDeal(dealA);
         // B remains
-        (,,Swap2p.DealState stB,,,,,,,) = swap.deals(dealB);
-        assertTrue(stB == Swap2p.DealState.RELEASED);
+        Swap2p.DealInfo memory infoB = swap.getDeal(dealB);
+        assertTrue(infoB.deal.state == Swap2p.DealState.RELEASED);
         // C remains
-        (,,Swap2p.DealState stC,,,,,,,) = swap.deals(dealC);
-        assertTrue(stC == Swap2p.DealState.ACCEPTED);
+        Swap2p.DealInfo memory infoC = swap.getDeal(dealC);
+        assertTrue(infoC.deal.state == Swap2p.DealState.ACCEPTED);
 
         // A removed from recent for both
         bytes32[] memory rm = swap.getRecentDeals(maker, 0, 10);
@@ -255,6 +263,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         vm.prank(maker);
@@ -268,7 +277,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         // off >= len branch returns empty
         bytes32[] memory emptySlice = swap.getRecentDeals(maker, 5, 10);
         assertEq(emptySlice.length, 0);
-        (,,Swap2p.DealState st,,,,,,,) = swap.deals(dealId);
-        assertEq(uint(st), uint(Swap2p.DealState.NONE));
+        vm.expectRevert(Swap2p.DealNotFound.selector);
+        swap.getDeal(dealId);
     }
 }

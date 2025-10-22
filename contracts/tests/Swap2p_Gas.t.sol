@@ -112,7 +112,7 @@ contract Swap2p_GasTest is Test {
         bytes32 sellDealId = _previewNextDealId(taker);
         vm.prank(taker);
         g = gasleft();
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, amount, Swap2p.FiatCode.wrap(840), 100e18, "details", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, amount, Swap2p.FiatCode.wrap(840), 100e18, "wire", "details", address(0));
         g -= gasleft();
         _printRow("SELL:taker_requestOffer", g);
 
@@ -155,7 +155,7 @@ contract Swap2p_GasTest is Test {
         bytes32 buyDealId = _previewNextDealId(taker);
         vm.prank(taker);
         g = gasleft();
-        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, amount, Swap2p.FiatCode.wrap(978), 100e18, "details", partner);
+        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, amount, Swap2p.FiatCode.wrap(978), 100e18, "sepa", "details", partner);
         g -= gasleft();
         _printRow("BUY:taker_requestOffer", g);
 

@@ -27,6 +27,7 @@ contract Swap2p_FlowSellTest is Swap2p_TestBase {
             amount,
             Swap2p.FiatCode.wrap(840),
             100e18,
+            "wire",
             "details",
             address(0)
         );

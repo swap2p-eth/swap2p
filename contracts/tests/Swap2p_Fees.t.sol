@@ -26,6 +26,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
             amount,
             Swap2p.FiatCode.wrap(840),
             100e18,
+            "wire",
             "",
             address(0)
         );
@@ -56,6 +57,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
             amount,
             Swap2p.FiatCode.wrap(978),
             100e18,
+            "sepa",
             "",
             partner
         );
@@ -108,6 +110,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
             10e18,
             Swap2p.FiatCode.wrap(840),
             100e18,
+            "wire",
             "",
             makerPartner
         );
@@ -138,6 +141,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
             amount,
             Swap2p.FiatCode.wrap(978),
             100e18,
+            "sepa",
             "",
             partner
         );

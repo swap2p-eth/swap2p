@@ -42,6 +42,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         address stranger = makeAddr("stranger");
@@ -60,6 +61,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             10e18,
             Swap2p.FiatCode.wrap(840),
             100e18,
+            "",
             "",
             address(0)
         );
@@ -98,6 +100,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         // maker cancels; second _removeOpen sees pos==0
@@ -115,6 +118,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             0,
             Swap2p.FiatCode.wrap(840),
             100e18,
+            "",
             "",
             address(0)
         );
@@ -136,6 +140,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             10e18,
             Swap2p.FiatCode.wrap(978),
             100e18,
+            "",
             "",
             address(0)
         );

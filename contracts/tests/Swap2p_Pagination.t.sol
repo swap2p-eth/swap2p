@@ -42,6 +42,7 @@ contract Swap2p_PaginationTest is Swap2p_TestBase {
             Swap2p.FiatCode.wrap(840),
             100e18,
             "",
+            "",
             address(0)
         );
         bytes32 d2 = _requestDealDefault(
@@ -51,6 +52,7 @@ contract Swap2p_PaginationTest is Swap2p_TestBase {
             20e18,
             Swap2p.FiatCode.wrap(840),
             100e18,
+            "",
             "",
             address(0)
         );
