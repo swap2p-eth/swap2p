@@ -13,11 +13,7 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
 
     function _reqSell() internal returns (bytes32 dealId) {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 10e18, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 10e18, 500e18, "wire", "", address(0));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -86,11 +82,7 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
 
         // create offer with price=100, reserve=10e18, min=10e18, max=11e18
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 10e18, 10e18, 11e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 10e18, 10e18, 11e18, "wire", "", address(0));
         // below min
         vm.prank(taker);
         vm.expectRevert(Swap2p.AmountOutOfBounds.selector);

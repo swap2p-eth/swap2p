@@ -20,11 +20,7 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
             1_000e18,
             1,
             500e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "wire",
-                requirements: "",
-                comment: ""
-            }), address(0));
+            "wire", "", address(0));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,

@@ -231,23 +231,11 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
 
         // same token/side/fiat, three makers
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, "wire", "", address(0));
         vm.prank(maker2);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, "wire", "", address(0));
         vm.prank(maker3);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, "wire", "", address(0));
 
         address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
         assertEq(keys.length, 3);
@@ -265,11 +253,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
     function test_Reserve_NotRestored_WhenOfferDeleted() public {
         // create offer
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 10e18, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 10e18, 500e18, "wire", "", address(0));
         // request amount 50
         bytes32 dealId = _requestDealDefault(
             address(token),
@@ -290,11 +274,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.cancelRequest(dealId, bytes(""));
         // new offer and request same amount: reserve should not be auto-restored from old offer
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 0, 10e18, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 0, 10e18, 500e18, "wire", "", address(0));
         // reserve is 0, request of 50 should fail with InsufficientReserve
         vm.prank(taker);
         vm.expectRevert(Swap2p.InsufficientReserve.selector);
@@ -306,11 +286,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.setOnline(true);
         (bytes32 predicted,) = swap.previewNextOfferId(maker);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 200e18, 2_000e18, 5e18, 600e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "sepa",
-            requirements: "",
-            comment: "id check"
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 200e18, 2_000e18, 5e18, 600e18, "sepa", "", address(0));
         bytes32 storedId = _offerId(address(token), maker, Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978));
         assertEq(storedId, predicted, "offer id should match preview");
 
@@ -345,11 +321,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             5_000e18,
             50e18,
             2_000e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "wire",
-                requirements: "KYC + selfie",
-                comment: ""
-            }), address(0));
+            "wire", "KYC + selfie", address(0));
         vm.prank(maker);
         swap.maker_makeOffer(
             address(token),
@@ -359,11 +331,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             4_000e18,
             25e18,
             1_500e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "sepa",
-                requirements: "passport",
-                comment: ""
-            }), address(0));
+            "sepa", "passport", address(0));
 
         // other makers join the USD SELL market
         vm.prank(makerB);
@@ -375,11 +343,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             3_500e18,
             40e18,
             1_800e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "pix",
-                requirements: "video-call",
-                comment: ""
-            }), address(0));
+            "pix", "video-call", address(0));
         vm.prank(makerC);
         swap.maker_makeOffer(
             address(token),
@@ -389,11 +353,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             2_500e18,
             20e18,
             1_200e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "swift",
-                requirements: "",
-                comment: ""
-            }), address(0));
+            "swift", "", address(0));
 
         // verify market indexes
         assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840)), 2);
@@ -465,11 +425,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             5_000e18,
             50e18,
             2_000e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "wire",
-                requirements: "KYC + selfie",
-                comment: ""
-            }), address(0));
+            "wire", "KYC + selfie", address(0));
         bytes32 activeOffer = _offerId(address(token), maker, Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
 
         // Deal 1: taker requests, flow completes to RELEASED
@@ -611,11 +567,6 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             for (uint256 j; j < marketsList.length; j++) {
                 address currentMaker = makersList[i];
                 Market memory mkt = marketsList[j];
-                Swap2p.MakerOfferTexts memory initTexts = Swap2p.MakerOfferTexts({
-                    paymentMethods: "init",
-                    requirements: "",
-                    comment: ""
-                });
                 vm.prank(currentMaker);
                 swap.maker_makeOffer(
                     mkt.token,
@@ -625,7 +576,8 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
                     uint96(4_000e18 + j * 500e18),
                     uint128(20e18),
                     uint128(2_000e18),
-                    initTexts,
+                    "init",
+                    "",
                     address(0)
                 );
             }
@@ -641,11 +593,6 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             uint256 scenario = iter % 6;
 
             if (scenario == 0) {
-                Swap2p.MakerOfferTexts memory updateTexts = Swap2p.MakerOfferTexts({
-                    paymentMethods: "update",
-                    requirements: iter % 2 == 0 ? "kyc" : "",
-                    comment: ""
-                });
                 vm.prank(currentMaker);
                 swap.maker_makeOffer(
                     market.token,
@@ -655,7 +602,8 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
                     uint96(5_000e18 + iter * 100e18),
                     uint128(10e18),
                     uint128(2_500e18),
-                    updateTexts,
+                    "update",
+                    iter % 2 == 0 ? "kyc" : "",
                     address(0)
                 );
             } else if (scenario == 1) {

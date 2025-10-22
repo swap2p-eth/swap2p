@@ -18,11 +18,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
     function test_Recent_OnCancelRequest_BothSides() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -47,11 +43,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
     function test_Recent_OnCancelDeal_SellAndBuy() public {
         // SELL: taker cancels after accept
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
         bytes32 sellDeal = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -72,11 +64,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
         // BUY: maker cancels after accept
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "sepa",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1, 500e18, "sepa", "", address(0));
         bytes32 buyDeal = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,
@@ -98,11 +86,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
     function test_Recent_OnRelease_BothSides() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -130,11 +114,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
     function test_Cleanup_RevertBelow48() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -157,11 +137,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
     function test_Cleanup_MixedAndMakerEqTaker() public {
         // A: canceled, old enough -> should be deleted
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealA = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -179,11 +155,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
         // B: released, but not old enough -> should stay
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealB = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -205,11 +177,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
         // C: accepted (wrong state) -> should be ignored
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealC = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -249,11 +217,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
     function test_Cleanup_SameMakerTaker() public {
         // maker == taker
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 0, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 0, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealAs(
             maker,
             address(token),

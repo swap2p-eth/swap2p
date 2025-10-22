@@ -13,22 +13,14 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, minAmt, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, minAmt, 500e18, "wire", "", address(0));
     }
 
     function _setupBuyBasic(uint128 minAmt) internal {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, minAmt, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "sepa",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, minAmt, 500e18, "sepa", "", address(0));
     }
 
     // Covers modifier onlyMaker revert (line ~150)
@@ -86,11 +78,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         swap.setOnline(true);
         // maker posts SELL, then self-requests as taker==maker
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: ""
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealAs(
             maker,
             address(token),

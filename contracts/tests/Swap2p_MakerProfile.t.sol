@@ -21,11 +21,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             1_000e18,
             1e18,
             500e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "wire",
-                requirements: "KYC + selfie",
-                comment: ""
-            }), address(0));
+            "wire", "KYC + selfie", address(0));
         bytes32 usdOffer = _offerId(
             address(token),
             maker,
@@ -45,11 +41,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             1_000e18,
             1e18,
             500e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "wire",
-                requirements: "",
-                comment: ""
-            }), address(0));
+            "wire", "", address(0));
         usdInfo = swap.getOfferById(usdOffer);
         assertEq(usdInfo.offer.requirements, "");
 
@@ -63,11 +55,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             1_000e18,
             1e18,
             500e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "sepa",
-                requirements: "passport only",
-                comment: ""
-            }), address(0));
+            "sepa", "passport only", address(0));
         bytes32 eurOffer = _offerId(
             address(token),
             maker,
@@ -109,11 +97,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             1_000e18,
             1e18,
             500e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "wire",
-                requirements: "",
-                comment: ""
-            }), address(0));
+            "wire", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -139,11 +123,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             1_000e18,
             1e18,
             500e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "sepa",
-                requirements: "",
-                comment: ""
-            }), address(0));
+            "sepa", "", address(0));
         bytes32 buyDeal = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,
@@ -171,11 +151,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             1_000e18,
             1e18,
             500e18,
-            Swap2p.MakerOfferTexts({
-                paymentMethods: "wire",
-                requirements: "",
-                comment: ""
-            }), address(0));
+            "wire", "", address(0));
         bytes32 completeDeal = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,

@@ -23,12 +23,7 @@ contract ActorProxy {
         uint128 minAmt,
         uint128 maxAmt
     ) external {
-        Swap2p.MakerOfferTexts memory texts = Swap2p.MakerOfferTexts({
-            paymentMethods: "echidna",
-            requirements: "",
-            comment: ""
-        });
-        swap.maker_makeOffer(tokenAddr, side, fiat, price, reserve, minAmt, maxAmt, texts, address(0));
+        swap.maker_makeOffer(tokenAddr, side, fiat, price, reserve, minAmt, maxAmt, "echidna", "", address(0));
     }
 
     function makerDeleteOffer(

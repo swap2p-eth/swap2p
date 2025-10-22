@@ -12,11 +12,7 @@ contract Swap2p_FlowSellTest is Swap2p_TestBase {
 
         // make offer SELL
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, Swap2p.MakerOfferTexts({
-            paymentMethods: "wire",
-            requirements: "",
-            comment: "sell offer"
-        }), address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, "wire", "", address(0));
 
         // taker requests amount=100
         uint128 amount = 100e18;

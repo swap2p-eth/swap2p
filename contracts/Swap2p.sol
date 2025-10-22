@@ -80,12 +80,6 @@ contract Swap2p is ReentrancyGuard {
         Offer   offer;
     }
 
-    struct MakerOfferTexts {
-        string paymentMethods;
-        string requirements;
-        string comment;
-    }
-
     struct ChatMessage {
         uint40    ts;
         DealState state;
@@ -390,6 +384,10 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
+    function _stringsEqual(string storage a, string calldata b) private view returns (bool) {
+        return keccak256(bytes(a)) == keccak256(bytes(b));
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // Maker profile
     /// @notice Sets caller's online status for availability checks.
@@ -443,7 +441,8 @@ contract Swap2p is ReentrancyGuard {
     /// @param reserve Amount of tokens reserved for this offer.
     /// @param minAmt Minimum per-request amount.
     /// @param maxAmt Maximum per-request amount.
-    /// @param texts Aggregated string parameters: payment methods, requirements (optional), comment.
+    /// @param paymentMethods Supported fiat payment methods.
+    /// @param requirements Optional requirements text for takers.
     function maker_makeOffer(
         address  token,
         Side     s,
@@ -452,10 +451,11 @@ contract Swap2p is ReentrancyGuard {
         uint96   reserve,
         uint128  minAmt,
         uint128  maxAmt,
-        MakerOfferTexts calldata texts,
+        string calldata paymentMethods,
+        string calldata requirements,
         address  partner
     ) external {
-        _makerMakeOffer(msg.sender, token, s, f, price, reserve, minAmt, maxAmt, texts);
+        _makerMakeOffer(msg.sender, token, s, f, price, reserve, minAmt, maxAmt, paymentMethods, requirements);
         _setAffiliateIfNotSet(msg.sender, partner);
     }
 
@@ -468,26 +468,48 @@ contract Swap2p is ReentrancyGuard {
         uint96 reserve,
         uint128 minAmt,
         uint128 maxAmt,
-        MakerOfferTexts calldata texts
+        string calldata paymentMethods,
+        string calldata requirements
     ) private {
         bytes32 oid = _getOrCreateOfferId(token, maker, s, f);
 
-        Offer storage o = _offers[oid];
-        bool isNew = o.ts == 0;
-        o.minAmt = minAmt;
-        o.maxAmt = maxAmt;
-        o.reserve = reserve;
-        o.priceFiatPerToken = price;
-        o.fiat = f;
-        o.ts = uint32(block.timestamp);
-        o.side = s;
-        o.token = token;
-        o.maker = maker;
-        o.paymentMethods = texts.paymentMethods;
-        o.requirements = texts.requirements;
+        bool newOffer;
+        {
+            Offer storage o = _offers[oid];
+            bool isNew = o.ts == 0;
+
+            if (isNew) {
+                o.fiat = f;
+                o.side = s;
+                o.token = token;
+                o.maker = maker;
+            }
+
+            if (o.minAmt != minAmt) {
+                o.minAmt = minAmt;
+            }
+            if (o.maxAmt != maxAmt) {
+                o.maxAmt = maxAmt;
+            }
+            if (o.reserve != reserve) {
+                o.reserve = reserve;
+            }
+            if (o.priceFiatPerToken != price) {
+                o.priceFiatPerToken = price;
+            }
+            if (!_stringsEqual(o.paymentMethods, paymentMethods)) {
+                o.paymentMethods = paymentMethods;
+            }
+            if (!_stringsEqual(o.requirements, requirements)) {
+                o.requirements = requirements;
+            }
+
+            o.ts = uint32(block.timestamp);
+            newOffer = isNew;
+        }
 
         bytes32 marketKey = _marketKey(token, s, f);
-        if (isNew) {
+        if (newOffer) {
             _addMarketOffer(marketKey, oid);
             _addMakerOffer(maker, oid);
         }
