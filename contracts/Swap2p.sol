@@ -64,7 +64,7 @@ contract Swap2p is ReentrancyGuard {
         uint128  maxAmt;
         uint96   reserve;             // token amount reserved for offers
         uint96   priceFiatPerToken;   // fiat/token price ratio
-        uint32   ts;                  // last update timestamp
+        uint40   ts;                  // last update timestamp
         FiatCode fiat;
         Side     side;
         address  token;               // ERC20 token address
@@ -504,7 +504,7 @@ contract Swap2p is ReentrancyGuard {
                 o.requirements = requirements;
             }
 
-            o.ts = uint32(block.timestamp);
+            o.ts = uint40(block.timestamp);
             newOffer = isNew;
         }
 
