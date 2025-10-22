@@ -167,7 +167,6 @@ contract Swap2p is ReentrancyGuard {
     error OfferNotFound();
     error AmountOutOfBounds();
     error InsufficientDeposit();
-    error SelfPartnerNotAllowed();
     error NotFiatPayer();
     error MakerOffline();
     error WorsePrice();
@@ -584,8 +583,7 @@ contract Swap2p is ReentrancyGuard {
         _addOpen(maker, id);
         _addOpen(taker, id);
 
-        if (affiliates[taker] == address(0) && partner != address(0)) {
-            if (partner == taker) revert SelfPartnerNotAllowed();
+        if (affiliates[taker] == address(0) && partner != address(0) && partner != taker) {
             affiliates[taker] = partner;
             emit PartnerBound(taker, partner);
         }

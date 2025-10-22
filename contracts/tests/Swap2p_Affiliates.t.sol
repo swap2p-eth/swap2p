@@ -11,16 +11,28 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
         swap.setOnline(true);
     }
 
-    function test_Revert_SelfPartner() public {
+    function test_SelfPartnerIgnored() public {
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, Swap2p.MakerOfferTexts({
             paymentMethods: "wire",
             requirements: "",
             comment: ""
         }));
-        vm.prank(taker);
-        vm.expectRevert(Swap2p.SelfPartnerNotAllowed.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), taker);
+        bytes32 dealId = _requestDealAs(
+            taker,
+            address(token),
+            Swap2p.Side.SELL,
+            maker,
+            10e18,
+            Swap2p.FiatCode.wrap(840),
+            100e18,
+            "",
+            "",
+            taker
+        );
+        assertEq(swap.affiliates(taker), address(0));
+        vm.prank(maker);
+        swap.cancelRequest(dealId, bytes(""));
     }
 
     function test_Partner_BindsOnce() public {

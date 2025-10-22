@@ -577,10 +577,7 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     );
     if (!this.state.affiliates.has(account) && args.partner) {
       const partner = getAddress(args.partner);
-      if (partner === account) {
-        throw new MockSwap2pError("SelfPartnerNotAllowed");
-      }
-      if (partner !== ADDRESS_ZERO) {
+      if (partner !== ADDRESS_ZERO && partner !== account) {
         this.state.affiliates.set(account, partner);
       }
     }
