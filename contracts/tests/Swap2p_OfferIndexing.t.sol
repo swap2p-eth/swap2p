@@ -298,7 +298,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         // reserve is 0, request of 50 should fail with InsufficientReserve
         vm.prank(taker);
         vm.expectRevert(Swap2p.InsufficientReserve.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 50e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 50e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
     }
 
     function test_ListOffers_ReturnsOfferInfoWithIds() public {

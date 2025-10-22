@@ -20,7 +20,7 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
         }));
         vm.prank(taker);
         vm.expectRevert(Swap2p.SelfPartnerNotAllowed.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", taker);
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), taker);
     }
 
     function test_Partner_BindsOnce() public {

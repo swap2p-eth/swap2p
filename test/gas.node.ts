@@ -125,7 +125,7 @@ test("Gas report (Node test runner, TS)", async () => {
   }) as [`0x${string}`, bigint];
 
   latest.G_SELL_taker_requestOffer = await write(taker, swap.address, Swap2pArtifact.abi, "taker_requestOffer", [
-    token.address, 1, maker.account.address, amountSell, 840, 100n * WAD, "wire", "details", "0x0000000000000000000000000000000000000000",
+    token.address, 1, maker.account.address, amountSell, 840, 100n * WAD, "wire", stringToHex("details"), "0x0000000000000000000000000000000000000000",
   ]);
   latest.G_SELL_maker_acceptRequest = await write(maker, swap.address, Swap2pArtifact.abi, "maker_acceptRequest", [sellDealId, stringToHex("ok")]);
   latest.G_SELL_sendMessage = await write(taker, swap.address, Swap2pArtifact.abi, "sendMessage", [sellDealId, stringToHex("hi")]);
@@ -152,7 +152,7 @@ test("Gas report (Node test runner, TS)", async () => {
   }) as [`0x${string}`, bigint];
 
   latest.G_BUY_taker_requestOffer = await write(taker, swap.address, Swap2pArtifact.abi, "taker_requestOffer", [
-    token.address, 0, maker.account.address, amountBuy, 978, 100n * WAD, "sepa", "details", "0x0000000000000000000000000000000000000000",
+    token.address, 0, maker.account.address, amountBuy, 978, 100n * WAD, "sepa", stringToHex("details"), "0x0000000000000000000000000000000000000000",
   ]);
   latest.G_BUY_maker_acceptRequest = await write(maker, swap.address, Swap2pArtifact.abi, "maker_acceptRequest", [buyDealId, stringToHex("ok")]);
   latest.G_BUY_markFiatPaid = await write(maker, swap.address, Swap2pArtifact.abi, "markFiatPaid", [buyDealId, stringToHex("paid")]);

@@ -86,7 +86,17 @@ contract Swap2p_TestBase is Test {
     ) internal returns (bytes32 id) {
         (id, ) = swap.previewNextDealId(taker_);
         vm.prank(taker_);
-        swap.taker_requestOffer(token_, side_, maker_, amount_, fiat_, expectedPrice_, paymentMethod_, details_, partner_);
+        swap.taker_requestOffer(
+            token_,
+            side_,
+            maker_,
+            amount_,
+            fiat_,
+            expectedPrice_,
+            paymentMethod_,
+            bytes(details_),
+            partner_
+        );
     }
 
     function _requestDealAs(
@@ -114,7 +124,18 @@ contract Swap2p_TestBase is Test {
         string memory details_,
         address partner_
     ) internal returns (bytes32 id) {
-        return _requestDealAs(taker, token_, side_, maker_, amount_, fiat_, expectedPrice_, paymentMethod_, details_, partner_);
+        return _requestDealAs(
+            taker,
+            token_,
+            side_,
+            maker_,
+            amount_,
+            fiat_,
+            expectedPrice_,
+            paymentMethod_,
+            details_,
+            partner_
+        );
     }
 
     function _requestDealDefault(

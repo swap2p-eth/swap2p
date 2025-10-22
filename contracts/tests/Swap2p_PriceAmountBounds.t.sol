@@ -20,7 +20,7 @@ contract Swap2p_PriceAmountBoundsTest is Swap2p_TestBase {
             comment: ""
         }));
         vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100, "", bytes(""), address(0));
 
         // BUY: offer price == expected OK
         vm.prank(maker);
@@ -30,7 +30,7 @@ contract Swap2p_PriceAmountBoundsTest is Swap2p_TestBase {
             comment: ""
         }));
         vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 100, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 100, "", bytes(""), address(0));
     }
 
     function test_AmountBoundsMinMax() public {
@@ -43,18 +43,18 @@ contract Swap2p_PriceAmountBoundsTest is Swap2p_TestBase {
         }));
         // exactly min
         vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
         // exactly max
         vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 20e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 20e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
 
         // below min
         vm.prank(taker);
         vm.expectRevert(Swap2p.AmountOutOfBounds.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 9e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 9e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
         // above max
         vm.prank(taker);
         vm.expectRevert(Swap2p.AmountOutOfBounds.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 21e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 21e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
     }
 }

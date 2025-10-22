@@ -19,7 +19,7 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
         }));
         vm.prank(taker);
         vm.expectRevert(Swap2p.MakerOffline.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
     }
 
     function test_WrongState_CancelRequest_AfterAccepted() public {

@@ -82,7 +82,7 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
         // OfferNotFound
         vm.prank(taker);
         vm.expectRevert(Swap2p.OfferNotFound.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10, Swap2p.FiatCode.wrap(840), 100, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10, Swap2p.FiatCode.wrap(840), 100, "", bytes(""), address(0));
 
         // create offer with price=100, reserve=10e18, min=10e18, max=11e18
         vm.prank(maker);
@@ -94,14 +94,14 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
         // below min
         vm.prank(taker);
         vm.expectRevert(Swap2p.AmountOutOfBounds.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 9e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 9e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
         // above max
         vm.prank(taker);
         vm.expectRevert(Swap2p.AmountOutOfBounds.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 12e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 12e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
         // insufficient reserve (reserve 10e18)
         vm.prank(taker);
         vm.expectRevert(Swap2p.InsufficientReserve.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 11e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 11e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
     }
 }

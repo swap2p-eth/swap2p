@@ -179,31 +179,16 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Events
-    event OfferUpsert(
-        bytes32 id,
-        address indexed token,
-        address indexed maker,
-        FiatCode indexed fiat,
-        Offer offer,
-        string comment
-    );
-    event OfferDeleted(bytes32 id, address indexed token, address indexed maker, Side side, FiatCode indexed fiat);
+    event OfferUpsert(bytes32 indexed id);
+    event OfferDeleted(bytes32 indexed id);
 
-    event DealRequested(
-        bytes32 indexed id,
-        address indexed token,
-        address indexed maker,
-        address taker,
-        uint128 amount,
-        string paymentMethod,
-        string paymentDetails
-    );
+    event DealRequested(bytes32 indexed id);
     event DealCanceled(bytes32 indexed id);
     event DealAccepted(bytes32 indexed id);
     event DealPaid(bytes32 indexed id);
     event DealReleased(bytes32 indexed id);
 
-    event Chat(bytes32 indexed id, address indexed from, bool toMaker, DealState state, bytes text);
+    event Chat(bytes32 indexed id, uint32 index);
 
     /// @notice Emitted for each affiliate partner receiving a share of the fee (taker or maker).
     event FeeDistributed(
@@ -513,7 +498,7 @@ contract Swap2p is ReentrancyGuard {
             _addMakerOffer(maker, oid);
         }
 
-        emit OfferUpsert(oid, token, maker, f, o, texts.comment);
+        emit OfferUpsert(oid);
     }
 
     /// @notice Deletes caller's offer for (token, side, fiat).
@@ -529,7 +514,7 @@ contract Swap2p is ReentrancyGuard {
             }
             delete _offerId[token][msg.sender][s][f];
         }
-        emit OfferDeleted(oid, token, msg.sender, s, f);
+        emit OfferDeleted(oid);
     }
 
 
@@ -592,7 +577,7 @@ contract Swap2p is ReentrancyGuard {
     /// @param f Fiat code.
     /// @param expectedPrice Price guard (BUY: offer >= expected; SELL: offer <= expected).
     /// @param paymentMethod Negotiated fiat method chosen by taker.
-    /// @param details Free-form details emitted in DealRequested.
+    /// @param paymentDetails Free-form details emitted in DealRequested.
     /// @param partner Optional affiliate to bind (first non-zero value wins).
     function taker_requestOffer(
         address  token,
@@ -602,7 +587,7 @@ contract Swap2p is ReentrancyGuard {
         FiatCode f,
         uint96   expectedPrice,
         string calldata paymentMethod,
-        string calldata details,
+        bytes calldata paymentDetails,
         address  partner
     ) external nonReentrant touchActivity {
         address taker = msg.sender;
@@ -617,7 +602,11 @@ contract Swap2p is ReentrancyGuard {
             emit PartnerBound(taker, partner);
         }
 
-        emit DealRequested(id, token, maker, taker, amount, paymentMethod, details);
+        if (paymentDetails.length != 0) {
+            _sendChat(id, paymentDetails, DealState.REQUESTED);
+        }
+
+        emit DealRequested(id);
     }
 
 
@@ -683,7 +672,8 @@ contract Swap2p is ReentrancyGuard {
             state: chatState,
             text: t
         }));
-        emit Chat(id, msg.sender, toMaker, chatState, t);
+        uint32 idx = uint32(d.chat.length - 1);
+        emit Chat(id, idx);
     }
 
     function _sendChat(bytes32 id, bytes calldata t) private {

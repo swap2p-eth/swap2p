@@ -17,7 +17,8 @@ if (!hasUserPrivateKey) {
 const config: HardhatUserConfig = {
   plugins: [hardhatToolboxViemPlugin, HardhatContractSizer],
   contractSizer: {
-    runOnCompile: false,
+    runOnCompile: true,
+    only: ['Swap2p.sol']
   },
   solidity: {
     profiles: {

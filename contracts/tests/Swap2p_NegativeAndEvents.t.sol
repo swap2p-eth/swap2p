@@ -29,7 +29,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
 
         vm.prank(taker);
         vm.expectRevert(Swap2p.FeeOnTransferTokenNotSupported.selector);
-        swap.taker_requestOffer(address(ft), Swap2p.Side.SELL, maker, 100e18, Swap2p.FiatCode.wrap(840), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(ft), Swap2p.Side.SELL, maker, 100e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
     }
 
     function test_Revert_FeeOnTransfer_OnRequest_BUY() public {
@@ -48,7 +48,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
 
         vm.prank(taker);
         vm.expectRevert(Swap2p.FeeOnTransferTokenNotSupported.selector);
-        swap.taker_requestOffer(address(ft), Swap2p.Side.BUY, maker, 100e18, Swap2p.FiatCode.wrap(978), 100e18, "", "", address(0));
+        swap.taker_requestOffer(address(ft), Swap2p.Side.BUY, maker, 100e18, Swap2p.FiatCode.wrap(978), 100e18, "", bytes(""), address(0));
     }
 
     // --- Price guards (WorsePrice) ---
@@ -62,7 +62,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
         }));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WorsePrice.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 99, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 99, "", bytes(""), address(0));
     }
 
     function test_Revert_WorsePrice_BUY_WhenOfferPriceLowerThanExpected() public {
@@ -75,7 +75,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
         }));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WorsePrice.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 101, "", "", address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 101, "", bytes(""), address(0));
     }
 
     // Note: Event expectations via emit can break Hardhat coverage. We validate

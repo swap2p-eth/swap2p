@@ -51,7 +51,7 @@ contract ActorProxy {
         Swap2p.FiatCode fiat,
         uint96 expectedPrice
     ) external {
-        swap.taker_requestOffer(tokenAddr, side, maker_, amount, fiat, expectedPrice, "", "", address(0));
+        swap.taker_requestOffer(tokenAddr, side, maker_, amount, fiat, expectedPrice, "", bytes(""), address(0));
     }
 
     function makerAcceptRequest(bytes32 id) external {
