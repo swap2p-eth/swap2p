@@ -11,7 +11,7 @@ contract Swap2p_ViewsAvailabilityTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         uint count = swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
         assertEq(count, 1);
         address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);

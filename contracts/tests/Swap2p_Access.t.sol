@@ -17,7 +17,7 @@ contract Swap2p_AccessTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -41,7 +41,7 @@ contract Swap2p_AccessTest is Swap2p_TestBase {
             paymentMethods: "sepa",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,

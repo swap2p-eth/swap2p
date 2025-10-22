@@ -28,7 +28,7 @@ contract ActorProxy {
             requirements: "",
             comment: ""
         });
-        swap.maker_makeOffer(tokenAddr, side, fiat, price, reserve, minAmt, maxAmt, texts);
+        swap.maker_makeOffer(tokenAddr, side, fiat, price, reserve, minAmt, maxAmt, texts, address(0));
     }
 
     function makerDeleteOffer(

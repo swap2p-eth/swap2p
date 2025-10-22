@@ -17,7 +17,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         uint128 amount = 300e18;
         bytes32 dealId = _requestDealDefault(
             address(token),
@@ -48,7 +48,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
             paymentMethods: "sepa",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         uint128 amount = 120e18;
         bytes32 dealId = _requestDealDefault(
             address(token),
@@ -97,8 +97,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
                 paymentMethods: "wire",
                 requirements: "",
                 comment: ""
-            })
-        );
+            }), address(0));
         vm.stopPrank();
 
         // maker (acting as taker) binds affiliate partner once
@@ -131,8 +130,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
                 paymentMethods: "sepa",
                 requirements: "",
                 comment: ""
-            })
-        );
+            }), address(0));
         uint128 amount = 200e18;
         bytes32 dealId = _requestDealDefault(
             address(token),

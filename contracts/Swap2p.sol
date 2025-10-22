@@ -190,7 +190,6 @@ contract Swap2p is ReentrancyGuard {
     event Chat(bytes32 indexed id, uint32 index);
 
     /// @notice Emitted for each affiliate partner receiving a share of the fee (taker or maker).
-    event PartnerBound(address indexed taker, address indexed partner);
     event MakerOnline(address indexed maker, bool online);
     // removed working hours
     event DealDeleted(bytes32 indexed id);
@@ -385,6 +384,12 @@ contract Swap2p is ReentrancyGuard {
         }
     }
 
+    function _setAffiliateIfNotSet(address user, address partner) private {
+        if (partner != address(0) && partner != user && affiliates[user] == address(0)) {
+            affiliates[user] = partner;
+        }
+    }
+
     // ────────────────────────────────────────────────────────────────────────
     // Maker profile
     /// @notice Sets caller's online status for availability checks.
@@ -447,9 +452,11 @@ contract Swap2p is ReentrancyGuard {
         uint96   reserve,
         uint128  minAmt,
         uint128  maxAmt,
-        MakerOfferTexts calldata texts
+        MakerOfferTexts calldata texts,
+        address  partner
     ) external {
         _makerMakeOffer(msg.sender, token, s, f, price, reserve, minAmt, maxAmt, texts);
+        _setAffiliateIfNotSet(msg.sender, partner);
     }
 
     function _makerMakeOffer(
@@ -583,10 +590,7 @@ contract Swap2p is ReentrancyGuard {
         _addOpen(maker, id);
         _addOpen(taker, id);
 
-        if (affiliates[taker] == address(0) && partner != address(0) && partner != taker) {
-            affiliates[taker] = partner;
-            emit PartnerBound(taker, partner);
-        }
+        _setAffiliateIfNotSet(taker, partner);
 
         if (paymentDetails.length != 0) {
             _sendChat(id, paymentDetails, DealState.REQUESTED);

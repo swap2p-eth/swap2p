@@ -16,7 +16,7 @@ contract Swap2p_FlowBuyTest is Swap2p_TestBase {
             paymentMethods: "sepa",
             requirements: "",
             comment: "buy offer"
-        }));
+        }), address(0));
 
         // taker binds partner on first request
         uint128 amount = 200e18;

@@ -17,7 +17,7 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -37,7 +37,7 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
             paymentMethods: "sepa",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,

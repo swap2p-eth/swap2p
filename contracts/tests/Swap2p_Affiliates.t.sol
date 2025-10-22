@@ -17,7 +17,7 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealId = _requestDealAs(
             taker,
             address(token),
@@ -41,7 +41,7 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
             paymentMethods: "sepa",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
 
         // first request binds partner
         bytes32 firstDeal = _requestDealDefault(

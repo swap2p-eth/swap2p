@@ -22,7 +22,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -51,7 +51,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 sellDeal = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -76,7 +76,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             paymentMethods: "sepa",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 buyDeal = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,
@@ -102,7 +102,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -134,7 +134,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -161,7 +161,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealA = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -183,7 +183,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealB = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -209,7 +209,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealC = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -253,7 +253,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealId = _requestDealAs(
             maker,
             address(token),

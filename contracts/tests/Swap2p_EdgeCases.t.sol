@@ -17,7 +17,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
     }
 
     function _setupBuyBasic(uint128 minAmt) internal {
@@ -28,7 +28,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             paymentMethods: "sepa",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
     }
 
     // Covers modifier onlyMaker revert (line ~150)
@@ -90,7 +90,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 dealId = _requestDealAs(
             maker,
             address(token),

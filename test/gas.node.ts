@@ -4,6 +4,7 @@ import fs from "node:fs";
 import hre from "hardhat";
 import { stringToHex } from "viem";
 const { artifacts } = hre as any;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 
 process.on("unhandledRejection", (err) => {
   console.error("Unhandled rejection in gas test", err);
@@ -115,6 +116,7 @@ test("Gas report (Node test runner, TS)", async () => {
     1n * WAD,
     500n * WAD,
     { paymentMethods: "wire", requirements: "", comment: "" },
+    ZERO_ADDRESS,
   ]);
   const amountSell = 100n * WAD;
   const [sellDealId] = await publicClient.readContract({
@@ -142,6 +144,7 @@ test("Gas report (Node test runner, TS)", async () => {
     1n * WAD,
     500n * WAD,
     { paymentMethods: "sepa", requirements: "", comment: "" },
+    ZERO_ADDRESS,
   ]);
   const amountBuy = 200n * WAD;
   const [buyDealId] = await publicClient.readContract({

@@ -102,6 +102,7 @@ export type MakerMakeOfferArgs = OfferFilter & {
   paymentMethods: string;
   requirements?: string;
   comment?: string;
+  partner?: Address | null;
 };
 
 export type MakerDeleteOfferArgs = OfferKey & {

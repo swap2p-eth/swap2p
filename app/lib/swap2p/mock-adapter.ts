@@ -322,6 +322,19 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     profile.lastActivity = now();
   }
 
+  private setAffiliateIfNotSet(user: Address, partner?: Address | null) {
+    if (!partner) {
+      return;
+    }
+    const normalized = getAddress(partner);
+    if (normalized === user || normalized === ADDRESS_ZERO) {
+      return;
+    }
+    if (!this.state.affiliates.has(user)) {
+      this.state.affiliates.set(user, normalized);
+    }
+  }
+
   private encodePayload(message: string): string {
     if (!message) return "0x";
     if (isHex(message, { strict: false })) {
@@ -475,6 +488,7 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
       paymentMethods,
       requirements,
       comment,
+      partner,
     } = args;
     const maker = getAddress(account);
     const key: OfferKey = { token, maker, side, fiat };
@@ -494,6 +508,7 @@ export class Swap2pMockAdapter implements Swap2pAdapter {
     this.state.offers.set(makeOfferKey(key), updated);
     addMakerIndex(this.state.offerIndex, key);
     this.touchActivity(maker);
+    this.setAffiliateIfNotSet(maker, partner ?? null);
     void comment;
     return this.nextHash();
   }

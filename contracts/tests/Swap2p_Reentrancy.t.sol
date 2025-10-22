@@ -31,7 +31,7 @@ contract Swap2p_ReentrancyTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 expectedId = _nextDealId(taker);
         rtoken.setReenter(address(swap), expectedId, bytes("re"), true);
         vm.startPrank(taker);

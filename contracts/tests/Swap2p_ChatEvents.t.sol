@@ -16,7 +16,7 @@ contract Swap2p_ChatEventsTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,

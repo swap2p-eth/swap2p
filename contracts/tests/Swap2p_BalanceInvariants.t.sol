@@ -17,7 +17,7 @@ contract Swap2p_BalanceInvariantsTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         uint128 amount = 100e18;
         bytes32 dealId = _requestDealDefault(
             address(token),

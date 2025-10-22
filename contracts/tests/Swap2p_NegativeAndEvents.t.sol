@@ -25,7 +25,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
 
         vm.prank(taker);
         vm.expectRevert(Swap2p.FeeOnTransferTokenNotSupported.selector);
@@ -44,7 +44,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
             paymentMethods: "sepa",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
 
         vm.prank(taker);
         vm.expectRevert(Swap2p.FeeOnTransferTokenNotSupported.selector);
@@ -59,7 +59,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WorsePrice.selector);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 99, "", bytes(""), address(0));
@@ -72,7 +72,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
             paymentMethods: "sepa",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WorsePrice.selector);
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 101, "", bytes(""), address(0));

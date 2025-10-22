@@ -394,11 +394,12 @@ export const createSwap2pViemAdapter = (
         price,
         reserve,
         minAmount,
-        maxAmount,
-        paymentMethods,
-        requirements,
-        comment,
-      } = args;
+      maxAmount,
+      paymentMethods,
+      requirements,
+      comment,
+      partner,
+    } = args;
       const sender = withAccount(account);
       const signer = ensureWalletClient(walletClient, "maker_makeOffer");
       if (!sender) {
@@ -406,6 +407,7 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for maker_makeOffer",
         );
       }
+      const partnerAddress = partner ?? "0x0000000000000000000000000000000000000000";
       return simulateAndWrite(
         signer,
         publicClient,
@@ -424,6 +426,7 @@ export const createSwap2pViemAdapter = (
             requirements: requirements ?? "",
             comment: comment ?? "",
           },
+          partnerAddress,
         ] as const,
         sender,
       );

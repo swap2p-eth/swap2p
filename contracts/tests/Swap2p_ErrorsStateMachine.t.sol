@@ -17,7 +17,7 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -90,7 +90,7 @@ contract Swap2p_ErrorsStateMachineTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         // below min
         vm.prank(taker);
         vm.expectRevert(Swap2p.AmountOutOfBounds.selector);

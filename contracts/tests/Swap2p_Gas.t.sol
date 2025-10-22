@@ -104,7 +104,7 @@ contract Swap2p_GasTest is Test {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         g -= gasleft();
         _printRow("SELL:maker_makeOffer", g);
 
@@ -147,7 +147,7 @@ contract Swap2p_GasTest is Test {
             paymentMethods: "sepa",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         g -= gasleft();
         _printRow("BUY:maker_makeOffer", g);
 

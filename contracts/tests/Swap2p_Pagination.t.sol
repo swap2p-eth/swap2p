@@ -18,7 +18,7 @@ contract Swap2p_PaginationTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840)), 1);
         address[] memory k0 = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1);
         assertEq(k0.length, 1);
@@ -33,7 +33,7 @@ contract Swap2p_PaginationTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: ""
-        }));
+        }), address(0));
         bytes32 d1 = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,

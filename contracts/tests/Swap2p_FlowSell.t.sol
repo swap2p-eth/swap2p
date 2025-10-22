@@ -16,7 +16,7 @@ contract Swap2p_FlowSellTest is Swap2p_TestBase {
             paymentMethods: "wire",
             requirements: "",
             comment: "sell offer"
-        }));
+        }), address(0));
 
         // taker requests amount=100
         uint128 amount = 100e18;
