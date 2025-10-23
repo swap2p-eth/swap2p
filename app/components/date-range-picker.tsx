@@ -1,30 +1,27 @@
 "use client";
 
 import * as React from "react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, type DateRange } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { addDays } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export interface DateRange {
-  from: Date | undefined;
-  to: Date | undefined;
-}
+export type DateRangeValue = NonNullable<DateRange>;
 
 export function DateRangePicker({
   value,
   onChange
 }: {
-  value: DateRange;
-  onChange: (value: DateRange) => void;
+  value: DateRangeValue;
+  onChange: (value: DateRangeValue) => void;
 }) {
   const selected = value;
 
   const handleSelect = (range: DateRange | undefined) => {
-    if (!range) return;
-    onChange(range);
+    if (!range || !range.from || !range.to) return;
+    onChange(range as DateRangeValue);
   };
 
   const reset = () => {

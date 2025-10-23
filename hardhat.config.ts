@@ -18,7 +18,7 @@ const config: HardhatUserConfig = {
   plugins: [hardhatToolboxViemPlugin, HardhatContractSizer],
   contractSizer: {
     runOnCompile: true,
-    only: ['Swap2p.sol']
+    only: [/Swap2p\.sol/],
   },
   solidity: {
     profiles: {
@@ -40,9 +40,6 @@ const config: HardhatUserConfig = {
       type: "edr-simulated",
       chainType: "l1",
       allowUnlimitedContractSize: true,
-      nodeConfiguration: {
-        allowUnlimitedContractSize: true,
-      },
     },
     hardhatOp: {
       type: "edr-simulated",

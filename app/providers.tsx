@@ -35,20 +35,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   const wagmiConfig = useMemo(() => {
     const walletConnectProjectId =
-      process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "51e609ac221c8fb9cbee39d15fb1458f";
-    const mezoNetwork = (process.env.NEXT_PUBLIC_MEZO_NETWORK ?? "testnet") as "testnet" | "mainnet";
-    const chains = [hardhatChain, mezoTestnet, mezoMainnet];
+      process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
+      "51e609ac221c8fb9cbee39d15fb1458f";
+    const mezoNetwork = (process.env.NEXT_PUBLIC_MEZO_NETWORK ?? "testnet") as
+      | "testnet"
+      | "mainnet";
+    const chains = [hardhatChain, mezoTestnet, mezoMainnet] as const;
+    const transports: Record<number, ReturnType<typeof http>> = {
+      [hardhatChain.id]: hardhatTransport,
+      [CHAIN_ID.testnet]: http(RPC_BY_NETWORK.testnet.http),
+      [CHAIN_ID.mainnet]: http(RPC_BY_NETWORK.mainnet.http),
+    };
     return getConfig({
       appName: "Swap2p Console",
       walletConnectProjectId,
       mezoNetwork,
       bitcoinWallets: isClient ? undefined : [],
-      chains,
-      transports: {
-        [hardhatChain.id]: hardhatTransport,
-        [CHAIN_ID.testnet]: http(RPC_BY_NETWORK.testnet.http),
-        [CHAIN_ID.mainnet]: http(RPC_BY_NETWORK.mainnet.http)
-      }
+      chains: [...chains] as Parameters<typeof getConfig>[0]["chains"],
+      transports: transports as NonNullable<Parameters<typeof getConfig>[0]["transports"]>,
     });
   }, [isClient]);
 

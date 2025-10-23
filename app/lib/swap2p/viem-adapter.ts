@@ -59,6 +59,11 @@ const ZERO_BYTES32 = "0x00000000000000000000000000000000000000000000000000000000
 
 const DEFAULT_LIMIT = 20;
 
+type Swap2pWriteFunctionName = Extract<
+  (typeof swap2pAbi)[number],
+  { type: "function"; stateMutability: "nonpayable" | "payable" }
+>["name"];
+
 const LOG_MAX_DEPTH = 4;
 
 const sanitizeForLog = (value: unknown, depth = LOG_MAX_DEPTH): unknown => {
@@ -299,7 +304,7 @@ const simulateAndWrite = async (
   walletClient: AnyWalletClient,
   publicClient: AnyPublicClient,
   address: Address,
-  functionName: string,
+  functionName: Swap2pWriteFunctionName,
   args: readonly unknown[],
   account: Address,
   value?: bigint,
@@ -314,10 +319,10 @@ const simulateAndWrite = async (
     address,
     abi: swap2pAbi,
     functionName,
-    args,
+    args: args as any,
     account,
     value,
-  });
+  } as any);
   debugLog("[swap2p][write]", {
     functionName,
     account,
@@ -493,22 +498,28 @@ const readDealStruct = async (id: Hex) => {
         args: [addresses] as const,
       })) as readonly unknown[] | null;
       if (!raw) {
-        return addresses.map(() => ({
-          online: false,
-          lastActivity: 0,
-          nickname: "",
-          dealsCancelled: 0,
-          dealsCompleted: 0,
-        }));
+        return addresses.map(
+          () =>
+            ({
+              online: false,
+              lastActivity: 0,
+              nickname: "",
+              dealsCancelled: 0,
+              dealsCompleted: 0,
+              chatPublicKey: "",
+            }) satisfies MakerProfile,
+        );
       }
-      return addresses.map((addr, index) =>
-        mapMakerProfile(addr, raw[index]) ?? {
-          online: false,
-          lastActivity: 0,
-          nickname: "",
-          dealsCancelled: 0,
-          dealsCompleted: 0,
-        },
+      return addresses.map(
+        (addr, index) =>
+          mapMakerProfile(addr, raw[index]) ?? {
+            online: false,
+            lastActivity: 0,
+            nickname: "",
+            dealsCancelled: 0,
+            dealsCompleted: 0,
+            chatPublicKey: "",
+          },
       );
     },
 

@@ -1,13 +1,29 @@
-/* Based on https://github.com/tsconfig/bases/blob/501da2bcd640cf95c95805783e1012b992338f28/bases/node22.json */
+/* Root TypeScript config shared by Hardhat scripts and the Next.js app */
 {
   "compilerOptions": {
-    "lib": ["es2023"],
-    "module": "node16",
     "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "moduleResolution": "node16",
-    "outDir": "dist"
-  }
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["app/*"]
+    },
+    "types": ["node"]
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": [
+    "node_modules",
+    "artifacts",
+    "coverage",
+    "dist",
+    "out",
+    "cache"
+  ]
 }
