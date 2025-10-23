@@ -14,6 +14,12 @@ import { http } from "viem";
 
 import { hardhatChain, hardhatTransport } from "@/lib/chains";
 
+type MezoConfigArgs = Parameters<typeof getConfig>[0] & {
+  autoConnect?: boolean;
+};
+
+const createMezoConfig = (args: MezoConfigArgs) => getConfig(args);
+
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -46,10 +52,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       [CHAIN_ID.testnet]: http(RPC_BY_NETWORK.testnet.http),
       [CHAIN_ID.mainnet]: http(RPC_BY_NETWORK.mainnet.http),
     };
-    return getConfig({
+    return createMezoConfig({
       appName: "Swap2p Console",
       walletConnectProjectId,
       mezoNetwork,
+      autoConnect: true,
       bitcoinWallets: isClient ? undefined : [],
       chains: [...chains] as Parameters<typeof getConfig>[0]["chains"],
       transports: transports as NonNullable<Parameters<typeof getConfig>[0]["transports"]>,

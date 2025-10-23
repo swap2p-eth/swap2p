@@ -5,7 +5,7 @@ import { useChainId } from "wagmi";
 import { formatUnits, getAddress } from "viem";
 
 import { useUser } from "@/context/user-context";
-import { getNetworkConfigForChain } from "@/config";
+import { getNetworkConfigForChain, type TokenConfig } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { safeFiatCodeToString, toFiatCode } from "@/lib/fiat";
 import type { OfferRow } from "@/lib/types/market";
@@ -14,6 +14,13 @@ import { SwapSide, type OfferKey, type OfferWithKey } from "@/lib/swap2p/types";
 interface OffersContextValue {
   offers: OfferRow[];
   isLoading: boolean;
+  activeMarket: {
+    side: "BUY" | "SELL";
+    fiat: string;
+  };
+  ensureMarket: (params: { side: "BUY" | "SELL"; fiat: string; force?: boolean }) => Promise<void>;
+  tokens: TokenConfig[];
+  fiats: string[];
   refresh: () => Promise<void>;
   createOffer: (input: CreateOfferInput) => OfferRow;
   updateOffer: (id: number, updates: OfferUpdateInput) => OfferRow | null;
@@ -44,8 +51,6 @@ const OffersContext = React.createContext<OffersContextValue | null>(null);
 
 const PRICE_SCALE = 1_000;
 const OFFER_FETCH_LIMIT = 50;
-const SIDES: SwapSide[] = [SwapSide.SELL, SwapSide.BUY];
-
 const toSideLabel = (side: SwapSide): OfferRow["side"] =>
   side === SwapSide.SELL ? "SELL" : "BUY";
 
@@ -92,76 +97,8 @@ const mapOffer = (
   };
 };
 
-async function fetchChainOffers(
-  adapter: ReturnType<typeof useSwap2pAdapter>["adapter"],
-  network: ReturnType<typeof getNetworkConfigForChain>,
-): Promise<OfferRow[]> {
-  if (!adapter) return [];
-
-  const tokenConfigs = network.tokens.map(token => ({
-    ...token,
-    address: getAddress(token.address),
-  }));
-
-  const fiatCodes = network.fiats.flatMap(fiat => {
-    try {
-      return [{ code: fiat.code, value: toFiatCode(fiat.code) }];
-    } catch (error) {
-      console.warn("[swap2p] skipped fiat code", fiat.code, error);
-      return [];
-    }
-  });
-
-  const combinations = tokenConfigs.flatMap(token =>
-    fiatCodes.flatMap(fiat =>
-      SIDES.map(side => ({ token, fiat, side })),
-    ),
-  );
-
-  const results = await Promise.all(
-    combinations.map(async ({ token, fiat, side }) => {
-      try {
-        const offers = await adapter.getOffers({
-          token: token.address,
-          side,
-          fiat: fiat.value,
-          limit: OFFER_FETCH_LIMIT,
-          offset: 0,
-        });
-        return offers.map(entry =>
-          mapOffer(entry, {
-            tokenSymbol: token.symbol,
-            tokenDecimals: token.decimals,
-            fiatCode: fiat.code,
-            fiatId: entry.offer.fiat,
-          }),
-        );
-      } catch (error) {
-        console.error(
-          "[swap2p] failed to fetch offers",
-          {
-            token: token.address,
-            fiat: fiat.code,
-            side: toSideLabel(side),
-          },
-          error,
-        );
-        return [];
-      }
-    }),
-  );
-
-  const merged = new Map<number, OfferRow>();
-  for (const bucket of results) {
-    for (const offer of bucket) {
-      merged.set(offer.id, offer);
-    }
-  }
-
-  return Array.from(merged.values()).sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
-}
+const makeCacheKey = (tokenAddress: string, side: SwapSide, fiat: number) =>
+  `${tokenAddress.toLowerCase()}|${side}|${fiat}`;
 
 export function OffersProvider({ children }: { children: React.ReactNode }) {
   const { address } = useUser();
@@ -169,44 +106,226 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   const { adapter } = useSwap2pAdapter();
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
 
-  const [chainOffers, setChainOffers] = React.useState<OfferRow[]>([]);
-  const [draftOffers, setDraftOffers] = React.useState<OfferRow[]>([]);
+  const tokenConfigs = React.useMemo(
+    () =>
+      network.tokens.map(token => ({
+        ...token,
+        address: getAddress(token.address),
+      })),
+    [network.tokens],
+  );
+
+  const fiatEntries = React.useMemo(
+    () =>
+      network.fiats.flatMap(fiat => {
+        try {
+          return [
+            {
+              code: fiat.code.toUpperCase(),
+              value: toFiatCode(fiat.code),
+            },
+          ];
+        } catch (error) {
+          console.warn("[swap2p] skipped fiat code", fiat.code, error);
+          return [];
+        }
+      }),
+    [network.fiats],
+  );
+
+  const fiatLookup = React.useMemo(() => {
+    const map = new Map<string, { code: string; value: number }>();
+    for (const entry of fiatEntries) {
+      map.set(entry.code.toUpperCase(), entry);
+    }
+    return map;
+  }, [fiatEntries]);
+
+  const fiatCodes = React.useMemo(
+    () => fiatEntries.map(entry => entry.code),
+    [fiatEntries],
+  );
+
+  const defaultFiat = React.useMemo(
+    () => (fiatCodes[0] ?? "USD").toUpperCase(),
+    [fiatCodes],
+  );
+
+  const [activeMarket, setActiveMarket] = React.useState<{
+    side: "BUY" | "SELL";
+    fiat: string;
+  }>({
+    side: "SELL",
+    fiat: defaultFiat,
+  });
   const [isLoading, setIsLoading] = React.useState(false);
+  const [draftOffers, setDraftOffers] = React.useState<OfferRow[]>([]);
+  const cacheRef = React.useRef(new Map<string, OfferRow[]>());
+  const [cacheVersion, setCacheVersion] = React.useState(0);
+
+  React.useEffect(() => {
+    cacheRef.current.clear();
+    setCacheVersion(version => version + 1);
+  }, [adapter, tokenConfigs]);
+
+  React.useEffect(() => {
+    setActiveMarket(prev => {
+      const normalized = prev.fiat.toUpperCase();
+      const nextFiat = fiatCodes.includes(normalized) ? normalized : defaultFiat;
+      if (prev.side === prev.side && prev.fiat === nextFiat) {
+        return prev;
+      }
+      return { side: prev.side, fiat: nextFiat };
+    });
+  }, [defaultFiat, fiatCodes]);
+
+  const loadOffersFor = React.useCallback(
+    async ({
+      makerSide,
+      fiat,
+      force = false,
+    }: {
+      makerSide: SwapSide;
+      fiat: { code: string; value: number };
+      force?: boolean;
+    }) => {
+      if (!adapter) return;
+      let fetchedAny = false;
+      await Promise.all(
+        tokenConfigs.map(async token => {
+          const key = makeCacheKey(token.address, makerSide, fiat.value);
+          if (!force && cacheRef.current.has(key)) {
+            return;
+          }
+          fetchedAny = true;
+          try {
+            const offers = await adapter.getOffers({
+              token: token.address,
+              side: makerSide,
+              fiat: fiat.value,
+              limit: OFFER_FETCH_LIMIT,
+              offset: 0,
+            });
+            const mapped = offers.map(entry =>
+              mapOffer(entry, {
+                tokenSymbol: token.symbol,
+                tokenDecimals: token.decimals,
+                fiatCode: fiat.code,
+                fiatId: entry.offer.fiat,
+              }),
+            );
+            cacheRef.current.set(key, mapped);
+          } catch (error) {
+            console.error(
+              "[swap2p] failed to fetch offers",
+              {
+                token: token.address,
+                fiat: fiat.code,
+                side: toSideLabel(makerSide),
+              },
+              error,
+            );
+            cacheRef.current.set(key, []);
+          }
+        }),
+      );
+      if (fetchedAny) {
+        setCacheVersion(version => version + 1);
+      }
+    },
+    [adapter, tokenConfigs],
+  );
+
+  const ensureMarket = React.useCallback(
+    async ({
+      side,
+      fiat,
+      force = false,
+    }: {
+      side: "BUY" | "SELL";
+      fiat: string;
+      force?: boolean;
+    }) => {
+      const normalizedFiat = fiat.toUpperCase();
+      const fallback = fiatLookup.get(defaultFiat.toUpperCase());
+      const fiatEntry = fiatLookup.get(normalizedFiat) ?? fallback;
+      if (!fiatEntry) return;
+      setActiveMarket(prev => {
+        if (prev.side === side && prev.fiat === fiatEntry.code) {
+          return prev;
+        }
+        return { side, fiat: fiatEntry.code };
+      });
+      if (!adapter) {
+        setIsLoading(false);
+        return;
+      }
+      const makerSide = side === "BUY" ? SwapSide.SELL : SwapSide.BUY;
+      const needsFetch =
+        force ||
+        tokenConfigs.some(token => {
+          const key = makeCacheKey(token.address, makerSide, fiatEntry.value);
+          return !cacheRef.current.has(key);
+        });
+      if (!needsFetch) {
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      try {
+        await loadOffersFor({ makerSide, fiat: fiatEntry, force });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [adapter, defaultFiat, fiatLookup, loadOffersFor, tokenConfigs],
+  );
 
   const refresh = React.useCallback(async () => {
+    await ensureMarket({
+      side: activeMarket.side,
+      fiat: activeMarket.fiat,
+      force: true,
+    });
+  }, [activeMarket, ensureMarket]);
+
+  React.useEffect(() => {
     if (!adapter) {
-      setChainOffers([]);
       setIsLoading(false);
       return;
     }
-    setIsLoading(true);
-    try {
-      const next = await fetchChainOffers(adapter, network);
-      setChainOffers(next);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [adapter, network]);
-
-  React.useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      if (!isMounted) return;
-      await refresh();
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, [refresh]);
+    void ensureMarket({ side: activeMarket.side, fiat: activeMarket.fiat });
+  }, [adapter, ensureMarket, activeMarket.side, activeMarket.fiat]);
 
   React.useEffect(() => {
     setDraftOffers([]);
   }, [address]);
 
-  const offers = React.useMemo(
-    () => [...chainOffers, ...draftOffers],
-    [chainOffers, draftOffers],
-  );
+  const offers = React.useMemo(() => {
+    const fallback = fiatLookup.get(defaultFiat.toUpperCase());
+    const fiatEntry =
+      fiatLookup.get(activeMarket.fiat.toUpperCase()) ?? fallback;
+    if (!fiatEntry) return draftOffers.slice();
+    const makerSide = activeMarket.side === "BUY" ? SwapSide.SELL : SwapSide.BUY;
+    const expectedSideLabel = toSideLabel(makerSide);
+    const merged = new Map<number, OfferRow>();
+    for (const token of tokenConfigs) {
+      const key = makeCacheKey(token.address, makerSide, fiatEntry.value);
+      const bucket = cacheRef.current.get(key);
+      if (!bucket) continue;
+      for (const offer of bucket) {
+        merged.set(offer.id, offer);
+      }
+    }
+    for (const offer of draftOffers) {
+      if (offer.fiat.toUpperCase() !== fiatEntry.code.toUpperCase()) continue;
+      if (offer.side !== expectedSideLabel) continue;
+      merged.set(offer.id, offer);
+    }
+    return Array.from(merged.values()).sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+  }, [activeMarket, cacheVersion, draftOffers, tokenConfigs, fiatLookup, defaultFiat]);
 
   const createOffer = React.useCallback(
     ({
@@ -220,7 +339,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       paymentMethods,
       requirements,
     }: CreateOfferInput) => {
-      const tokenInfo = network.tokens.find(item => item.symbol === token);
+      const tokenInfo = tokenConfigs.find(item => item.symbol === token);
       const decimals = tokenInfo?.decimals ?? 18;
       let contractFiatCode: number | undefined;
       try {
@@ -248,7 +367,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       setDraftOffers(current => [entry, ...current]);
       return entry;
     },
-    [address, network.tokens],
+    [address, tokenConfigs],
   );
 
   const updateOffer = React.useCallback(
@@ -283,8 +402,30 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const contextValue = React.useMemo<OffersContextValue>(
-    () => ({ offers, isLoading, refresh, createOffer, updateOffer, removeOffer }),
-    [offers, isLoading, refresh, createOffer, updateOffer, removeOffer],
+    () => ({
+      offers,
+      isLoading,
+      activeMarket,
+      ensureMarket,
+      tokens: tokenConfigs,
+      fiats: fiatCodes,
+      refresh,
+      createOffer,
+      updateOffer,
+      removeOffer,
+    }),
+    [
+      offers,
+      isLoading,
+      activeMarket,
+      ensureMarket,
+      tokenConfigs,
+      fiatCodes,
+      refresh,
+      createOffer,
+      updateOffer,
+      removeOffer,
+    ],
   );
 
   return <OffersContext.Provider value={contextValue}>{children}</OffersContext.Provider>;
