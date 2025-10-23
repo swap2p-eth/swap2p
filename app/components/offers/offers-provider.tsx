@@ -10,6 +10,7 @@ import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { safeFiatCodeToString, toFiatCode } from "@/lib/fiat";
 import type { OfferRow } from "@/lib/types/market";
 import { SwapSide, type OfferKey, type OfferWithKey } from "@/lib/swap2p/types";
+import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -215,6 +216,12 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
               }),
             );
             cacheRef.current.set(key, mapped);
+            console.debug("[OffersProvider] loadOffersFor", JSON.stringify({
+              token: token.symbol,
+              side: toSideLabel(makerSide),
+              fiat: fiat.code,
+              count: mapped.length,
+            }));
           } catch (error) {
             console.error(
               "[swap2p] failed to fetch offers",
@@ -246,14 +253,17 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       fiat: string;
       force?: boolean;
     }) => {
+      console.debug("[OffersProvider] ensureMarket request", JSON.stringify({ side, fiat, force }));
       const normalizedFiat = fiat.toUpperCase();
       const fallback = fiatLookup.get(defaultFiat.toUpperCase());
       const fiatEntry = fiatLookup.get(normalizedFiat) ?? fallback;
       if (!fiatEntry) return;
       setActiveMarket(prev => {
         if (prev.side === side && prev.fiat === fiatEntry.code) {
+          console.debug("[OffersProvider] activeMarket unchanged", JSON.stringify(prev));
           return prev;
         }
+        console.debug("[OffersProvider] activeMarket update", JSON.stringify({ side, fiat: fiatEntry.code }));
         return { side, fiat: fiatEntry.code };
       });
       if (!adapter) {
@@ -268,6 +278,10 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           return !cacheRef.current.has(key);
         });
       if (!needsFetch) {
+        console.debug(
+          "[OffersProvider] cache hit",
+          JSON.stringify({ makerSide: toSideLabel(makerSide), fiat: fiatEntry.code }),
+        );
         setIsLoading(false);
         return;
       }
@@ -289,13 +303,30 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     });
   }, [activeMarket, ensureMarket]);
 
+  const bootstrappedRef = React.useRef(false);
+
   React.useEffect(() => {
     if (!adapter) {
+      bootstrappedRef.current = false;
       setIsLoading(false);
       return;
     }
-    void ensureMarket({ side: activeMarket.side, fiat: activeMarket.fiat });
-  }, [adapter, ensureMarket, activeMarket.side, activeMarket.fiat]);
+    if (bootstrappedRef.current) {
+      return;
+    }
+    // Kick off the first fetch with persisted filters so OffersView lands on the expected market.
+    bootstrappedRef.current = true;
+    const stored = readStoredFilters();
+    const storedSide = stored?.side === "BUY" || stored?.side === "SELL" ? stored.side : activeMarket.side;
+    const rawFiat = typeof stored?.fiat === "string" ? stored.fiat : activeMarket.fiat;
+    const normalizedFiat =
+      rawFiat === ANY_FILTER_OPTION ? defaultFiat : rawFiat.toUpperCase();
+    void ensureMarket({ side: storedSide, fiat: normalizedFiat });
+  }, [adapter, ensureMarket, activeMarket.side, activeMarket.fiat, defaultFiat]);
+
+  React.useEffect(() => {
+    bootstrappedRef.current = false;
+  }, [adapter]);
 
   React.useEffect(() => {
     setDraftOffers([]);
@@ -322,9 +353,15 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       if (offer.side !== expectedSideLabel) continue;
       merged.set(offer.id, offer);
     }
-    return Array.from(merged.values()).sort(
+    const result = Array.from(merged.values()).sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
+    console.debug("[OffersProvider] offers computed", JSON.stringify({
+      market: { side: activeMarket.side, fiat: activeMarket.fiat },
+      makerSide: expectedSideLabel,
+      count: result.length,
+    }));
+    return result;
   }, [activeMarket, cacheVersion, draftOffers, tokenConfigs, fiatLookup, defaultFiat]);
 
   const createOffer = React.useCallback(

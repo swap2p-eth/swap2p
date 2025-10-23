@@ -12,17 +12,12 @@ import type { OfferRow } from "@/lib/types/market";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 import { SideToggle } from "@/components/deals/side-toggle";
-
-const FILTER_STORAGE_KEY = "swap2p:offers-filters";
-const ANY_OPTION = "any";
+import {
+  ANY_FILTER_OPTION,
+  OFFERS_FILTER_STORAGE_KEY,
+  readStoredFilters
+} from "@/components/offers/filter-storage";
 const DEFAULT_FIAT = "USD";
-
-type StoredFilters = {
-  side?: "BUY" | "SELL";
-  token?: string;
-  fiat?: string;
-  paymentMethod?: string;
-};
 
 interface OffersViewProps {
   onStartDeal?: (offer: OfferRow) => void;
@@ -31,47 +26,57 @@ interface OffersViewProps {
 
 export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
   const { offers, isLoading, ensureMarket, tokens, fiats, activeMarket } = useOffers();
-  type NormalizedFilters = {
-    side: "BUY" | "SELL";
-    token: string;
-    fiat: string;
-    paymentMethod: string;
-  };
-
-  const initialFiltersRef = React.useRef<NormalizedFilters>();
-
-  if (!initialFiltersRef.current) {
-    let stored: StoredFilters | null = null;
-    if (typeof window !== "undefined") {
-      try {
-        const raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
-        stored = raw ? (JSON.parse(raw) as StoredFilters) : null;
-      } catch (error) {
-        console.warn("Failed to read offer filters from storage", error);
-      }
-    }
-    initialFiltersRef.current = {
-      side: stored?.side === "BUY" || stored?.side === "SELL" ? stored.side : activeMarket.side,
-      token: typeof stored?.token === "string" ? stored.token : ANY_OPTION,
-      fiat:
-        typeof stored?.fiat === "string"
-          ? stored.fiat === ANY_OPTION
-            ? activeMarket.fiat
-            : stored.fiat.toUpperCase()
-          : activeMarket.fiat,
-      paymentMethod: typeof stored?.paymentMethod === "string" ? stored.paymentMethod : ANY_OPTION,
-    };
-  }
-
-  const initialFilters = initialFiltersRef.current!;
-
-  const [side, setSide] = React.useState<"BUY" | "SELL">(initialFilters.side);
-  const [token, setToken] = React.useState(initialFilters.token);
-  const [fiat, setFiat] = React.useState(initialFilters.fiat);
-  const [paymentMethod, setPaymentMethod] = React.useState(initialFilters.paymentMethod);
+  const [side, setSide] = React.useState<"BUY" | "SELL">(activeMarket.side);
+  const [token, setToken] = React.useState(ANY_FILTER_OPTION);
+  const [fiat, setFiat] = React.useState(activeMarket.fiat.toUpperCase());
+  const [paymentMethod, setPaymentMethod] = React.useState(ANY_FILTER_OPTION);
   const [amount, setAmount] = React.useState("");
+  const [filtersReady, setFiltersReady] = React.useState(false);
 
   React.useEffect(() => {
+    if (filtersReady) {
+      return;
+    }
+    // Hydrate filters once from localStorage so we call ensureMarket with the user's last choice.
+    let nextSide: "BUY" | "SELL" = activeMarket.side;
+    let nextToken = ANY_FILTER_OPTION;
+    let nextFiat = activeMarket.fiat.toUpperCase();
+    let nextPaymentMethod = ANY_FILTER_OPTION;
+
+    const stored = readStoredFilters();
+    if (stored) {
+      if (stored.side === "BUY" || stored.side === "SELL") {
+        nextSide = stored.side;
+      }
+      if (typeof stored.token === "string") {
+        nextToken = stored.token;
+      }
+      if (typeof stored.fiat === "string") {
+        nextFiat =
+          stored.fiat === ANY_FILTER_OPTION ? activeMarket.fiat.toUpperCase() : stored.fiat.toUpperCase();
+      }
+      if (typeof stored.paymentMethod === "string") {
+        nextPaymentMethod = stored.paymentMethod;
+      }
+    }
+
+    setSide(nextSide);
+    setToken(nextToken);
+    setFiat(nextFiat);
+    setPaymentMethod(nextPaymentMethod);
+    console.debug("[OffersView] filters hydrated", JSON.stringify({
+      side: nextSide,
+      token: nextToken,
+      fiat: nextFiat,
+      paymentMethod: nextPaymentMethod,
+    }));
+    setFiltersReady(true);
+  }, [filtersReady, activeMarket.side, activeMarket.fiat]);
+
+  React.useEffect(() => {
+    if (!filtersReady) {
+      return;
+    }
     if (typeof window === "undefined") {
       return;
     }
@@ -81,8 +86,8 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
       fiat: fiat.toUpperCase(),
       paymentMethod
     });
-    window.localStorage.setItem(FILTER_STORAGE_KEY, payload);
-  }, [side, token, fiat, paymentMethod]);
+    window.localStorage.setItem(OFFERS_FILTER_STORAGE_KEY, payload);
+  }, [filtersReady, side, token, fiat, paymentMethod]);
 
   const defaultFiat = React.useMemo(
     () => (fiats[0] ?? DEFAULT_FIAT).toUpperCase(),
@@ -98,12 +103,16 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
   }, [fiats, normalizedFiat, defaultFiat]);
 
   React.useEffect(() => {
+    if (!filtersReady) {
+      return;
+    }
+    console.debug("[OffersView] ensureMarket", JSON.stringify({ side, fiat: normalizedFiat }));
     void ensureMarket({ side, fiat: normalizedFiat });
-  }, [side, normalizedFiat, ensureMarket]);
+  }, [filtersReady, side, normalizedFiat, ensureMarket]);
 
   const tokenOptions = React.useMemo(() => {
     const symbols = tokens.map(item => item.symbol);
-    return [ANY_OPTION, ...symbols.sort((a, b) => a.localeCompare(b))];
+    return [ANY_FILTER_OPTION, ...symbols.sort((a, b) => a.localeCompare(b))];
   }, [tokens]);
 
   const fiatOptions = React.useMemo(() => {
@@ -132,26 +141,37 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
         .filter(Boolean)
         .forEach(method => options.add(method));
     }
-    return [ANY_OPTION, ...Array.from(options).sort((a, b) => a.localeCompare(b))];
+    return [ANY_FILTER_OPTION, ...Array.from(options).sort((a, b) => a.localeCompare(b))];
   }, [offers]);
 
   React.useEffect(() => {
-    if (!tokenOptions.includes(token)) {
-      setToken(ANY_OPTION);
+    if (!filtersReady) {
+      return;
     }
-  }, [tokenOptions, token]);
+    if (!tokenOptions.includes(token)) {
+      setToken(ANY_FILTER_OPTION);
+    }
+  }, [filtersReady, tokenOptions, token]);
 
   React.useEffect(() => {
+    if (!filtersReady) {
+      return;
+    }
     if (!fiatOptions.includes(normalizedFiat)) {
       setFiat(defaultFiat);
     }
-  }, [fiatOptions, normalizedFiat, defaultFiat]);
+  }, [filtersReady, fiatOptions, normalizedFiat, defaultFiat]);
 
   React.useEffect(() => {
-    if (!paymentMethodOptions.includes(paymentMethod)) {
-      setPaymentMethod(ANY_OPTION);
+    if (!filtersReady) {
+      return;
     }
-  }, [paymentMethodOptions, paymentMethod]);
+    // Only fall back to ANY once we have real methods from the fetched offers.
+    const hasConcreteOptions = paymentMethodOptions.some(option => option !== ANY_FILTER_OPTION);
+    if (hasConcreteOptions && !paymentMethodOptions.includes(paymentMethod)) {
+      setPaymentMethod(ANY_FILTER_OPTION);
+    }
+  }, [filtersReady, paymentMethodOptions, paymentMethod]);
 
   const filteredOffers = React.useMemo(() => {
     const trimmedAmount = amount.trim();
@@ -161,9 +181,9 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
 
     return offers.filter(offer => {
       if (offer.side !== merchantSide) return false;
-      if (token !== ANY_OPTION && offer.token !== token) return false;
+      if (token !== ANY_FILTER_OPTION && offer.token !== token) return false;
       if (offer.fiat.toUpperCase() !== normalizedFiat) return false;
-      if (paymentMethod !== ANY_OPTION) {
+      if (paymentMethod !== ANY_FILTER_OPTION) {
         const methods = offer.paymentMethods
           .split(",")
           .map(method => method.trim())
@@ -235,7 +255,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
                 <SelectContent>
                   {tokenOptions.map(option => (
                     <SelectItem key={option} value={option}>
-                      {option === ANY_OPTION ? (
+                      {option === ANY_FILTER_OPTION ? (
                         "Any token"
                       ) : (
                         <span className="flex items-center gap-2">
@@ -277,7 +297,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
                 <SelectContent>
                   {paymentMethodOptions.map(option => (
                     <SelectItem key={option} value={option}>
-                      {option === ANY_OPTION ? "Any payment method" : option}
+                      {option === ANY_FILTER_OPTION ? "Any payment method" : option}
                     </SelectItem>
                   ))}
                 </SelectContent>
