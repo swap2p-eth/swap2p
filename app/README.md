@@ -23,7 +23,6 @@ The dev server will start on `http://localhost:3000`. Connect the wallet to **Ha
 
 - The contracts package exposes `npm run compile:app`, which force-compiles with Hardhat, regenerates the viem-friendly ABI (`typechain-types/`), and copies the artifacts into `app/lib/swap2p/generated/`.
 - The app side provides `createSwap2pAdapter` in `lib/swap2p/index.ts`. It expects a viem `publicClient`/`walletClient` pair plus a contract address from the network config.
-- `lib/swap2p/mock-adapter.ts` remains available for testing scenarios in the contracts package, but the app defaults to on-chain data paths.
 - `lib/swap2p/viem-adapter.ts` wraps the on-chain contract with typed helpers (`getOffers`, `takerRequestOffer`, `release`, etc.) and exposes a consistent API for the UI layer.
 
 ## Next steps

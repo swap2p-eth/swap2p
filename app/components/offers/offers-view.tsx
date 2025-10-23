@@ -31,37 +31,45 @@ interface OffersViewProps {
 
 export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
   const { offers, isLoading, ensureMarket, tokens, fiats, activeMarket } = useOffers();
-  const [side, setSide] = React.useState<"BUY" | "SELL">(activeMarket.side);
-  const [token, setToken] = React.useState(ANY_OPTION);
-  const [fiat, setFiat] = React.useState(activeMarket.fiat);
-  const [paymentMethod, setPaymentMethod] = React.useState(ANY_OPTION);
-  const [amount, setAmount] = React.useState("");
+  type NormalizedFilters = {
+    side: "BUY" | "SELL";
+    token: string;
+    fiat: string;
+    paymentMethod: string;
+  };
 
-  React.useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
+  const initialFiltersRef = React.useRef<NormalizedFilters>();
+
+  if (!initialFiltersRef.current) {
+    let stored: StoredFilters | null = null;
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
+        stored = raw ? (JSON.parse(raw) as StoredFilters) : null;
+      } catch (error) {
+        console.warn("Failed to read offer filters from storage", error);
+      }
     }
-    try {
-      const raw = window.localStorage.getItem(FILTER_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as StoredFilters;
-      if (parsed.side === "BUY" || parsed.side === "SELL") {
-        setSide(parsed.side);
-      }
-      if (typeof parsed.token === "string") {
-        setToken(parsed.token);
-      }
-      if (typeof parsed.fiat === "string") {
-        const storedFiat = parsed.fiat === ANY_OPTION ? activeMarket.fiat : parsed.fiat.toUpperCase();
-        setFiat(storedFiat);
-      }
-      if (typeof parsed.paymentMethod === "string") {
-        setPaymentMethod(parsed.paymentMethod);
-      }
-    } catch (error) {
-      console.warn("Failed to read offer filters from storage", error);
-    }
-  }, [activeMarket.fiat]);
+    initialFiltersRef.current = {
+      side: stored?.side === "BUY" || stored?.side === "SELL" ? stored.side : activeMarket.side,
+      token: typeof stored?.token === "string" ? stored.token : ANY_OPTION,
+      fiat:
+        typeof stored?.fiat === "string"
+          ? stored.fiat === ANY_OPTION
+            ? activeMarket.fiat
+            : stored.fiat.toUpperCase()
+          : activeMarket.fiat,
+      paymentMethod: typeof stored?.paymentMethod === "string" ? stored.paymentMethod : ANY_OPTION,
+    };
+  }
+
+  const initialFilters = initialFiltersRef.current!;
+
+  const [side, setSide] = React.useState<"BUY" | "SELL">(initialFilters.side);
+  const [token, setToken] = React.useState(initialFilters.token);
+  const [fiat, setFiat] = React.useState(initialFilters.fiat);
+  const [paymentMethod, setPaymentMethod] = React.useState(initialFilters.paymentMethod);
+  const [amount, setAmount] = React.useState("");
 
   React.useEffect(() => {
     if (typeof window === "undefined") {
