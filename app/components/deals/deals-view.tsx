@@ -12,6 +12,7 @@ import { useOffers } from "@/components/offers/offers-provider";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import type { OfferRow } from "@/lib/types/market";
 import { useUser } from "@/context/user-context";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 
 interface DealsViewProps {
   onSelectDeal?: (dealId: number) => void;
@@ -23,6 +24,9 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
   const { makerOffers, isMakerLoading } = useOffers();
   const { setHash } = useHashLocation("offers");
   const { address } = useUser();
+  const { openConnectModal } = useConnectModal();
+
+  const normalizedAddress = React.useMemo(() => address.trim().toLowerCase(), [address]);
 
   const filteredDeals = React.useMemo(
     () => (status === "closed" ? closedDeals : activeDeals),
@@ -30,6 +34,27 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
   );
 
   const myOffers = React.useMemo(() => makerOffers, [makerOffers]);
+
+  if (!normalizedAddress) {
+    return (
+      <div className="mx-auto flex min-h-[60vh] w-full max-w-4xl flex-col items-center justify-center gap-6 px-4 text-center">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Dashboard</h1>
+          <p className="text-sm text-muted-foreground sm:text-base">
+            Please connect your wallet to use Dashboard.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="lg"
+          className="rounded-full px-8 py-3 text-base font-semibold"
+          onClick={() => openConnectModal?.()}
+        >
+          Connect Wallet
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
