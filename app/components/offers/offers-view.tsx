@@ -61,7 +61,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
     } catch (error) {
       console.warn("Failed to read offer filters from storage", error);
     }
-  }, []);
+  }, [activeMarket.fiat]);
 
   React.useEffect(() => {
     if (typeof window === "undefined") {

@@ -8,8 +8,8 @@ const nextConfig = {
   reactStrictMode: true,
   experimental: {
     typedRoutes: true,
-    outputFileTracingRoot: __dirname
   },
+  outputFileTracingRoot: __dirname,
   transpilePackages: [
     "@rainbow-me/rainbowkit",
     "@mezo-org/passport",
