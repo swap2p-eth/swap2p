@@ -441,6 +441,17 @@ const readDealStruct = async (id: Hex) => {
         .filter((item): item is OfferWithKey => item !== null);
     },
 
+    async getMakerOffers({ maker, offset = 0, limit = DEFAULT_LIMIT }) {
+      const raw = (await read({
+        functionName: "getMakerOffers",
+        args: [getAddress(maker), offset, limit] as const,
+      })) as readonly unknown[] | null;
+      if (!raw) return [];
+      return raw
+        .map((entry) => mapOfferInfo(entry))
+        .filter((item): item is OfferWithKey => item !== null);
+    },
+
     async getDeal(id: bigint) {
       const bytes = toBytes32(id);
       if (!bytes) return null;

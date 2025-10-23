@@ -14,7 +14,9 @@ import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter
 
 interface OffersContextValue {
   offers: OfferRow[];
+  makerOffers: OfferRow[];
   isLoading: boolean;
+  isMakerLoading: boolean;
   activeMarket: {
     side: "BUY" | "SELL";
     fiat: string;
@@ -23,6 +25,7 @@ interface OffersContextValue {
   tokens: TokenConfig[];
   fiats: string[];
   refresh: () => Promise<void>;
+  refreshMakerOffers: () => Promise<void>;
   createOffer: (input: CreateOfferInput) => OfferRow;
   updateOffer: (id: number, updates: OfferUpdateInput) => OfferRow | null;
   removeOffer: (id: number) => void;
@@ -52,6 +55,7 @@ const OffersContext = React.createContext<OffersContextValue | null>(null);
 
 const PRICE_SCALE = 1_000;
 const OFFER_FETCH_LIMIT = 50;
+const OFFER_CACHE_TTL_MS = 60_000;
 const toSideLabel = (side: SwapSide): OfferRow["side"] =>
   side === SwapSide.SELL ? "SELL" : "BUY";
 
@@ -161,8 +165,11 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   });
   const [isLoading, setIsLoading] = React.useState(false);
   const [draftOffers, setDraftOffers] = React.useState<OfferRow[]>([]);
-  const cacheRef = React.useRef(new Map<string, OfferRow[]>());
+  const cacheRef = React.useRef(new Map<string, { items: OfferRow[]; fetchedAt: number }>());
   const [cacheVersion, setCacheVersion] = React.useState(0);
+  const [makerChainOffers, setMakerChainOffers] = React.useState<OfferRow[]>([]);
+  const [isMakerLoading, setIsMakerLoading] = React.useState(false);
+  const makerCacheRef = React.useRef<{ items: OfferRow[]; fetchedAt: number } | null>(null);
 
   React.useEffect(() => {
     cacheRef.current.clear();
@@ -195,7 +202,9 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       await Promise.all(
         tokenConfigs.map(async token => {
           const key = makeCacheKey(token.address, makerSide, fiat.value);
-          if (!force && cacheRef.current.has(key)) {
+          const cached = cacheRef.current.get(key);
+          const isFresh = cached && Date.now() - cached.fetchedAt <= OFFER_CACHE_TTL_MS;
+          if (!force && isFresh) {
             return;
           }
           fetchedAny = true;
@@ -215,7 +224,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
                 fiatId: entry.offer.fiat,
               }),
             );
-            cacheRef.current.set(key, mapped);
+            cacheRef.current.set(key, { items: mapped, fetchedAt: Date.now() });
             console.debug("[OffersProvider] loadOffersFor", JSON.stringify({
               token: token.symbol,
               side: toSideLabel(makerSide),
@@ -232,7 +241,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
               },
               error,
             );
-            cacheRef.current.set(key, []);
+            cacheRef.current.set(key, { items: [], fetchedAt: Date.now() });
           }
         }),
       );
@@ -242,6 +251,60 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     },
     [adapter, tokenConfigs],
   );
+
+  const loadMakerOffers = React.useCallback(
+    async (force = false) => {
+      if (!adapter || !address) {
+        makerCacheRef.current = null;
+        setMakerChainOffers([]);
+        return;
+      }
+      const cached = makerCacheRef.current;
+      if (!force && cached && Date.now() - cached.fetchedAt <= OFFER_CACHE_TTL_MS) {
+        setMakerChainOffers(cached.items);
+        return;
+      }
+      setIsMakerLoading(true);
+      try {
+        const entries = await adapter.getMakerOffers({
+          maker: getAddress(address),
+          offset: 0,
+          limit: OFFER_FETCH_LIMIT,
+        });
+        const mapped = entries.map(entry => {
+          const tokenInfo = tokenConfigs.find(token => token.address.toLowerCase() === entry.key.token.toLowerCase());
+          const tokenSymbol = tokenInfo?.symbol ?? entry.offer.token;
+          const tokenDecimals = tokenInfo?.decimals ?? 18;
+          const fiatLabel = safeFiatCodeToString(entry.offer.fiat);
+          return mapOffer(entry, {
+            tokenSymbol,
+            tokenDecimals,
+            fiatCode: fiatLabel,
+            fiatId: entry.offer.fiat,
+          });
+        });
+        makerCacheRef.current = { items: mapped, fetchedAt: Date.now() };
+        setMakerChainOffers(mapped);
+      } catch (error) {
+        console.error("[swap2p] failed to fetch maker offers", { maker: address }, error);
+        makerCacheRef.current = { items: [], fetchedAt: Date.now() };
+        setMakerChainOffers([]);
+      } finally {
+        setIsMakerLoading(false);
+      }
+    },
+    [adapter, address, tokenConfigs],
+  );
+
+  React.useEffect(() => {
+    makerCacheRef.current = null;
+    setMakerChainOffers([]);
+    if (!adapter || !address) {
+      setIsMakerLoading(false);
+      return;
+    }
+    void loadMakerOffers(true);
+  }, [adapter, address, loadMakerOffers]);
 
   const ensureMarket = React.useCallback(
     async ({
@@ -275,7 +338,8 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         force ||
         tokenConfigs.some(token => {
           const key = makeCacheKey(token.address, makerSide, fiatEntry.value);
-          return !cacheRef.current.has(key);
+          const cached = cacheRef.current.get(key);
+          return !cached || Date.now() - cached.fetchedAt > OFFER_CACHE_TTL_MS;
         });
       if (!needsFetch) {
         console.debug(
@@ -302,6 +366,10 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       force: true,
     });
   }, [activeMarket, ensureMarket]);
+
+  const refreshMakerOffers = React.useCallback(async () => {
+    await loadMakerOffers(true);
+  }, [loadMakerOffers]);
 
   const bootstrappedRef = React.useRef(false);
 
@@ -332,6 +400,21 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     setDraftOffers([]);
   }, [address]);
 
+  const makerOffers = React.useMemo(() => {
+    const merged = new Map<number, OfferRow>();
+    for (const offer of makerChainOffers) {
+      merged.set(offer.id, offer);
+    }
+    const normalizedAddress = address?.toLowerCase();
+    for (const offer of draftOffers) {
+      if (normalizedAddress && offer.maker?.toLowerCase() !== normalizedAddress) continue;
+      merged.set(offer.id, offer);
+    }
+    return Array.from(merged.values()).sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    );
+  }, [makerChainOffers, draftOffers, address]);
+
   const offers = React.useMemo(() => {
     const fallback = fiatLookup.get(defaultFiat.toUpperCase());
     const fiatEntry =
@@ -344,7 +427,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       const key = makeCacheKey(token.address, makerSide, fiatEntry.value);
       const bucket = cacheRef.current.get(key);
       if (!bucket) continue;
-      for (const offer of bucket) {
+      for (const offer of bucket.items) {
         merged.set(offer.id, offer);
       }
     }
@@ -441,24 +524,30 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   const contextValue = React.useMemo<OffersContextValue>(
     () => ({
       offers,
+      makerOffers,
       isLoading,
+      isMakerLoading,
       activeMarket,
       ensureMarket,
       tokens: tokenConfigs,
       fiats: fiatCodes,
       refresh,
+      refreshMakerOffers,
       createOffer,
       updateOffer,
       removeOffer,
     }),
     [
       offers,
+      makerOffers,
       isLoading,
+      isMakerLoading,
       activeMarket,
       ensureMarket,
       tokenConfigs,
       fiatCodes,
       refresh,
+      refreshMakerOffers,
       createOffer,
       updateOffer,
       removeOffer,

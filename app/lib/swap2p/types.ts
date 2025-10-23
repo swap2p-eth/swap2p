@@ -183,6 +183,7 @@ export interface Swap2pAdapter {
   getOfferKeys(filter: OfferFilter & PaginationArgs): Promise<OfferKey[]>;
   getOffer(key: OfferKey): Promise<Offer | null>;
   getOffers(filter: OfferFilter & PaginationArgs): Promise<OfferWithKey[]>;
+  getMakerOffers(args: { maker: Address; offset?: number; limit?: number }): Promise<OfferWithKey[]>;
   getDeal(id: bigint): Promise<Deal | null>;
   getOpenDeals(query: DealsQuery): Promise<Deal[]>;
   getRecentDeals(query: DealsQuery): Promise<Deal[]>;
