@@ -620,7 +620,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const appDir = path.join(rootDir, "app");
-const outputPath = path.join(appDir, "hardhat.json");
+const netsDir = path.join(appDir, "networks");
+const outputPath = path.join(netsDir, "hardhat.json");
 
 await mkdir(appDir, { recursive: true });
 
