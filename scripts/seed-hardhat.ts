@@ -393,6 +393,40 @@ for (const maker of makerContexts) {
       max: buyMax,
       paymentMethods: buy.paymentMethods,
     });
+
+    // Extra liquidity: mirror SELL settings as a USD BUY market so the UI shows both sides by default.
+    const mirroredBuyReserve = parseAmount(sell.reserve, token.decimals) * 2n;
+    const mirroredBuyMin = parseAmount(sell.min, token.decimals) * 2n;
+    const mirroredBuyMax = parseAmount(sell.max, token.decimals) * 2n;
+
+    await writeWith(maker.client, {
+      address: swap.address as Address,
+      abi: swapArtifact.abi,
+      functionName: "maker_makeOffer",
+      args: [
+        token.address,
+        0,
+        sell.fiat,
+        sell.price,
+        mirroredBuyReserve,
+        mirroredBuyMin,
+        mirroredBuyMax,
+        sell.paymentMethods,
+        `${sell.requirements} (mirrored BUY). Preferred payment: ${maker.profile.paymentNotes}`,
+        zeroAddress,
+      ],
+    }, `create mirrored BUY offer for ${token.config.symbol} (${maker.profile.nickname})`);
+
+    maker.offers.push({
+      maker,
+      token,
+      side: 0,
+      fiat: sell.fiat,
+      price: sell.price,
+      min: mirroredBuyMin,
+      max: mirroredBuyMax,
+      paymentMethods: sell.paymentMethods,
+    });
   }
 }
 
