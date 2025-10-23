@@ -1,13 +1,12 @@
 import Jazzicon from "react-jazzicon";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { OfferRow } from "@/lib/mock-offers";
+import type { OfferRow } from "@/lib/types/market";
 import { RelativeTime } from "@/components/relative-time";
 import { formatAddressShort, seedFromAddress } from "@/lib/utils";
 import { DealSideBadge } from "@/components/deals/deal-side-badge";
 import { PriceCell } from "@/components/deals/price-cell";
 import { TokenSymbol } from "@/components/deals/token-symbol";
 import { FiatSymbol } from "@/components/deals/fiat-symbol";
-import { mockTokenConfigs } from "@/lib/mock-market";
 import { formatTokenAmount } from "@/lib/number-format";
 
 interface OfferColumnOptions {
@@ -19,9 +18,6 @@ export function createOfferColumns(
   options: OfferColumnOptions = {}
 ): ColumnDef<OfferRow>[] {
   const { showMerchant = false } = options;
-
-  const getTokenDecimals = (symbol: string) =>
-    mockTokenConfigs.find(config => config.symbol === symbol)?.decimals ?? 2;
 
   const columns: ColumnDef<OfferRow>[] = [
     {
@@ -106,7 +102,7 @@ export function createOfferColumns(
       header: "Min",
       cell: ({ row }) => {
         const deal = row.original as OfferRow;
-        const decimals = getTokenDecimals(deal.token);
+        const decimals = deal.tokenDecimals;
         return (
           <span className="block text-right text-sm text-muted-foreground tabular-nums">
             {formatTokenAmount(Number(row.getValue("minAmount")), decimals)}
@@ -124,7 +120,7 @@ export function createOfferColumns(
       header: "Max",
       cell: ({ row }) => {
         const deal = row.original as OfferRow;
-        const decimals = getTokenDecimals(deal.token);
+        const decimals = deal.tokenDecimals;
         return (
           <span className="block text-right text-sm text-muted-foreground tabular-nums">
             {formatTokenAmount(Number(row.getValue("maxAmount")), decimals)}

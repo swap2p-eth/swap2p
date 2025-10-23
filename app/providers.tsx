@@ -6,10 +6,13 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RainbowKitProvider, lightTheme, midnightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
 import { getConfig } from "@mezo-org/passport/dist/src/config";
-import { mezoTestnet } from "@mezo-org/passport/dist/src/constants";
+import { CHAIN_ID, RPC_BY_NETWORK, mezoMainnet, mezoTestnet } from "@mezo-org/passport/dist/src/constants";
 import { ThemeProvider } from "@/components/theme-provider";
 import { UserProvider } from "@/context/user-context";
 import { useTheme } from "next-themes";
+import { http } from "viem";
+
+import { hardhatChain, hardhatTransport } from "@/lib/chains";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -34,11 +37,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const walletConnectProjectId =
       process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "51e609ac221c8fb9cbee39d15fb1458f";
     const mezoNetwork = (process.env.NEXT_PUBLIC_MEZO_NETWORK ?? "testnet") as "testnet" | "mainnet";
+    const chains = [hardhatChain, mezoTestnet, mezoMainnet];
     return getConfig({
       appName: "Swap2p Console",
       walletConnectProjectId,
       mezoNetwork,
-      bitcoinWallets: isClient ? undefined : []
+      bitcoinWallets: isClient ? undefined : [],
+      chains,
+      transports: {
+        [hardhatChain.id]: hardhatTransport,
+        [CHAIN_ID.testnet]: http(RPC_BY_NETWORK.testnet.http),
+        [CHAIN_ID.mainnet]: http(RPC_BY_NETWORK.mainnet.http)
+      }
     });
   }, [isClient]);
 
@@ -114,7 +124,7 @@ function RainbowKitThemeProvider({ children }: { children: React.ReactNode }) {
   }, [resolvedTheme]);
 
   return (
-    <RainbowKitProvider initialChain={mezoTestnet} modalSize="compact" theme={theme}>
+    <RainbowKitProvider initialChain={hardhatChain} modalSize="compact" theme={theme}>
       {children}
     </RainbowKitProvider>
   );

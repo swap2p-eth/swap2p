@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
-import type { OfferRow } from "@/lib/mock-offers";
+import type { OfferRow } from "@/lib/types/market";
 import { cn, formatAddressShort } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
@@ -18,7 +18,6 @@ import { useOffers } from "@/components/offers/offers-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { buildDealMetaItems } from "@/hooks/use-deal-meta";
-import { mockTokenConfigs } from "@/lib/mock-market";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import type { ApprovalMode } from "./token-approval-button";
@@ -82,7 +81,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offer not found</h1>
         <p className="text-sm text-muted-foreground">
-          This offer is no longer available in the mock dataset. Return to the previous section to pick another one.
+          This offer is no longer available. Return to the previous section to pick another one.
         </p>
         <Button
           type="button"
@@ -96,8 +95,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     );
   }
 
-  const tokenConfig = mockTokenConfigs.find(config => config.symbol === offer.token);
-  const tokenDecimals = tokenConfig?.decimals ?? 2;
+  const tokenDecimals = offer.tokenDecimals ?? 2;
 
   const paymentOptions = parsePaymentMethods(offer.paymentMethods);
   const hasPaymentOptions = paymentOptions.length > 0;
@@ -389,7 +387,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
             </Select>
             {!hasPaymentOptions ? (
               <p className="text-xs text-muted-foreground">
-                Maker has not published payment methods for this mock offer yet.
+                Maker has not published payment methods for this offer yet.
               </p>
             ) : null}
             {paymentMethodError ? <p className="text-xs text-orange-500">{paymentMethodError}</p> : null}

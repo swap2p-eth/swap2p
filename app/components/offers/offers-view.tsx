@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DataTable } from "@/components/data-table";
 import { createOfferColumns } from "@/lib/offer-columns";
 import { useOffers } from "@/components/offers/offers-provider";
-import type { OfferRow } from "@/lib/mock-offers";
+import type { OfferRow } from "@/lib/types/market";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 import { SideToggle } from "@/components/deals/side-toggle";

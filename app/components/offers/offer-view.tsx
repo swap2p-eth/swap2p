@@ -14,7 +14,7 @@ import { useOffers } from "./offers-provider";
 import { DealHeader } from "@/components/deals/deal-header";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
-import type { OfferRow } from "@/lib/mock-offers";
+import type { OfferRow } from "@/lib/types/market";
 import { SideToggle } from "@/components/deals/side-toggle";
 
 type DealSide = "BUY" | "SELL";

@@ -14,8 +14,36 @@ import {
 
 const { network, artifacts } = hardhat;
 
-const USD = 840;
-const THB = 764;
+export function toFiatCode(code: string): number {
+  const s = code.trim().toUpperCase();
+  if (s.length !== 3) throw new Error("Fiat code must be 3 characters");
+  const c0 = s.charCodeAt(0), c1 = s.charCodeAt(1), c2 = s.charCodeAt(2);
+  // Разрешаем только A-Z (ISO 4217 использует верхний регистр)
+  if (
+      c0 < 65 || c0 > 90 ||
+      c1 < 65 || c1 > 90 ||
+      c2 < 65 || c2 > 90
+  ) {
+    throw new Error("Fiat code must be A-Z letters (e.g., 'USD')");
+  }
+  return c0 * 0x10000 + c1 * 0x100 + c2; // 0..0xFFFFFF
+}
+
+/**
+ * 0x55_53_44 -> "USD"
+ */
+export function fiatCodeToString(u24: number): string {
+  if (!Number.isInteger(u24) || u24 < 0 || u24 > 0xFFFFFF) {
+    throw new Error("Value must be an integer in range 0..0xFFFFFF");
+  }
+  const c0 = Math.floor(u24 / 0x10000) & 0xFF;
+  const c1 = Math.floor(u24 / 0x100) & 0xFF;
+  const c2 = u24 & 0xFF;
+  return String.fromCharCode(c0, c1, c2);
+}
+
+const USD = toFiatCode('USD');
+const THB = toFiatCode('THB');
 
 const makerProfiles = [
   {

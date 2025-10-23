@@ -2,15 +2,19 @@
 
 import * as React from "react";
 
-import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
-
 interface UserContextValue {
   address: string;
 }
 
 const UserContext = React.createContext<UserContextValue | null>(null);
 
-export function UserProvider({ children, address = CURRENT_USER_ADDRESS }: { children: React.ReactNode; address?: string }) {
+export function UserProvider({
+  children,
+  address = ""
+}: {
+  children: React.ReactNode;
+  address?: string;
+}) {
   const value = React.useMemo(() => ({ address }), [address]);
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 }

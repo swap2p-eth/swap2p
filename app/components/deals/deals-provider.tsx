@@ -2,8 +2,8 @@
 
 import * as React from "react";
 
-import { generateMockDeals, type DealRow } from "@/lib/mock-data";
-import type { OfferRow } from "@/lib/mock-offers";
+import type { DealRow } from "@/lib/types/market";
+import type { OfferRow } from "@/lib/types/market";
 import { useUser } from "@/context/user-context";
 
 type AmountKind = "crypto" | "fiat";
@@ -32,44 +32,43 @@ const DealsContext = React.createContext<DealsContextValue | null>(null);
 export function DealsProvider({ children }: { children: React.ReactNode }) {
   const { address: currentUserAddress } = useUser();
   const [deals, setDeals] = React.useState<DealRow[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(false);
 
-  const loadDeals = React.useCallback(() => {
-    setIsLoading(true);
-    const next = generateMockDeals(24, currentUserAddress);
-    setDeals(next);
+  const refresh = React.useCallback(() => {
+    setDeals([]);
     setIsLoading(false);
-  }, [currentUserAddress]);
+  }, []);
 
   React.useEffect(() => {
-    loadDeals();
-  }, [loadDeals]);
+    refresh();
+  }, [refresh]);
 
   const createDeal = React.useCallback(
     ({ offer, amount, amountKind, paymentMethod }: CreateDealInput) => {
+      void amountKind;
       let created: DealRow | null = null;
       setDeals(current => {
         const nextId = current.reduce((max, deal) => Math.max(max, deal.id), 0) + 1;
-        const timestamp = new Date();
-
-        created = {
+        const now = new Date().toISOString();
+        const entry: DealRow = {
           id: nextId,
           side: offer.side,
           amount,
           fiatCode: offer.fiat,
           partner: null,
           state: "REQUESTED",
-          updatedAt: timestamp.toISOString(),
+          updatedAt: now,
           maker: offer.maker,
           taker: currentUserAddress,
-          token: offer.token
+          token: offer.token,
+          tokenDecimals: offer.tokenDecimals,
+          price: offer.price,
+          fiatAmount: offer.price * amount,
+          paymentMethod
         };
-
-        return [...current, created];
+        created = entry;
+        return [...current, entry];
       });
-
-      void paymentMethod;
-      void amountKind;
 
       if (!created) {
         throw new Error("Failed to create deal");
@@ -90,26 +89,27 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const acceptDeal = React.useCallback((dealId: number) => {
-    const timestamp = new Date().toISOString();
-    updateDeal(dealId, deal => {
-      if (deal.state !== "REQUESTED") return null;
-      return { ...deal, state: "ACCEPTED", updatedAt: timestamp };
-    });
-  }, [updateDeal]);
+  const acceptDeal = React.useCallback(
+    (dealId: number) => {
+      updateDeal(dealId, deal => {
+        if (deal.state !== "REQUESTED") return null;
+        return { ...deal, state: "ACCEPTED", updatedAt: new Date().toISOString() };
+      });
+    },
+    [updateDeal]
+  );
 
   const cancelDeal = React.useCallback(
     (dealId: number, actor: DealParticipant) => {
-      const timestamp = new Date().toISOString();
       updateDeal(dealId, deal => {
         if (deal.state === "REQUESTED") {
-          return { ...deal, state: "CANCELED", updatedAt: timestamp };
+          return { ...deal, state: "CANCELED", updatedAt: new Date().toISOString() };
         }
         if (deal.state === "ACCEPTED") {
           const makerCanCancel = deal.side === "BUY" && actor === "MAKER";
           const takerCanCancel = deal.side === "SELL" && actor === "TAKER";
           if (makerCanCancel || takerCanCancel) {
-            return { ...deal, state: "CANCELED", updatedAt: timestamp };
+            return { ...deal, state: "CANCELED", updatedAt: new Date().toISOString() };
           }
         }
         return null;
@@ -120,13 +120,12 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
 
   const markDealPaid = React.useCallback(
     (dealId: number, actor: DealParticipant) => {
-      const timestamp = new Date().toISOString();
       updateDeal(dealId, deal => {
         if (deal.state !== "ACCEPTED") return null;
         const makerPays = deal.side === "BUY" && actor === "MAKER";
         const takerPays = deal.side === "SELL" && actor === "TAKER";
         if (!makerPays && !takerPays) return null;
-        return { ...deal, state: "PAID", updatedAt: timestamp };
+        return { ...deal, state: "PAID", updatedAt: new Date().toISOString() };
       });
     },
     [updateDeal]
@@ -134,13 +133,12 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
 
   const releaseDeal = React.useCallback(
     (dealId: number, actor: DealParticipant) => {
-      const timestamp = new Date().toISOString();
       updateDeal(dealId, deal => {
         if (deal.state !== "PAID") return null;
         const takerReleases = deal.side === "BUY" && actor === "TAKER";
         const makerReleases = deal.side === "SELL" && actor === "MAKER";
         if (!takerReleases && !makerReleases) return null;
-        return { ...deal, state: "RELEASED", updatedAt: timestamp };
+        return { ...deal, state: "RELEASED", updatedAt: new Date().toISOString() };
       });
     },
     [updateDeal]
@@ -155,9 +153,9 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       markDealPaid,
       releaseDeal,
       isLoading,
-      refresh: loadDeals
+      refresh
     }),
-    [deals, createDeal, acceptDeal, cancelDeal, markDealPaid, releaseDeal, isLoading, loadDeals]
+    [deals, createDeal, acceptDeal, cancelDeal, markDealPaid, releaseDeal, isLoading, refresh]
   );
 
   return <DealsContext.Provider value={value}>{children}</DealsContext.Provider>;

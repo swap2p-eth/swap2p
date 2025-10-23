@@ -1,10 +1,9 @@
 import * as React from "react";
 
-import { CURRENT_USER_ADDRESS } from "@/lib/mock-user";
-import type { DealRow } from "@/lib/mock-data";
+import type { DealRow } from "@/lib/types/market";
 import { getDealPerspective } from "@/lib/deal-utils";
 
-export function useDealPerspective(deal: DealRow | null | undefined, currentUser: string = CURRENT_USER_ADDRESS) {
+export function useDealPerspective(deal: DealRow | null | undefined, currentUser: string) {
   return React.useMemo(() => {
     if (!deal) {
       return { role: null, userSide: null, isMaker: false };

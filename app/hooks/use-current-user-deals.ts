@@ -3,7 +3,7 @@ import * as React from "react";
 import { useDeals } from "@/components/deals/deals-provider";
 import { useUser } from "@/context/user-context";
 import { isActiveDealState, isClosedDealState, normalizeAddress } from "@/lib/deal-utils";
-import type { DealRow } from "@/lib/mock-data";
+import type { DealRow } from "@/lib/types/market";
 
 export interface CurrentUserDeals {
   activeDeals: DealRow[];

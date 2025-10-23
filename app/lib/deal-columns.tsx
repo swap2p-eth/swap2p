@@ -1,8 +1,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import type { DealRow, DealSide } from "@/lib/mock-data";
+import type { DealRow, DealSide } from "@/lib/types/market";
 import { RelativeTime } from "@/components/relative-time";
-import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
-import { createMockRng } from "@/lib/mock-clock";
 import { DealSideBadge } from "@/components/deals/deal-side-badge";
 import { Badge } from "@/components/ui/badge";
 import { TokenAmountCell } from "@/components/deals/token-amount-cell";
@@ -11,15 +9,6 @@ import { getScenarioConfig, type DealProgressState } from "@/lib/deal-scenarios"
 import { getDealPerspective, isActiveDealState } from "@/lib/deal-utils";
 import { formatFiatAmount, formatTokenAmount } from "@/lib/number-format";
 import { DealInstructionIcon } from "@/components/deals/deal-instruction-icon";
-
-function getFiatAmount(deal: DealRow): number | null {
-  const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
-  const fiatConfig = mockFiatCurrencies.find(config => config.code === deal.fiatCode);
-  if (!tokenConfig || !fiatConfig) return null;
-  const rng = createMockRng(`deal-table:${deal.id}`);
-  const price = computeTokenPriceInFiat(tokenConfig, fiatConfig, rng());
-  return price * deal.amount;
-}
 
 const getUserRole = (deal: DealRow, currentUser: string): "MAKER" | "TAKER" | null =>
   getDealPerspective(deal, currentUser).role;
@@ -33,8 +22,15 @@ const getScenarioForDeal = (deal: DealRow, currentUser: string) => {
   return getScenarioConfig(perspective.role, deal.side, deal.state as DealProgressState);
 };
 
-const getTokenDecimals = (symbol: string) =>
-  mockTokenConfigs.find(config => config.symbol === symbol)?.decimals ?? 2;
+const resolveFiatAmount = (deal: DealRow): number | null => {
+  if (typeof deal.fiatAmount === "number" && Number.isFinite(deal.fiatAmount)) {
+    return deal.fiatAmount;
+  }
+  if (typeof deal.price === "number" && Number.isFinite(deal.price)) {
+    return deal.price * deal.amount;
+  }
+  return null;
+};
 
 interface DealColumnOptions {
   includeAction?: boolean;
@@ -82,7 +78,7 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
       header: "Amount",
       cell: ({ row }) => {
         const deal = row.original as DealRow;
-        const decimals = getTokenDecimals(deal.token);
+        const decimals = deal.tokenDecimals;
         const amountValue = Number(row.getValue("amount"));
         return (
           <TokenAmountCell
@@ -99,8 +95,8 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
       cell: ({ row }) => {
         const fiat = row.getValue<string>("fiatCode");
         const deal = row.original as DealRow;
-        const fiatAmount = getFiatAmount(deal);
-        if (fiatAmount) {
+        const fiatAmount = resolveFiatAmount(deal);
+        if (fiatAmount !== null) {
           return <FiatAmountCell fiat={fiat} amountLabel={formatFiatAmount(fiatAmount)} />;
         }
         return <FiatAmountCell fiat={fiat} amountLabel="—" />;

@@ -1,4 +1,4 @@
-import type { DealRow, DealSide, DealState } from "@/lib/mock-data";
+import type { DealRow, DealSide, DealState } from "@/lib/types/market";
 
 export type DealUserRole = "MAKER" | "TAKER";
 

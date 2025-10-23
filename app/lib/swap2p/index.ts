@@ -1,29 +1,28 @@
 import type { Swap2pAdapter } from "./types";
-import { isMockMode, swap2pAddress, swap2pMode } from "./config";
-import { createSwap2pMockAdapter } from "./mock-adapter";
+import { resolveSwap2pAddress, resolveSwap2pChainId } from "./config";
 import {
   type Swap2pViemAdapterConfig,
   createSwap2pViemAdapter,
 } from "./viem-adapter";
 
-export { swap2pMode, swap2pAddress, isMockMode };
+export { resolveSwap2pAddress, resolveSwap2pChainId };
 export type { Swap2pViemAdapterConfig } from "./viem-adapter";
-export { createSwap2pMockAdapter, createSwap2pViemAdapter };
+export { createSwap2pViemAdapter };
+
+interface CreateSwap2pAdapterOptions {
+  chainId?: number;
+  viem: Swap2pViemAdapterConfig;
+}
 
 export const createSwap2pAdapter = (
-  config?: Swap2pViemAdapterConfig,
+  options: CreateSwap2pAdapterOptions,
 ): Swap2pAdapter => {
-  if (swap2pMode === "mock") {
-    return createSwap2pMockAdapter();
-  }
-  if (!config) {
-    throw new Error(
-      "createSwap2pAdapter: viem mode requires a Swap2pViemAdapterConfig",
-    );
-  }
-  const address = config.address ?? swap2pAddress;
+  const { chainId, viem } = options;
+  const address = viem.address ?? resolveSwap2pAddress(chainId);
+
   if (!address) {
     throw new Error("createSwap2pAdapter: missing contract address");
   }
-  return createSwap2pViemAdapter({ ...config, address });
+
+  return createSwap2pViemAdapter({ ...viem, address });
 };

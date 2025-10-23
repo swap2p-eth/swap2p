@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useChainId } from "wagmi";
 
-import { generateMockOffers, type OfferRow } from "@/lib/mock-offers";
 import { useUser } from "@/context/user-context";
+import { getNetworkConfigForChain } from "@/config";
+import type { OfferRow } from "@/lib/types/market";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -38,19 +40,20 @@ const OffersContext = React.createContext<OffersContextValue | null>(null);
 
 export function OffersProvider({ children }: { children: React.ReactNode }) {
   const { address } = useUser();
+  const chainId = useChainId();
+  const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
+
   const [offers, setOffers] = React.useState<OfferRow[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [isLoading, setIsLoading] = React.useState(false);
 
   const refresh = React.useCallback(() => {
-    setIsLoading(true);
-    const next = generateMockOffers(32, address);
-    setOffers(next);
+    setOffers([]);
     setIsLoading(false);
-  }, [address]);
+  }, []);
 
   React.useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, [refresh, network]);
 
   const createOffer = React.useCallback(
     ({
@@ -65,13 +68,17 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       requirements
     }: CreateOfferInput) => {
       let created: OfferRow | null = null;
+      const tokenDecimals =
+        network.tokens.find(item => item.symbol === token)?.decimals ?? 18;
+
       setOffers(current => {
         const nextId = current.reduce((max, offer) => Math.max(max, offer.id), 0) + 1;
-        created = {
+        const entry: OfferRow = {
           id: nextId,
           side,
           maker: address,
           token,
+          tokenDecimals,
           fiat,
           price,
           reserve,
@@ -81,12 +88,17 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           requirements: requirements ?? "",
           updatedAt: new Date().toISOString()
         };
-        return [created, ...current];
+        created = entry;
+        return [entry, ...current];
       });
-      if (!created) throw new Error("Failed to create offer");
+
+      if (!created) {
+        throw new Error("Failed to create offer");
+      }
+
       return created;
     },
-    [address]
+    [address, network.tokens]
   );
 
   const updateOffer = React.useCallback(
@@ -95,7 +107,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       setOffers(current =>
         current.map(offer => {
           if (offer.id !== id) return offer;
-          updated = {
+          const next: OfferRow = {
             ...offer,
             price: updates.price ?? offer.price,
             reserve: updates.reserve ?? offer.reserve,
@@ -107,7 +119,8 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
                 : offer.paymentMethods,
             updatedAt: new Date().toISOString()
           };
-          return updated;
+          updated = next;
+          return next;
         })
       );
       return updated;

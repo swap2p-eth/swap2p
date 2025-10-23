@@ -10,7 +10,7 @@ import { createDealColumns } from "@/lib/deal-columns";
 import { useCurrentUserDeals } from "@/hooks/use-current-user-deals";
 import { useOffers } from "@/components/offers/offers-provider";
 import { useHashLocation } from "@/hooks/use-hash-location";
-import type { OfferRow } from "@/lib/mock-offers";
+import type { OfferRow } from "@/lib/types/market";
 import { useUser } from "@/context/user-context";
 
 interface DealsViewProps {

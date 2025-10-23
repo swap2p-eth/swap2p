@@ -9,8 +9,6 @@ import { DealSummaryCard } from "./deal-summary-card";
 import { DealStatusPanel } from "./deal-status-panel";
 import { useDeals } from "./deals-provider";
 import { RelativeTime } from "@/components/relative-time";
-import { mockTokenConfigs, mockFiatCurrencies, computeTokenPriceInFiat } from "@/lib/mock-market";
-import { createMockRng } from "@/lib/mock-clock";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { buildDealMetaItems } from "@/hooks/use-deal-meta";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
@@ -70,14 +68,16 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const isMaker = perspective.isMaker;
   const userSide = (perspective.userSide ?? deal.side).toUpperCase();
   const userAction = userSide === "SELL" ? "sell" : "buy";
-  const tokenConfig = mockTokenConfigs.find(config => config.symbol === deal.token);
-  const fiatConfig = mockFiatCurrencies.find(config => config.code === deal.fiatCode);
-  const varianceSample = createMockRng(`deal-overview:${deal.id}`)();
-  const pricePerToken = tokenConfig && fiatConfig ? computeTokenPriceInFiat(tokenConfig, fiatConfig, varianceSample) : null;
-  const fiatAmount = pricePerToken ? deal.amount * pricePerToken : null;
-  const priceValue = pricePerToken ? formatPrice(pricePerToken) : null;
+  const pricePerToken = typeof deal.price === "number" ? deal.price : null;
+  const fiatAmount =
+    typeof deal.fiatAmount === "number"
+      ? deal.fiatAmount
+      : pricePerToken !== null
+        ? pricePerToken * deal.amount
+        : null;
+  const priceValue = pricePerToken !== null ? formatPrice(pricePerToken) : null;
 
-  const tokenDecimals = tokenConfig?.decimals ?? 4;
+  const tokenDecimals = deal.tokenDecimals ?? 4;
   const tokenAmountValue = formatTokenAmount(deal.amount, tokenDecimals);
   const fiatAmountFormatted = fiatAmount ? formatFiatAmount(fiatAmount) : null;
   const metaFiatLabel = fiatAmountFormatted ? `≈ ${fiatAmountFormatted}` : "—";

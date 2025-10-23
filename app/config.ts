@@ -1,3 +1,6 @@
+import hardhatDeployment from "@/networks/hardhat.json";
+import { hardhatChain } from "@/lib/chains";
+
 export type NetworkKey = "hardhat" | "ethereum" | "optimism";
 
 export interface TokenConfig {
@@ -26,35 +29,28 @@ export interface AppConfigShape {
   networks: Record<NetworkKey, NetworkConfig>;
 }
 
+const HARDHAT_TOKEN_DECIMALS: Record<string, number> = {
+  WBTC: 8,
+  USDT: 6,
+  DAI: 18,
+  WETH: 18
+};
+
 export const APP_CONFIG: AppConfigShape = {
   defaultNetwork: "hardhat",
   networks: {
     hardhat: {
-      chainId: 31337,
+      chainId: hardhatChain.id,
       name: "Hardhat (local)",
-      swap2pAddress: "0x000000000000000000000000000000000000aAaA",
-      tokens: [
-        {
-          symbol: "USDC",
-          address: "0x0000000000000000000000000000000000001001",
-          decimals: 6
-        },
-        {
-          symbol: "USDT",
-          address: "0x0000000000000000000000000000000000001002",
-          decimals: 6
-        },
-        {
-          symbol: "DAI",
-          address: "0x0000000000000000000000000000000000001003",
-          decimals: 18
-        },
-        {
-          symbol: "WETH",
-          address: "0x0000000000000000000000000000000000001004",
-          decimals: 18
-        }
-      ],
+      swap2pAddress:
+        typeof hardhatDeployment.swap2p === "string"
+          ? (hardhatDeployment.swap2p as `0x${string}`)
+          : "0x0000000000000000000000000000000000000000",
+      tokens: Object.entries(hardhatDeployment.tokens ?? {}).map(([symbol, address]) => ({
+        symbol,
+        address,
+        decimals: HARDHAT_TOKEN_DECIMALS[symbol] ?? 18
+      })),
       fiats: [
         { code: "USD", name: "US Dollar", country: "United States" },
         { code: "EUR", name: "Euro", country: "European Union" },

@@ -5,7 +5,7 @@ import { ChatContainer, ChatList, ChatMessage, ChatInput } from "@/components/ui
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { DealState } from "@/lib/mock-data";
+import type { DealState } from "@/lib/types/market";
 import { useChatMessages } from "@/hooks/use-chat-messages";
 
 interface ChatWidgetProps {
