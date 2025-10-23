@@ -27,6 +27,7 @@ import type {
   OfferFilter,
   OfferKey,
   OfferWithKey,
+  PaginationArgs,
   ReleaseDealArgs,
   SendMessageArgs,
   SetOnlineArgs,
@@ -34,6 +35,7 @@ import type {
   SetChatPublicKeyArgs,
   Swap2pAdapter,
   TakerRequestOfferArgs,
+  DealsQuery,
 } from "./types";
 import { SwapDealState, SwapSide } from "./types";
 
@@ -46,14 +48,47 @@ export type Swap2pViemAdapterConfig = {
   walletClient?: AnyWalletClient;
 };
 
-type ReadArgs<Fn extends string, Args extends unknown[]> = {
+type ReadArgs<Fn extends string, Args extends readonly unknown[]> = {
   functionName: Fn;
   args: Args;
 };
 
 const ZERO = 0n;
 
+const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
+
 const DEFAULT_LIMIT = 20;
+
+const LOG_MAX_DEPTH = 4;
+
+const sanitizeForLog = (value: unknown, depth = LOG_MAX_DEPTH): unknown => {
+  if (depth <= 0) {
+    if (typeof value === "object" && value !== null) {
+      return "[Object]";
+    }
+    return value;
+  }
+  if (typeof value === "bigint") {
+    return `${value}n`;
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => sanitizeForLog(entry, depth - 1));
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    const plain: Record<string, unknown> = {};
+    for (const [key, entry] of entries) {
+      if (key === "__proto__") continue;
+      plain[key] = sanitizeForLog(entry, depth - 1);
+    }
+    return plain;
+  }
+  return value;
+};
+
+const debugLog = (scope: string, payload: unknown) => {
+  console.debug(scope, sanitizeForLog(payload));
+};
 
 const normalizeAccount = (
   walletClient: AnyWalletClient | undefined,
@@ -74,6 +109,45 @@ const normalizeAccount = (
 
 const toNumber = (value: bigint | number) =>
   typeof value === "bigint" ? Number(value) : value;
+
+const toBigInt = (
+  value: bigint | number | string | undefined | null,
+): bigint => {
+  if (typeof value === "bigint") return value;
+  if (typeof value === "number") return BigInt(value);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed === "") return ZERO;
+    return BigInt(trimmed);
+  }
+  return ZERO;
+};
+
+const toBytes32 = (value: unknown): Hex | null => {
+  if (typeof value === "string") {
+    if (value.length === 0) return null;
+    if (value.startsWith("0x")) {
+      const normalized = value.slice(2).padStart(64, "0");
+      return (`0x${normalized}`) as Hex;
+    }
+    try {
+      const fromDecimal = BigInt(value);
+      return toBytes32(fromDecimal);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof value === "bigint") {
+    return (`0x${value.toString(16).padStart(64, "0")}`) as Hex;
+  }
+  if (typeof value === "number") {
+    return toBytes32(BigInt(value));
+  }
+  if (value && typeof value === "object" && "id" in (value as Record<string, unknown>)) {
+    return toBytes32((value as { id?: unknown }).id);
+  }
+  return null;
+};
 
 const toSide = (value: bigint | number): SwapSide => {
   const numeric = toNumber(value);
@@ -102,29 +176,57 @@ const asHex = (value?: string | Hex | null) => {
   return stringToHex(value);
 };
 
-const mapOffer = (key: OfferKey, raw: any): Offer | null => {
+const mapOfferStruct = (raw: any): Offer | null => {
   if (!raw) return null;
-  const maxAmt = raw.maxAmt as bigint | number | undefined;
+  const maxAmt = raw.maxAmt ?? raw[1];
   if (maxAmt === undefined) return null;
-  const hasOffer =
-    (typeof maxAmt === "bigint" ? maxAmt : BigInt(maxAmt ?? 0)) !== ZERO;
-  if (!hasOffer) return null;
+  const maxBigInt = toBigInt(maxAmt);
+  if (maxBigInt === ZERO) return null;
+  const token = raw.token ?? raw[7] ?? "0x0000000000000000000000000000000000000000";
+  const maker = raw.maker ?? raw[8] ?? "0x0000000000000000000000000000000000000000";
+  const fiat = raw.fiat ?? raw[5] ?? 0;
+  const side = raw.side ?? raw[6] ?? SwapSide.BUY;
   return {
-    minAmount: BigInt(raw.minAmt ?? 0),
-    maxAmount: BigInt(raw.maxAmt ?? 0),
-    reserve: BigInt(raw.reserve ?? 0),
-    priceFiatPerToken: BigInt(raw.priceFiatPerToken ?? 0),
-    fiat: toNumber(raw.fiat ?? key.fiat),
-    side: toSide(raw.side ?? key.side),
-    token: getAddress(raw.token ?? key.token),
-    paymentMethods: raw.paymentMethods ?? "",
-    requirements: raw.requirements !== undefined ? String(raw.requirements) : "",
-    updatedAt: toNumber(raw.ts ?? 0),
-    maker: key.maker,
+    minAmount: toBigInt(raw.minAmt ?? raw[0] ?? 0),
+    maxAmount: maxBigInt,
+    reserve: toBigInt(raw.reserve ?? raw[2] ?? 0),
+    priceFiatPerToken: toBigInt(raw.priceFiatPerToken ?? raw[3] ?? 0),
+    fiat: toNumber(fiat),
+    side: toSide(side),
+    token: getAddress(token),
+    paymentMethods: raw.paymentMethods ?? raw[9] ?? "",
+    requirements:
+      raw.requirements !== undefined
+        ? String(raw.requirements)
+        : raw[10] !== undefined
+        ? String(raw[10])
+        : "",
+    updatedAt: toNumber(raw.ts ?? raw[4] ?? 0),
+    maker: getAddress(maker),
   };
 };
 
-const mapDeal = (id: bigint, raw: any): Deal | null => {
+const mapOfferInfo = (raw: any): OfferWithKey | null => {
+  if (!raw) return null;
+  const offerStruct = raw.offer ?? raw[2];
+  const offer = mapOfferStruct(offerStruct);
+  if (!offer) return null;
+  const maker = raw.maker ?? raw[1] ?? offer.maker;
+  return {
+    key: {
+      token: offer.token,
+      side: offer.side,
+      fiat: offer.fiat,
+      maker: getAddress(maker),
+    },
+    offer: {
+      ...offer,
+      maker: getAddress(maker),
+    },
+  };
+};
+
+const mapDeal = (id: Hex, raw: any): Deal | null => {
   if (!raw) return null;
   const state = toDealState(raw.state ?? SwapDealState.NONE);
   if (state === SwapDealState.NONE) return null;
@@ -144,9 +246,9 @@ const mapDeal = (id: bigint, raw: any): Deal | null => {
     };
   });
   return {
-    id,
-    amount: BigInt(raw.amount ?? 0),
-    price: BigInt(raw.price ?? 0),
+    id: BigInt(id),
+    amount: toBigInt(raw.amount ?? 0),
+    price: toBigInt(raw.price ?? 0),
     state,
     side: toSide(raw.side ?? SwapSide.BUY),
     maker: getAddress(raw.maker ?? "0x0000000000000000000000000000000000000000"),
@@ -202,6 +304,12 @@ const simulateAndWrite = async (
   account: Address,
   value?: bigint,
 ): Promise<Hash> => {
+  debugLog("[swap2p][simulate]", {
+    functionName,
+    args,
+    account,
+    value,
+  });
   const { request } = await publicClient.simulateContract({
     address,
     abi: swap2pAbi,
@@ -210,7 +318,17 @@ const simulateAndWrite = async (
     account,
     value,
   });
-  return walletClient.writeContract(request);
+  debugLog("[swap2p][write]", {
+    functionName,
+    account,
+    request,
+  });
+  const txHash = await walletClient.writeContract(request);
+  debugLog("[swap2p][write:submitted]", {
+    functionName,
+    hash: txHash,
+  });
+  return txHash;
 };
 
 export const createSwap2pViemAdapter = (
@@ -221,28 +339,31 @@ export const createSwap2pViemAdapter = (
   const read = async <Fn extends string, Args extends readonly unknown[]>(
     params: ReadArgs<Fn, Args>,
   ) =>
-    publicClient.readContract({
-      address,
-      abi: swap2pAbi,
-      functionName: params.functionName,
-      args: params.args,
-    } as any);
+    (async () => {
+      debugLog("[swap2p][read]", {
+        functionName: params.functionName,
+        args: params.args,
+      });
+      const result = await publicClient.readContract({
+        address,
+        abi: swap2pAbi,
+        functionName: params.functionName,
+        args: params.args,
+      } as any);
+      debugLog("[swap2p][read:result]", {
+        functionName: params.functionName,
+        result,
+      });
+      return result;
+    })();
 
-  const readOfferStruct = async (key: OfferKey) => {
-    const raw = await read({
-      functionName: "offers",
-      args: [key.token, key.maker, key.side, key.fiat] as const,
-    });
-    return mapOffer(key, raw);
-  };
-
-  const readDealStruct = async (id: bigint) => {
-    const raw = await read({
-      functionName: "deals",
-      args: [id],
-    });
-    return mapDeal(id, raw);
-  };
+const readDealStruct = async (id: Hex) => {
+  const raw = await read({
+    functionName: "deals",
+    args: [id] as const,
+  });
+  return mapDeal(id, raw);
+};
 
   const withAccount = (account?: Address) =>
     normalizeAccount(walletClient, account);
@@ -259,7 +380,7 @@ export const createSwap2pViemAdapter = (
       return toNumber(result as bigint | number);
     },
 
-    async getOfferKeys(filter) {
+    async getOfferKeys(filter: OfferFilter & PaginationArgs) {
       const limit = filter.limit ?? DEFAULT_LIMIT;
       const offset = filter.offset ?? 0;
       const result = (await read({
@@ -269,59 +390,95 @@ export const createSwap2pViemAdapter = (
       return paginateKeys(result ?? [], filter);
     },
 
-    async getOffer(key) {
-      return readOfferStruct(key);
+    async getOffer(key: OfferKey) {
+      const id = await read({
+        functionName: "getOfferId",
+        args: [key.token, key.maker, key.side, key.fiat] as const,
+      });
+      const offerId = toBytes32(id);
+      if (!offerId || offerId === ZERO_BYTES32) {
+        return null;
+      }
+      try {
+        if (BigInt(offerId) === ZERO) {
+          return null;
+        }
+      } catch (error) {
+        const err = error instanceof Error ? error.message : String(error);
+        debugLog("[swap2p][warn:getOfferId]", { error: err });
+        return null;
+      }
+      try {
+        const raw = await read({
+          functionName: "getOfferById",
+          args: [offerId] as const,
+        });
+        const mapped = mapOfferInfo(raw);
+        if (!mapped) return null;
+        return mapped.offer;
+      } catch (error) {
+        const err = error instanceof Error ? error.message : String(error);
+        debugLog("[swap2p][warn:getOfferById]", { error: err, offerId });
+        return null;
+      }
     },
 
-    async getOffers(filter) {
-      const keys = await this.getOfferKeys(filter);
-      if (keys.length === 0) return [];
-      const offers = await Promise.all(keys.map(readOfferStruct));
-      return offers
-        .map((offer, index) =>
-          offer
-            ? ({
-                key: keys[index],
-                offer,
-              } as OfferWithKey)
-            : null,
-        )
+    async getOffers(filter: OfferFilter & PaginationArgs) {
+      const limit = filter.limit ?? DEFAULT_LIMIT;
+      const offset = filter.offset ?? 0;
+      const raw = (await read({
+        functionName: "getMarketOffers",
+        args: [filter.token, filter.side, filter.fiat, offset, limit] as const,
+      })) as readonly unknown[] | null;
+      if (!raw) return [];
+      return raw
+        .map((entry) => mapOfferInfo(entry))
         .filter((item): item is OfferWithKey => item !== null);
     },
 
-    async getDeal(id) {
-      return readDealStruct(id);
+    async getDeal(id: bigint) {
+      const bytes = toBytes32(id);
+      if (!bytes) return null;
+      return readDealStruct(bytes);
     },
 
-    async getOpenDeals(query) {
+    async getOpenDeals(query: DealsQuery) {
       const limit = query.limit ?? DEFAULT_LIMIT;
       const offset = query.offset ?? 0;
       const ids = (await read({
         functionName: "getOpenDeals",
         args: [query.user, offset, limit] as const,
-      })) as bigint[] | number[];
+      })) as readonly unknown[] | null;
       if (!ids || ids.length === 0) return [];
+      const bytesIds = ids
+        .map((value) => toBytes32(value))
+        .filter((value): value is Hex => value !== null);
+      if (bytesIds.length === 0) return [];
       const deals = await Promise.all(
-        ids.map((value) => readDealStruct(BigInt(value))),
+        bytesIds.map((value) => readDealStruct(value)),
       );
       return deals.filter((deal): deal is Deal => deal !== null);
     },
 
-    async getRecentDeals(query) {
+    async getRecentDeals(query: DealsQuery) {
       const limit = query.limit ?? DEFAULT_LIMIT;
       const offset = query.offset ?? 0;
       const ids = (await read({
         functionName: "getRecentDeals",
         args: [query.user, offset, limit] as const,
-      })) as bigint[] | number[];
+      })) as readonly unknown[] | null;
       if (!ids || ids.length === 0) return [];
+      const bytesIds = ids
+        .map((value) => toBytes32(value))
+        .filter((value): value is Hex => value !== null);
+      if (bytesIds.length === 0) return [];
       const deals = await Promise.all(
-        ids.map((value) => readDealStruct(BigInt(value))),
+        bytesIds.map((value) => readDealStruct(value)),
       );
       return deals.filter((deal): deal is Deal => deal !== null);
     },
 
-    async getMakerProfile(addr) {
+    async getMakerProfile(addr: Address) {
       const raw = await read({
         functionName: "makerInfo",
         args: [addr] as const,
@@ -329,7 +486,7 @@ export const createSwap2pViemAdapter = (
       return mapMakerProfile(addr, raw);
     },
 
-    async getMakerProfiles(addresses) {
+    async getMakerProfiles(addresses: Address[]) {
       if (addresses.length === 0) return [];
       const raw = (await read({
         functionName: "getMakerProfiles",

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RainbowKitProvider, lightTheme, midnightTheme } from "@rainbow-me/rainbowkit";
-import { WagmiProvider } from "wagmi";
+import { WagmiProvider, useAccount } from "wagmi";
 import { getConfig } from "@mezo-org/passport/dist/src/config";
 import { CHAIN_ID, RPC_BY_NETWORK, mezoMainnet, mezoTestnet } from "@mezo-org/passport/dist/src/constants";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -53,18 +53,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [isClient]);
 
   return (
-    <UserProvider>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <WagmiProvider config={wagmiConfig}>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <WagmiProvider config={wagmiConfig}>
+        <WalletUserProvider>
           <QueryClientProvider client={queryClient}>
             <RainbowKitThemeProvider>
               {children}
               {process.env.NODE_ENV === "development" ? <ReactQueryDevtools initialIsOpen={false} /> : null}
             </RainbowKitThemeProvider>
           </QueryClientProvider>
-        </WagmiProvider>
-      </ThemeProvider>
-    </UserProvider>
+        </WalletUserProvider>
+      </WagmiProvider>
+    </ThemeProvider>
   );
 }
 
@@ -128,4 +128,9 @@ function RainbowKitThemeProvider({ children }: { children: React.ReactNode }) {
       {children}
     </RainbowKitProvider>
   );
+}
+
+function WalletUserProvider({ children }: { children: React.ReactNode }) {
+  const { address } = useAccount();
+  return <UserProvider address={address ?? ""}>{children}</UserProvider>;
 }

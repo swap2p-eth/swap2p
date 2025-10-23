@@ -16,6 +16,9 @@ export interface OfferRow {
   paymentMethods: string;
   requirements?: string;
   updatedAt: string;
+  contractKey?: import("@/lib/swap2p/types").OfferKey;
+  contract?: import("@/lib/swap2p/types").Offer;
+  contractFiatCode?: number;
 }
 
 export interface DealRow {
@@ -33,4 +36,6 @@ export interface DealRow {
   price?: number;
   fiatAmount?: number;
   paymentMethod?: string;
+  contractId?: bigint;
+  contract?: import("@/lib/swap2p/types").Deal;
 }
