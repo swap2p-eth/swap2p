@@ -12,11 +12,13 @@ import type { OfferRow } from "@/lib/types/market";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 import { SideToggle } from "@/components/deals/side-toggle";
+import { cn } from "@/lib/utils";
 import {
   ANY_FILTER_OPTION,
   OFFERS_FILTER_STORAGE_KEY,
   readStoredFilters
 } from "@/components/offers/filter-storage";
+import { RefreshCw } from "lucide-react";
 const DEFAULT_FIAT = "USD";
 
 interface OffersViewProps {
@@ -25,7 +27,7 @@ interface OffersViewProps {
 }
 
 export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
-  const { offers, isLoading, ensureMarket, tokens, fiats, activeMarket } = useOffers();
+  const { offers, isLoading, ensureMarket, tokens, fiats, activeMarket, refresh } = useOffers();
   const [side, setSide] = React.useState<"BUY" | "SELL">(activeMarket.side);
   const [token, setToken] = React.useState(ANY_FILTER_OPTION);
   const [fiat, setFiat] = React.useState(activeMarket.fiat.toUpperCase());
@@ -126,10 +128,7 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
     const hiddenAccessorKeys = new Set(["side", "fiat"]);
     return createOfferColumns(onStartDeal, { showMerchant: true }).filter(column => {
       const accessorKey = (column as { accessorKey?: string }).accessorKey;
-      if (typeof accessorKey === "string" && hiddenAccessorKeys.has(accessorKey)) {
-        return false;
-      }
-      return true;
+      return !accessorKey || !hiddenAccessorKeys.has(accessorKey);
     });
   }, [onStartDeal]);
   const paymentMethodOptions = React.useMemo(() => {
@@ -203,6 +202,10 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
       return true;
     });
   }, [offers, side, token, normalizedFiat, paymentMethod, amount]);
+
+  const handleRefresh = React.useCallback(() => {
+    void refresh();
+  }, [refresh]);
 
   const handleCreateOffer = React.useCallback(() => {
     if (onCreateOffer) {
@@ -317,17 +320,24 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
           </div>
 
           <div className="space-y-3">
-{/*            <div>
-              <h2 className="text-lg font-semibold">Maker offers</h2>
-              <p className="text-sm text-muted-foreground">
-                Filter results update as soon as we plug real data.
-              </p>
-            </div>*/}
             <DataTable
               className="[&_td]:py-5"
               columns={columns}
               data={filteredOffers}
               title="Offers"
+              headerActions={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                  aria-label="Refresh offers"
+                >
+                  <RefreshCw className={cn("h-4 w-4", isLoading ? "animate-spin" : "")} />
+                </Button>
+              }
               emptyMessage="No offers match the current filters."
               isLoading={isLoading}
               onRowClick={offer => {

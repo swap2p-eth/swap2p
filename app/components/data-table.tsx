@@ -34,6 +34,7 @@ export interface DataTableProps<TData, TValue> {
   data: TData[];
   className?: string;
   title?: string;
+  headerActions?: React.ReactNode;
   emptyMessage?: string;
   onRowClick?: (row: TData) => void;
   pageSize?: number;
@@ -46,6 +47,7 @@ export function DataTable<TData, TValue>({
   data,
   className,
   title = "Items",
+  headerActions,
   emptyMessage = "No data available.",
   onRowClick,
   pageSize = 10,
@@ -114,8 +116,11 @@ export function DataTable<TData, TValue>({
         className
       )}
     >
-      <div className="px-4 py-3 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">
-        {title}
+      <div className="flex items-center justify-between gap-2 px-4 py-3 text-[0.7rem] font-medium uppercase tracking-[0.2em] text-muted-foreground/70">
+        <span>{title}</span>
+        {headerActions ? (
+          <div className="flex items-center gap-2 text-foreground">{headerActions}</div>
+        ) : null}
       </div>
       <Table>
         <TableHeader>
