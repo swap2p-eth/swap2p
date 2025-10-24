@@ -1,42 +1,45 @@
+import { FIAT_BY_COUNTRY, type FiatInfo } from "@/config";
+
 const ASCII_A = "A".charCodeAt(0);
 const ASCII_Z = "Z".charCodeAt(0);
-const MAX_FIAT_CODE = 0xffffff;
+const MAX_COUNTRY_CODE = 0xffff;
 
-const normalizeCode = (code: string): string => code.trim().toUpperCase();
+const normalizeCountry = (code: string): string => code.trim().toUpperCase();
 
-export function toFiatCode(code: string): number {
-  const value = normalizeCode(code);
-  if (value.length !== 3) {
-    throw new Error(`Fiat code must contain exactly 3 characters, received "${code}"`);
+export function encodeCountryCode(code: string): number {
+  const normalized = normalizeCountry(code);
+  if (normalized.length !== 2) {
+    throw new Error(`Country code must contain exactly 2 characters, received "${code}"`);
   }
-  const [c0, c1, c2] = value.split("").map(char => char.charCodeAt(0));
-  if (
-    c0 < ASCII_A ||
-    c0 > ASCII_Z ||
-    c1 < ASCII_A ||
-    c1 > ASCII_Z ||
-    c2 < ASCII_A ||
-    c2 > ASCII_Z
-  ) {
-    throw new Error(`Fiat code must be A-Z letters (e.g. USD), received "${code}"`);
+  const c0 = normalized.charCodeAt(0);
+  const c1 = normalized.charCodeAt(1);
+  if (c0 < ASCII_A || c0 > ASCII_Z || c1 < ASCII_A || c1 > ASCII_Z) {
+    throw new Error(`Country code must be A-Z letters (e.g. US), received "${code}"`);
   }
-  return c0 * 0x10000 + c1 * 0x100 + c2;
+  return (c0 << 8) | c1;
 }
 
-export function fiatCodeToString(value: number): string {
-  if (!Number.isInteger(value) || value < 0 || value > MAX_FIAT_CODE) {
-    throw new Error(`Fiat code value must be integer within 0..0xFFFFFF, received ${value}`);
+export function decodeCountryCode(value: number): string {
+  if (!Number.isInteger(value) || value < 0 || value > MAX_COUNTRY_CODE) {
+    throw new Error(`Country code value must be integer within 0..0xFFFF, received ${value}`);
   }
-  const c0 = (value >> 16) & 0xff;
-  const c1 = (value >> 8) & 0xff;
-  const c2 = value & 0xff;
-  return String.fromCharCode(c0, c1, c2);
+  const c0 = (value >> 8) & 0xff;
+  const c1 = value & 0xff;
+  if (c0 === 0 && c1 === 0) {
+    return "";
+  }
+  return String.fromCharCode(c0, c1);
 }
 
-export function safeFiatCodeToString(value: number): string {
+export function safeDecodeCountryCode(value: number): string {
   try {
-    return fiatCodeToString(value);
+    return decodeCountryCode(value);
   } catch {
     return value.toString();
   }
+}
+
+export function getFiatInfoByCountry(code: string | undefined): FiatInfo | undefined {
+  if (!code) return undefined;
+  return FIAT_BY_COUNTRY.get(code.toUpperCase());
 }

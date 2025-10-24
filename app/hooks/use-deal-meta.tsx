@@ -7,6 +7,8 @@ export interface DealMetaConfig {
   userActionDescription: string;
   tokenSymbol: string;
   tokenAmountLabel: string;
+  countryCode: string;
+  fiatLabel: string;
   fiatSymbol: string;
   fiatAmountLabel: string;
   priceValue?: ReactNode;
@@ -17,6 +19,8 @@ export function buildDealMetaItems({
   userActionDescription,
   tokenSymbol,
   tokenAmountLabel,
+  countryCode,
+  fiatLabel,
   fiatSymbol,
   fiatAmountLabel,
   priceValue
@@ -29,7 +33,7 @@ export function buildDealMetaItems({
       description: userActionDescription
     }),
     createTokenMetaItem({ token: tokenSymbol, amountLabel: tokenAmountLabel }),
-    createFiatMetaItem({ fiat: fiatSymbol, amountLabel: fiatAmountLabel })
+    createFiatMetaItem({ countryCode, label: fiatLabel, amountLabel: fiatAmountLabel })
   ];
 
   if (priceValue) {

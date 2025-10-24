@@ -225,16 +225,16 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       </>
     ) : (
       <>
-        <FiatFlag fiat={offer.fiat} size={18} />
+        <FiatFlag fiat={offer.countryCode} size={18} />
         <span className="text-xs uppercase">{offer.fiat}</span>
       </>
     );
   const conversionDisplay = (() => {
     if (!tokenAmount || tokenAmount <= 0) {
-      return amountKind === "crypto" ? `≈ 0 ${offer.fiat}` : `≈ 0 ${offer.token}`;
+      return amountKind === "crypto" ? `≈ 0 ${offer.currencyCode}` : `≈ 0 ${offer.token}`;
     }
     if (amountKind === "crypto") {
-      return `≈ ${formatFiatAmount(tokenAmount * offer.price)} ${offer.fiat}`;
+      return `≈ ${formatFiatAmount(tokenAmount * offer.price)} ${offer.currencyCode}`;
     }
     return `≈ ${formatTokenAmount(tokenAmount, tokenDecimals)} ${offer.token}`;
   })();
@@ -242,19 +242,21 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const summaryTokenAmount = tokenAmount ?? offer.minAmount;
   const summaryTokenLabel = formatTokenAmount(summaryTokenAmount, tokenDecimals);
   const summaryFiatAmount = summaryTokenAmount * offer.price;
-  const summaryFiatLabel = `≈ ${formatFiatAmount(summaryFiatAmount)}`;
+  const summaryFiatLabel = `≈ ${formatFiatAmount(summaryFiatAmount)} ${offer.currencyCode}`;
 
   const metaItems = buildDealMetaItems({
     userSide,
     userActionDescription: `You ${userAction} crypto`,
     tokenSymbol: offer.token,
     tokenAmountLabel: summaryTokenLabel,
-    fiatSymbol: offer.fiat,
+    countryCode: offer.countryCode,
+    fiatLabel: offer.fiat,
+    fiatSymbol: offer.currencyCode,
     fiatAmountLabel: summaryFiatLabel,
     priceValue: (
       <PriceMetaValue
         priceLabel={formatPrice(offer.price)}
-        fiatSymbol={offer.fiat}
+        fiatSymbol={offer.currencyCode}
         tokenSymbol={offer.token}
       />
     )
@@ -328,7 +330,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
                   {
                     label: (
                       <span className="flex items-center gap-2">
-                        <FiatFlag fiat={offer.fiat} size={16} />
+                        <FiatFlag fiat={offer.countryCode} size={16} />
                         {offer.fiat}
                       </span>
                     ),

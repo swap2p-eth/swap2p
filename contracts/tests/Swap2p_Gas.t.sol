@@ -85,6 +85,13 @@ contract Swap2p_GasTest is Test {
         console.log(_row(name, gasStr));
     }
 
+    function _fiat(string memory code) private pure returns (Swap2p.FiatCode) {
+        bytes memory raw = bytes(code);
+        require(raw.length == 2, "fiat");
+        uint16 packed = (uint16(uint8(raw[0])) << 8) | uint16(uint8(raw[1]));
+        return Swap2p.FiatCode.wrap(packed);
+    }
+
     function test_Gas_HappyPaths_Table() public {
         console.log("=== Gas report: Swap2p happy paths ===");
         _printHeader();
@@ -100,7 +107,7 @@ contract Swap2p_GasTest is Test {
 
         vm.prank(maker);
         g = gasleft();
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1e18, 500e18, "wire", "", address(0));
         g -= gasleft();
         _printRow("SELL:maker_makeOffer", g);
 
@@ -108,7 +115,7 @@ contract Swap2p_GasTest is Test {
         bytes32 sellDealId = _previewNextDealId(taker);
         vm.prank(taker);
         g = gasleft();
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, amount, Swap2p.FiatCode.wrap(840), 100e18, "wire", bytes("details"), address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, amount, _fiat("US"), 100e18, "wire", bytes("details"), address(0));
         g -= gasleft();
         _printRow("SELL:taker_requestOffer", g);
 
@@ -139,7 +146,7 @@ contract Swap2p_GasTest is Test {
         // BUY happy path
         vm.prank(maker);
         g = gasleft();
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1e18, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, _fiat("DE"), 100e18, 1e18, 500e18, "sepa", "", address(0));
         g -= gasleft();
         _printRow("BUY:maker_makeOffer", g);
 
@@ -147,7 +154,7 @@ contract Swap2p_GasTest is Test {
         bytes32 buyDealId = _previewNextDealId(taker);
         vm.prank(taker);
         g = gasleft();
-        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, amount, Swap2p.FiatCode.wrap(978), 100e18, "sepa", bytes("details"), partner);
+        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, amount, _fiat("DE"), 100e18, "sepa", bytes("details"), partner);
         g -= gasleft();
         _printRow("BUY:taker_requestOffer", g);
 

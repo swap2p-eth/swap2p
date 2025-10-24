@@ -5,9 +5,9 @@ import { useChainId } from "wagmi";
 import { formatUnits, getAddress } from "viem";
 
 import { useUser } from "@/context/user-context";
-import { getNetworkConfigForChain, type TokenConfig } from "@/config";
+import { getNetworkConfigForChain, FIAT_INFOS, type FiatInfo, type TokenConfig } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
-import { safeFiatCodeToString, toFiatCode } from "@/lib/fiat";
+import { decodeCountryCode, encodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import type { OfferRow } from "@/lib/types/market";
 import { SwapSide, type OfferWithKey } from "@/lib/swap2p/types";
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
@@ -23,7 +23,7 @@ interface OffersContextValue {
   };
   ensureMarket: (params: { side: "BUY" | "SELL"; fiat: string; force?: boolean }) => Promise<void>;
   tokens: TokenConfig[];
-  fiats: string[];
+  fiats: FiatInfo[];
   refresh: () => Promise<void>;
   refreshMakerOffers: () => Promise<void>;
   createOffer: (input: CreateOfferInput) => OfferRow;
@@ -34,7 +34,7 @@ interface OffersContextValue {
 interface CreateOfferInput {
   side: OfferRow["side"];
   token: string;
-  fiat: string;
+  countryCode: string;
   price: number;
   minAmount: number;
   maxAmount: number;
@@ -73,13 +73,16 @@ const mapOffer = (
   options: {
     tokenSymbol: string;
     tokenDecimals: number;
-    fiatCode: string;
-    fiatId: number;
   }
 ): OfferRow => {
   const { offer, key } = entry;
   const timestampMs = (offer.updatedAt ?? 0) * 1000;
-  const fiatLabel = safeFiatCodeToString(options.fiatId) || options.fiatCode;
+  const encoded = typeof offer.fiat === "number" ? offer.fiat : 0;
+  const decoded = decodeCountryCode(encoded);
+  const countryCode = decoded ? decoded.toUpperCase() : "";
+  const fiatInfo = getFiatInfoByCountry(countryCode);
+  const fiatLabel = fiatInfo?.shortLabel ?? (countryCode || "??");
+  const currencyCode = fiatInfo?.currencyCode ?? (countryCode || "");
   return {
     id: entry.id,
     side: toSideLabel(offer.side),
@@ -87,6 +90,8 @@ const mapOffer = (
     token: options.tokenSymbol,
     tokenDecimals: options.tokenDecimals,
     fiat: fiatLabel,
+    countryCode,
+    currencyCode,
     price: Number(offer.priceFiatPerToken) / PRICE_SCALE,
     minAmount: Number(formatUnits(offer.minAmount, options.tokenDecimals)),
     maxAmount: Number(formatUnits(offer.maxAmount, options.tokenDecimals)),
@@ -120,37 +125,30 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
   const fiatEntries = React.useMemo(
     () =>
-      network.fiats.flatMap(fiat => {
-        try {
-          return [
-            {
-              code: fiat.code.toUpperCase(),
-              value: toFiatCode(fiat.code),
-            },
-          ];
-        } catch (error) {
-          console.warn("[swap2p] skipped fiat code", fiat.code, error);
-          return [];
-        }
-      }),
-    [network.fiats],
+      FIAT_INFOS.map(info => ({
+        info,
+        value: encodeCountryCode(info.countryCode),
+      })),
+    [],
   );
 
   const fiatLookup = React.useMemo(() => {
-    const map = new Map<string, { code: string; value: number }>();
+    const map = new Map<string, { info: FiatInfo; value: number }>();
     for (const entry of fiatEntries) {
-      map.set(entry.code.toUpperCase(), entry);
+      map.set(entry.info.countryCode.toUpperCase(), entry);
     }
     return map;
   }, [fiatEntries]);
 
   const fiatCodes = React.useMemo(
-    () => fiatEntries.map(entry => entry.code),
+    () => fiatEntries.map(entry => entry.info.countryCode.toUpperCase()),
     [fiatEntries],
   );
 
+  const fiatInfos = React.useMemo(() => fiatEntries.map(entry => entry.info), [fiatEntries]);
+
   const defaultFiat = React.useMemo(
-    () => (fiatCodes[0] ?? "USD").toUpperCase(),
+    () => (fiatCodes[0] ?? "US").toUpperCase(),
     [fiatCodes],
   );
 
@@ -192,7 +190,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       force = false,
     }: {
       makerSide: SwapSide;
-      fiat: { code: string; value: number };
+      fiat: { info: FiatInfo; value: number };
       force?: boolean;
     }) => {
       if (!adapter) return;
@@ -218,15 +216,13 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
               mapOffer(entry, {
                 tokenSymbol: token.symbol,
                 tokenDecimals: token.decimals,
-                fiatCode: fiat.code,
-                fiatId: entry.offer.fiat,
               }),
             );
             cacheRef.current.set(key, { items: mapped, fetchedAt: Date.now() });
             console.debug("[OffersProvider] loadOffersFor", JSON.stringify({
               token: token.symbol,
               side: toSideLabel(makerSide),
-              fiat: fiat.code,
+              fiat: fiat.info.shortLabel,
               count: mapped.length,
             }));
           } catch (error) {
@@ -234,7 +230,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
               "[swap2p] failed to fetch offers",
               {
                 token: token.address,
-                fiat: fiat.code,
+                fiat: fiat.info.shortLabel,
                 side: toSideLabel(makerSide),
               },
               error,
@@ -273,12 +269,9 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           const tokenInfo = tokenConfigs.find(token => token.address.toLowerCase() === entry.key.token.toLowerCase());
           const tokenSymbol = tokenInfo?.symbol ?? entry.offer.token;
           const tokenDecimals = tokenInfo?.decimals ?? 18;
-          const fiatLabel = safeFiatCodeToString(entry.offer.fiat);
-          return mapOffer(entry, {
+                    return mapOffer(entry, {
             tokenSymbol,
             tokenDecimals,
-            fiatCode: fiatLabel,
-            fiatId: entry.offer.fiat,
           });
         });
         makerCacheRef.current = { items: mapped, fetchedAt: Date.now() };
@@ -320,12 +313,12 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       const fiatEntry = fiatLookup.get(normalizedFiat) ?? fallback;
       if (!fiatEntry) return;
       setActiveMarket(prev => {
-        if (prev.side === side && prev.fiat === fiatEntry.code) {
+        if (prev.side === side && prev.fiat === fiatEntry.info.countryCode) {
           console.debug("[OffersProvider] activeMarket unchanged", JSON.stringify(prev));
           return prev;
         }
-        console.debug("[OffersProvider] activeMarket update", JSON.stringify({ side, fiat: fiatEntry.code }));
-        return { side, fiat: fiatEntry.code };
+        console.debug("[OffersProvider] activeMarket update", JSON.stringify({ side, fiat: fiatEntry.info.countryCode }));
+        return { side, fiat: fiatEntry.info.countryCode };
       });
       if (!adapter) {
         setIsLoading(false);
@@ -342,7 +335,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       if (!needsFetch) {
         console.debug(
           "[OffersProvider] cache hit",
-          JSON.stringify({ makerSide: toSideLabel(makerSide), fiat: fiatEntry.code }),
+          JSON.stringify({ makerSide: toSideLabel(makerSide), fiat: fiatEntry.info.shortLabel }),
         );
         setIsLoading(false);
         return;
@@ -430,7 +423,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       }
     }
     for (const offer of draftOffers) {
-      if (offer.fiat.toUpperCase() !== fiatEntry.code.toUpperCase()) continue;
+      if (offer.countryCode.toUpperCase() !== fiatEntry.info.countryCode.toUpperCase()) continue;
       if (offer.side !== expectedSideLabel) continue;
       merged.set(offer.id, offer);
     }
@@ -438,9 +431,10 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
     console.debug("[OffersProvider] offers computed", JSON.stringify({
-      market: { side: activeMarket.side, fiat: activeMarket.fiat },
+      market: { side: activeMarket.side, fiat: fiatEntry.info.shortLabel },
       makerSide: expectedSideLabel,
       count: result.length,
+      cacheVersion,
     }));
     return result;
   }, [activeMarket, cacheVersion, draftOffers, tokenConfigs, fiatLookup, defaultFiat]);
@@ -449,7 +443,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     ({
       side,
       token,
-      fiat,
+      countryCode,
       price,
       minAmount,
       maxAmount,
@@ -458,12 +452,17 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     }: CreateOfferInput) => {
       const tokenInfo = tokenConfigs.find(item => item.symbol === token);
       const decimals = tokenInfo?.decimals ?? 18;
+      const normalizedCountry = countryCode.toUpperCase();
+      const fiatInfo = getFiatInfoByCountry(normalizedCountry);
       let contractFiatCode: number | undefined;
       try {
-        contractFiatCode = toFiatCode(fiat);
+        contractFiatCode = encodeCountryCode(normalizedCountry);
       } catch {
         contractFiatCode = undefined;
       }
+
+      const fiatLabel = fiatInfo?.shortLabel ?? normalizedCountry;
+      const currencyCode = fiatInfo?.currencyCode ?? normalizedCountry;
 
       const id = generateOfferId();
       const entry: OfferRow = {
@@ -472,7 +471,9 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         maker: address,
         token,
         tokenDecimals: decimals,
-        fiat,
+        fiat: fiatLabel,
+        countryCode: normalizedCountry,
+        currencyCode,
         price,
         minAmount,
         maxAmount,
@@ -526,7 +527,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       activeMarket,
       ensureMarket,
       tokens: tokenConfigs,
-      fiats: fiatCodes,
+      fiats: fiatInfos,
       refresh,
       refreshMakerOffers,
       createOffer,
@@ -541,7 +542,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       activeMarket,
       ensureMarket,
       tokenConfigs,
-      fiatCodes,
+      fiatInfos,
       refresh,
       refreshMakerOffers,
       createOffer,

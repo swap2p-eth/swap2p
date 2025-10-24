@@ -67,8 +67,8 @@ export function createOfferColumns(
       accessorKey: "fiat",
       header: "Fiat",
       cell: ({ row }) => {
-        const fiat = row.getValue<string>("fiat");
-        return <FiatSymbol code={fiat} />;
+        const offer = row.original as OfferRow;
+        return <FiatSymbol countryCode={offer.countryCode} label={offer.fiat} />;
       },
       size: 80,
       meta: {
@@ -79,7 +79,8 @@ export function createOfferColumns(
       accessorKey: "price",
       header: "Price",
       cell: ({ row }) => {
-        const fiat = (row.original as OfferRow).fiat;
+        const offer = row.original as OfferRow;
+        const fiat = offer.currencyCode;
         const price = Number(row.getValue("price"));
         return <PriceCell price={price} fiat={fiat} fractionDigits={{ min: 2, max: 3 }} />;
       },

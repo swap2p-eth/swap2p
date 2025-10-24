@@ -12,23 +12,23 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
     function test_Revert_MakerOffline_OnRequest() public {
         // maker is offline by default
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         vm.prank(taker);
         vm.expectRevert(Swap2p.MakerOffline.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, _fiat("US"), 100e18, "", bytes(""), address(0));
     }
 
     function test_WrongState_CancelRequest_AfterAccepted() public {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -45,13 +45,13 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, _fiat("DE"), 100e18, 1, 500e18, "sepa", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             "",
             "",
@@ -67,13 +67,13 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, _fiat("DE"), 100e18, 1, 500e18, "sepa", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             "",
             "",
@@ -96,15 +96,15 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
         swap.setOnline(true);
 
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1, 500e18, "wire", "", address(0));
         vm.prank(maker2);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1, 500e18, "wire", "", address(0));
 
         // remove last (depending on insertion order), here remove maker2 which should be last
         vm.prank(maker2);
-        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
+        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, _fiat("US"));
 
-        address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(keys.length, 1);
         assertEq(keys[0], maker);
     }
@@ -113,14 +113,14 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 15e18, 600e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 15e18, 600e18, "wire", "", address(0));
         (bytes32 predicted,) = swap.previewNextDealId(taker);
         bytes32 actual = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             15e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",

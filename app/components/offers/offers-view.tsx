@@ -21,7 +21,9 @@ import {
 import { RefreshCw } from "lucide-react";
 import { useUser } from "@/context/user-context";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-const DEFAULT_FIAT = "USD";
+import { type FiatInfo } from "@/config";
+
+const DEFAULT_COUNTRY = "US";
 
 interface OffersViewProps {
   onStartDeal?: (offer: OfferRow) => void;
@@ -100,14 +102,14 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
   }, [filtersReady, side, token, fiat, paymentMethod]);
 
   const defaultFiat = React.useMemo(
-    () => (fiats[0] ?? DEFAULT_FIAT).toUpperCase(),
+    () => (fiats[0]?.countryCode ?? DEFAULT_COUNTRY).toUpperCase(),
     [fiats],
   );
 
   const normalizedFiat = fiat.toUpperCase();
 
   React.useEffect(() => {
-    if (!fiats.includes(normalizedFiat)) {
+    if (!fiats.some(info => info.countryCode.toUpperCase() === normalizedFiat)) {
       setFiat(defaultFiat);
     }
   }, [fiats, normalizedFiat, defaultFiat]);
@@ -125,12 +127,10 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     return [ANY_FILTER_OPTION, ...symbols.sort((a, b) => a.localeCompare(b))];
   }, [tokens]);
 
-  const fiatOptions = React.useMemo(() => {
-    const unique = new Set(fiats.map(code => code.toUpperCase()));
-    const preferred = defaultFiat;
-    const sorted = Array.from(unique).sort((a, b) => a.localeCompare(b));
-    return [preferred, ...sorted.filter(option => option !== preferred)];
-  }, [fiats, defaultFiat]);
+  const fiatOptions = React.useMemo<FiatInfo[]>(() => {
+    const sorted = [...fiats].sort((a, b) => a.currencyCode.localeCompare(b.currencyCode) || a.countryName.localeCompare(b.countryName));
+    return sorted;
+  }, [fiats]);
 
   const columns = React.useMemo(() => {
     const hiddenAccessorKeys = new Set(["side", "fiat"]);
@@ -164,7 +164,7 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     if (!filtersReady) {
       return;
     }
-    if (!fiatOptions.includes(normalizedFiat)) {
+    if (!fiatOptions.some(option => option.countryCode.toUpperCase() === normalizedFiat)) {
       setFiat(defaultFiat);
     }
   }, [filtersReady, fiatOptions, normalizedFiat, defaultFiat]);
@@ -189,7 +189,7 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     return offers.filter(offer => {
       if (offer.side !== merchantSide) return false;
       if (token !== ANY_FILTER_OPTION && offer.token !== token) return false;
-      if (offer.fiat.toUpperCase() !== normalizedFiat) return false;
+      if (offer.countryCode.toUpperCase() !== normalizedFiat) return false;
       if (paymentMethod !== ANY_FILTER_OPTION) {
         const methods = offer.paymentMethods
           .split(",")
@@ -303,10 +303,10 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
                 </SelectTrigger>
                 <SelectContent>
                   {fiatOptions.map(option => (
-                    <SelectItem key={option} value={option}>
+                    <SelectItem key={option.countryCode} value={option.countryCode}>
                       <span className="flex items-center gap-2">
-                        <FiatFlag fiat={option} size={20} />
-                        {option}
+                        <FiatFlag fiat={option.countryCode} size={20} />
+                        {option.currencyCode} - {option.countryName}
                       </span>
                     </SelectItem>
                   ))}

@@ -81,16 +81,19 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
       }
     },
     {
-      accessorKey: "fiatCode",
+      accessorKey: "fiat",
       header: "Fiat",
       cell: ({ row }) => {
-        const fiat = row.getValue<string>("fiatCode");
         const deal = row.original as DealRow;
         const fiatAmount = resolveFiatAmount(deal);
-        if (fiatAmount !== null) {
-          return <FiatAmountCell fiat={fiat} amountLabel={formatFiatAmount(fiatAmount)} />;
-        }
-        return <FiatAmountCell fiat={fiat} amountLabel="—" />;
+        const amountLabel = fiatAmount !== null ? formatFiatAmount(fiatAmount) : "—";
+        return (
+          <FiatAmountCell
+            countryCode={deal.countryCode}
+            label={deal.fiat}
+            amountLabel={amountLabel}
+          />
+        );
       }
     },
     {

@@ -13,14 +13,14 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, minAmt, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, minAmt, 500e18, "wire", "", address(0));
     }
 
     function _setupBuyBasic(uint128 minAmt) internal {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, minAmt, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, _fiat("DE"), 100e18, minAmt, 500e18, "sepa", "", address(0));
     }
 
     // Covers modifier onlyMaker revert (line ~150)
@@ -31,7 +31,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -51,7 +51,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -69,7 +69,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         swap.setOnline(true);
         vm.prank(maker);
         // no offer created for this fiat/side -> should not revert
-        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
+        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, _fiat("US"));
     }
 
     // Same-address maker/taker requests are rejected.
@@ -77,7 +77,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongCaller.selector);
         swap.taker_requestOffer(
@@ -85,7 +85,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             1e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "wire",
             bytes(""),
@@ -102,7 +102,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             0,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -124,7 +124,7 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
             Swap2p.Side.BUY,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             "",
             "",

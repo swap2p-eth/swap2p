@@ -7,7 +7,7 @@ import { formatUnits, getAddress } from "viem";
 import { useUser } from "@/context/user-context";
 import { getNetworkConfigForChain } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
-import { safeFiatCodeToString } from "@/lib/fiat";
+import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import { normalizeAddress } from "@/lib/deal-utils";
 import type { DealRow, DealState } from "@/lib/types/market";
 import type { OfferRow } from "@/lib/types/market";
@@ -77,8 +77,13 @@ const toDealRow = (
 ): DealRow => {
   const amount = Number(formatUnits(deal.amount, options.tokenDecimals));
   const price = Number(deal.price) / PRICE_SCALE;
+  const encoded = typeof deal.fiat === "number" ? deal.fiat : 0;
+  const decoded = decodeCountryCode(encoded);
+  const countryCode = decoded ? decoded.toUpperCase() : "";
+  const fiatInfo = getFiatInfoByCountry(countryCode);
+  const fiatLabel = fiatInfo?.shortLabel ?? (countryCode || "??");
+  const currencyCode = fiatInfo?.currencyCode ?? (countryCode || "");
   const fiatAmount = Number.isFinite(price) ? price * amount : undefined;
-  const fiatCode = safeFiatCodeToString(deal.fiat);
   const updatedAtIso = new Date((deal.updatedAt ?? 0) * 1000 || Date.now()).toISOString();
   const normalizedUser = normalizeAddress(options.userAddress);
   const makerAddress = deal.maker;
@@ -97,7 +102,9 @@ const toDealRow = (
     contract: deal,
     side: toSideLabel(deal.side),
     amount,
-    fiatCode,
+    fiat: fiatLabel,
+    countryCode,
+    currencyCode,
     partner,
     state: stateMap[deal.state] ?? "REQUESTED",
     updatedAt: updatedAtIso,
@@ -224,18 +231,20 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         id,
         side: offer.side,
         amount,
-        fiatCode: offer.fiat,
+        fiat: offer.fiat,
+        countryCode: offer.countryCode,
+        currencyCode: offer.currencyCode,
         partner: null,
         state: "REQUESTED",
         updatedAt: now,
         maker: offer.maker,
-        taker: currentUserAddress,
+        taker: currentUserAddress ?? "",
         token: offer.token,
         tokenDecimals: offer.tokenDecimals,
         price: offer.price,
         fiatAmount: offer.price * amount,
-      paymentMethod,
-    };
+        paymentMethod,
+      };
       setDraftDeals(current => [entry, ...current]);
       return entry;
     },

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { getNetworkConfigForChain } from "@/config";
+import { FIAT_BY_COUNTRY, FIAT_INFOS, getNetworkConfigForChain } from "@/config";
 import { useOffers } from "./offers-provider";
 import { DealHeader } from "@/components/deals/deal-header";
 import { TokenIcon } from "@/components/token-icon";
@@ -62,6 +62,7 @@ export function OfferView({
 }: OfferViewProps) {
   const chainId = useChainId();
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
+  const defaultFiat = FIAT_INFOS[0]?.countryCode ?? "";
   const { offers, makerOffers, createOffer, updateOffer, removeOffer } = useOffers();
 
   const rawOfferId = React.useMemo(() => (typeof offerId === "string" ? offerId.trim() : ""), [offerId]);
@@ -87,7 +88,8 @@ export function OfferView({
 
   const [side, setSide] = React.useState<DealSide>(existingOffer?.side ?? "SELL");
   const [tokenSymbol, setTokenSymbol] = React.useState<string>(existingOffer?.token ?? network.tokens[0]?.symbol ?? "");
-  const [fiat, setFiat] = React.useState<string>(existingOffer?.fiat ?? network.fiats[0]?.code ?? "");
+  const [fiat, setFiat] = React.useState<string>(existingOffer?.countryCode ?? defaultFiat);
+  const selectedFiatInfo = React.useMemo(() => FIAT_BY_COUNTRY.get(fiat.toUpperCase()), [fiat]);
   const [price, setPrice] = React.useState(existingOffer ? String(existingOffer.price) : "");
   const [minAmount, setMinAmount] = React.useState(existingOffer ? String(existingOffer.minAmount) : "");
   const [maxAmount, setMaxAmount] = React.useState(existingOffer ? String(existingOffer.maxAmount) : "");
@@ -101,6 +103,12 @@ export function OfferView({
   const backLabel = "Back";
   const fallbackHash = returnHash ?? "offers";
 
+  React.useEffect(() => {
+    if (!fiat && FIAT_INFOS.length > 0) {
+      setFiat(FIAT_INFOS[0].countryCode);
+    }
+  }, [fiat]);
+
   const navigateBack = React.useCallback(() => {
     if (onCancel) {
       onCancel();
@@ -113,7 +121,7 @@ export function OfferView({
     if (isEdit && existingOffer) {
       setSide(existingOffer.side);
       setTokenSymbol(existingOffer.token);
-      setFiat(existingOffer.fiat);
+      setFiat(existingOffer.countryCode);
       setPrice(String(existingOffer.price));
       setMinAmount(String(existingOffer.minAmount));
       setMaxAmount(String(existingOffer.maxAmount));
@@ -128,7 +136,7 @@ export function OfferView({
   React.useEffect(() => {
     if (!isEdit) {
       setTokenSymbol(network.tokens[0]?.symbol ?? "");
-      setFiat(network.fiats[0]?.code ?? "");
+      setFiat(defaultFiat);
       setPrice("");
       setMinAmount("");
       setMaxAmount("");
@@ -138,7 +146,7 @@ export function OfferView({
       setError(null);
       setSuccessState(null);
     }
-  }, [network, isEdit]);
+  }, [network, isEdit, defaultFiat]);
 
   React.useEffect(() => {
     if (!isEdit) {
@@ -148,10 +156,11 @@ export function OfferView({
   }, [fiat, isEdit]);
 
   const paymentMethodOptions = React.useMemo<PaymentMethodOption[]>(() => {
-    const base = network.paymentMethods[fiat] ?? [];
+    const currencyKey = selectedFiatInfo?.currencyCode ?? "";
+    const base = network.paymentMethods[currencyKey] ?? [];
     const extra = selectedMethods.filter(method => !base.includes(method));
     return [...base, ...extra].map(method => ({ id: method, label: method }));
-  }, [network, fiat, selectedMethods]);
+  }, [network, selectedFiatInfo, selectedMethods]);
 
   const tokenLabel = (tokenSymbol || "token").toUpperCase();
 
@@ -182,6 +191,11 @@ export function OfferView({
 
     if (!tokenSymbol) {
       setError("Select a token to continue.");
+      return;
+    }
+
+    if (!selectedFiatInfo) {
+      setError("Select a fiat currency to continue.");
       return;
     }
 
@@ -234,7 +248,7 @@ export function OfferView({
     const created = createOffer({
       side,
       token: tokenSymbol,
-      fiat,
+      countryCode: fiat,
       price: parsedPrice,
       minAmount: parsedMin,
       maxAmount: parsedMax,
@@ -265,13 +279,7 @@ export function OfferView({
     return symbols;
   }, [network, isEdit, existingOffer]);
 
-  const fiatOptions = React.useMemo(() => {
-    const codes = network.fiats.map(item => item.code);
-    if (isEdit && existingOffer && !codes.includes(existingOffer.fiat)) {
-      return [existingOffer.fiat, ...codes];
-    }
-    return codes;
-  }, [network, isEdit, existingOffer]);
+  const fiatOptions = React.useMemo(() => FIAT_INFOS, []);
 
   if (hasInvalidOfferId) {
     return (
@@ -362,11 +370,11 @@ export function OfferView({
                     <SelectValue placeholder="Select fiat" />
                   </SelectTrigger>
                   <SelectContent>
-                    {fiatOptions.map(code => (
-                      <SelectItem key={code} value={code}>
+                    {fiatOptions.map(option => (
+                      <SelectItem key={option.countryCode} value={option.countryCode}>
                         <span className="flex items-center gap-2">
-                          <FiatFlag fiat={code} size={18} />
-                          {code}
+                          <FiatFlag fiat={option.countryCode} size={18} />
+                          {option.currencyCode} - {option.countryName}
                         </span>
                       </SelectItem>
                     ))}
@@ -377,7 +385,7 @@ export function OfferView({
 
             <section className="space-y-3">
               <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
-                Quoted price ({fiat})
+                Quoted price ({selectedFiatInfo?.currencyCode ?? (fiat || "—")})
               </label>
               <Input
                 value={price}
@@ -386,7 +394,9 @@ export function OfferView({
                 placeholder="e.g. 1.01"
                 className="rounded-full"
               />
-              <p className="text-xs text-muted-foreground">Price per token unit in {fiat}.</p>
+              <p className="text-xs text-muted-foreground">
+                Price per token unit in {selectedFiatInfo?.currencyCode ?? (fiat || "selected currency")}.
+              </p>
             </section>
 
             <section className="grid gap-6 md:grid-cols-2">
@@ -419,7 +429,7 @@ export function OfferView({
             <section className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
                 <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
-                  Payment methods ({fiat || "select fiat"})
+                  Payment methods ({selectedFiatInfo?.currencyCode ?? "select fiat"})
                 </label>
                 <div className="grid gap-2 rounded-3xl border border-border/60 bg-background/60 p-4">
                   {paymentMethodOptions.length === 0 ? (

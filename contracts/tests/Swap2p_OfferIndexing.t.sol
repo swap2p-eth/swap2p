@@ -231,20 +231,20 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
 
         // same token/side/fiat, three makers
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1, 500e18, "wire", "", address(0));
         vm.prank(maker2);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1, 500e18, "wire", "", address(0));
         vm.prank(maker3);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1, 500e18, "wire", "", address(0));
 
-        address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(keys.length, 3);
 
         // delete middle maker2
         vm.prank(maker2);
-        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
+        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, _fiat("US"));
 
-        keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(keys.length, 2);
         // remaining are maker and maker3 (order may have maker3 swapped into middle)
         assertTrue((keys[0] == maker && keys[1] == maker3) || (keys[0] == maker3 && keys[1] == maker));
@@ -253,14 +253,14 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
     function test_OfferDeletion_AllowsNewRequests() public {
         // create offer
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 10e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 10e18, 500e18, "wire", "", address(0));
         // request amount 50
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             50e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -268,16 +268,16 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         );
         // delete offer before cancel
         vm.prank(maker);
-        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
+        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, _fiat("US"));
         // cancel request
         vm.prank(taker);
         swap.cancelRequest(dealId, bytes(""));
         // new offer can still accept the same amount
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 10e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 10e18, 500e18, "wire", "", address(0));
         // requesting again should succeed without additional bookkeeping
         vm.prank(taker);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 50e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 50e18, _fiat("US"), 100e18, "", bytes(""), address(0));
     }
 
     function test_ListOffers_ReturnsOfferInfoWithIds() public {
@@ -285,11 +285,11 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.setOnline(true);
         (bytes32 predicted,) = swap.previewNextOfferId(maker);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 200e18, 5e18, 600e18, "sepa", "", address(0));
-        bytes32 storedId = _offerId(address(token), maker, Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, _fiat("DE"), 200e18, 5e18, 600e18, "sepa", "", address(0));
+        bytes32 storedId = _offerId(address(token), maker, Swap2p.Side.BUY, _fiat("DE"));
         assertEq(storedId, predicted, "offer id should match preview");
 
-        Swap2p.OfferInfo[] memory items = swap.listOffers(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978));
+        Swap2p.OfferInfo[] memory items = swap.listOffers(address(token), Swap2p.Side.BUY, _fiat("DE"));
         assertEq(items.length, 1);
         assertEq(items[0].id, storedId);
         assertEq(items[0].maker, maker);
@@ -315,7 +315,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             101e18,
             50e18,
             2_000e18,
@@ -324,7 +324,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.BUY,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             99e18,
             25e18,
             1_500e18,
@@ -335,7 +335,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             102e18,
             40e18,
             1_800e18,
@@ -344,15 +344,15 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             20e18,
             1_200e18,
             "swift", "", address(0));
 
         // verify market indexes
-        assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840)), 2);
-        address[] memory usdMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, _fiat("US")), 2);
+        address[] memory usdMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdMakers.length, 2);
         bool seenMakerA;
         bool seenMakerB;
@@ -361,18 +361,18 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             if (usdMakers[i] == makerB) seenMakerB = true;
         }
         assertTrue(seenMakerA && seenMakerB);
-        bytes32[] memory usdIds = swap.getMarketOfferIds(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        bytes32[] memory usdIds = swap.getMarketOfferIds(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdIds.length, 2);
-        Swap2p.OfferInfo[] memory usdInfos = swap.getMarketOffers(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        Swap2p.OfferInfo[] memory usdInfos = swap.getMarketOffers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdInfos.length, 2);
         for (uint256 i; i < usdInfos.length; i++) {
             assertEq(uint8(usdInfos[i].offer.side), uint8(Swap2p.Side.SELL));
-            assertEq(Swap2p.FiatCode.unwrap(usdInfos[i].offer.fiat), Swap2p.FiatCode.unwrap(Swap2p.FiatCode.wrap(840)));
+            assertEq(Swap2p.FiatCode.unwrap(usdInfos[i].offer.fiat), Swap2p.FiatCode.unwrap(_fiat("US")));
             assertTrue(usdInfos[i].maker == maker || usdInfos[i].maker == makerB);
         }
 
-        assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(978)), 1);
-        address[] memory eurMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(978), 0, 10);
+        assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, _fiat("DE")), 1);
+        address[] memory eurMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("DE"), 0, 10);
         assertEq(eurMakers.length, 1);
         assertEq(eurMakers[0], makerC);
 
@@ -383,18 +383,18 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
 
         // delete makerB's USD offer and maker's EUR BUY offer
         vm.prank(makerB);
-        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
+        swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, _fiat("US"));
         vm.prank(maker);
-        swap.maker_deleteOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978));
+        swap.maker_deleteOffer(address(token), Swap2p.Side.BUY, _fiat("DE"));
 
         // USD market should retain only maker
-        assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840)), 1);
-        usdMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, _fiat("US")), 1);
+        usdMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdMakers.length, 1);
         assertEq(usdMakers[0], maker);
-        usdIds = swap.getMarketOfferIds(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
+        usdIds = swap.getMarketOfferIds(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdIds.length, 1);
-        assertEq(swap.getMarketOffers(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10)[0].maker, maker);
+        assertEq(swap.getMarketOffers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10)[0].maker, maker);
 
         // maker now has only one offer remaining
         assertEq(swap.getMakerOfferCount(maker), 1);
@@ -415,12 +415,12 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             101e18,
             50e18,
             2_000e18,
             "wire", "KYC + selfie", address(0));
-        bytes32 activeOffer = _offerId(address(token), maker, Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
+        bytes32 activeOffer = _offerId(address(token), maker, Swap2p.Side.SELL, _fiat("US"));
 
         // Deal 1: taker requests, flow completes to RELEASED
         bytes32 deal1 = _requestDealDefault(
@@ -428,7 +428,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             200e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             101e18,
             "",
             "",
@@ -457,7 +457,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             150e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             101e18,
             "",
             "",
@@ -480,7 +480,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             120e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             101e18,
             "",
             "",
@@ -552,9 +552,9 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         takersList[1] = taker2;
 
         Market[] memory marketsList = new Market[](3);
-        marketsList[0] = Market({token: address(token), side: Swap2p.Side.SELL, fiat: Swap2p.FiatCode.wrap(840)});
-        marketsList[1] = Market({token: address(token), side: Swap2p.Side.BUY, fiat: Swap2p.FiatCode.wrap(978)});
-        marketsList[2] = Market({token: address(token), side: Swap2p.Side.SELL, fiat: Swap2p.FiatCode.wrap(826)});
+        marketsList[0] = Market({token: address(token), side: Swap2p.Side.SELL, fiat: _fiat("US")});
+        marketsList[1] = Market({token: address(token), side: Swap2p.Side.BUY, fiat: _fiat("DE")});
+        marketsList[2] = Market({token: address(token), side: Swap2p.Side.SELL, fiat: _fiat("GB")});
 
         // bootstrap offers for each maker/market combination
         for (uint256 i; i < makersList.length; i++) {

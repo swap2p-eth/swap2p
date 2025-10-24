@@ -87,13 +87,20 @@ contract Swap2pEchidnaHarness {
     mapping(bytes32 => bool) private _dealTracked;
     uint256 private _dealCursor;
 
+    function _fiat(string memory code) private pure returns (Swap2p.FiatCode) {
+        bytes memory raw = bytes(code);
+        require(raw.length == 2, "iso2");
+        uint16 packed = (uint16(uint8(raw[0])) << 8) | uint16(uint8(raw[1]));
+        return Swap2p.FiatCode.wrap(packed);
+    }
+
     constructor() {
         swap = new Swap2p(address(this));
         token = new MintableERC20("MockToken", "MCK");
 
-        markets.push(Market({tokenAddr: address(token), side: Swap2p.Side.SELL, fiat: Swap2p.FiatCode.wrap(840)}));
-        markets.push(Market({tokenAddr: address(token), side: Swap2p.Side.BUY, fiat: Swap2p.FiatCode.wrap(978)}));
-        markets.push(Market({tokenAddr: address(token), side: Swap2p.Side.SELL, fiat: Swap2p.FiatCode.wrap(826)}));
+        markets.push(Market({tokenAddr: address(token), side: Swap2p.Side.SELL, fiat: _fiat("US")}));
+        markets.push(Market({tokenAddr: address(token), side: Swap2p.Side.BUY, fiat: _fiat("DE")}));
+        markets.push(Market({tokenAddr: address(token), side: Swap2p.Side.SELL, fiat: _fiat("GB")}));
 
         for (uint256 i; i < 3; i++) {
             ActorProxy proxy = new ActorProxy(swap, token);

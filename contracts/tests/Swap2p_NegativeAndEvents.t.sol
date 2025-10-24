@@ -21,11 +21,11 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
         vm.stopPrank();
 
         vm.prank(maker);
-        swap.maker_makeOffer(address(ft), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(ft), Swap2p.Side.SELL, _fiat("US"), 100e18, 1e18, 500e18, "wire", "", address(0));
 
         vm.prank(taker);
         vm.expectRevert(Swap2p.FeeOnTransferTokenNotSupported.selector);
-        swap.taker_requestOffer(address(ft), Swap2p.Side.SELL, maker, 100e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
+        swap.taker_requestOffer(address(ft), Swap2p.Side.SELL, maker, 100e18, _fiat("US"), 100e18, "", bytes(""), address(0));
     }
 
     function test_Revert_FeeOnTransfer_OnRequest_BUY() public {
@@ -36,30 +36,30 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
         vm.stopPrank();
 
         vm.prank(maker);
-        swap.maker_makeOffer(address(ft), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1e18, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(ft), Swap2p.Side.BUY, _fiat("DE"), 100e18, 1e18, 500e18, "sepa", "", address(0));
 
         vm.prank(taker);
         vm.expectRevert(Swap2p.FeeOnTransferTokenNotSupported.selector);
-        swap.taker_requestOffer(address(ft), Swap2p.Side.BUY, maker, 100e18, Swap2p.FiatCode.wrap(978), 100e18, "", bytes(""), address(0));
+        swap.taker_requestOffer(address(ft), Swap2p.Side.BUY, maker, 100e18, _fiat("DE"), 100e18, "", bytes(""), address(0));
     }
 
     // --- Price guards (WorsePrice) ---
     function test_Revert_WorsePrice_SELL_WhenOfferPriceHigherThanExpected() public {
         // Offer price = 100; expected = 99 -> revert
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100, 1, 500e18, "wire", "", address(0));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WorsePrice.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 99, "", bytes(""), address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, _fiat("US"), 99, "", bytes(""), address(0));
     }
 
     function test_Revert_WorsePrice_BUY_WhenOfferPriceLowerThanExpected() public {
         // Offer price = 100; expected = 101 -> revert
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100, 1, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, _fiat("DE"), 100, 1, 500e18, "sepa", "", address(0));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WorsePrice.selector);
-        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 101, "", bytes(""), address(0));
+        swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, _fiat("DE"), 101, "", bytes(""), address(0));
     }
 
     // Note: Event expectations via emit can break Hardhat coverage. We validate

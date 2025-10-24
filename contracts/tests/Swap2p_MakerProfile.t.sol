@@ -16,7 +16,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             1e18,
             500e18,
@@ -25,7 +25,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             address(token),
             maker,
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840)
+            _fiat("US")
         );
         Swap2p.OfferInfo memory usdInfo = swap.getOfferById(usdOffer);
         assertEq(usdInfo.offer.requirements, "KYC + selfie");
@@ -35,7 +35,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             1e18,
             500e18,
@@ -48,7 +48,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             1e18,
             500e18,
@@ -57,7 +57,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             address(token),
             maker,
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(978)
+            _fiat("DE")
         );
         Swap2p.OfferInfo memory eurInfo = swap.getOfferById(eurOffer);
         assertEq(eurInfo.offer.requirements, "passport only");
@@ -107,7 +107,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             1e18,
             500e18,
@@ -117,7 +117,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             20e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -132,7 +132,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.BUY,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             1e18,
             500e18,
@@ -142,7 +142,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.BUY,
             maker,
             15e18,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             "",
             "",
@@ -159,7 +159,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             1e18,
             500e18,
@@ -169,7 +169,7 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             25e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",

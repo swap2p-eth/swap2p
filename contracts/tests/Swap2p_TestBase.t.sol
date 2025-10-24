@@ -20,8 +20,8 @@ contract Swap2p_TestBase is Test {
         partner = makeAddr("partner");
         author = address(this);
 
-        swap = new Swap2p(author);
-        token = new MintableERC20("Mock", "MCK");
+    swap = new Swap2p(author);
+    token = new MintableERC20("Mock", "MCK");
 
         // Mint balances
         token.mint(maker, 1e24);
@@ -71,6 +71,13 @@ contract Swap2p_TestBase is Test {
         Swap2p.FiatCode fiat_
     ) internal view returns (bytes32) {
         return swap.getOfferId(token_, maker_, side_, fiat_);
+    }
+
+    function _fiat(string memory code) internal pure returns (Swap2p.FiatCode) {
+        bytes memory raw = bytes(code);
+        require(raw.length == 2, "fiat code must be 2 chars");
+        uint16 packed = (uint16(uint8(raw[0])) << 8) | uint16(uint8(raw[1]));
+        return Swap2p.FiatCode.wrap(packed);
     }
 
     function _requestDealAs(

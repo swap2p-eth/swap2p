@@ -9,6 +9,8 @@ export interface OfferRow {
   token: string;
   tokenDecimals: number;
   fiat: string;
+  countryCode: string;
+  currencyCode: string;
   price: number;
   minAmount: number;
   maxAmount: number;
@@ -25,7 +27,9 @@ export interface DealRow {
   id: string;
   side: DealSide;
   amount: number;
-  fiatCode: string;
+  fiat: string;
+  countryCode: string;
+  currencyCode: string;
   partner: string | null;
   state: DealState;
   updatedAt: string;

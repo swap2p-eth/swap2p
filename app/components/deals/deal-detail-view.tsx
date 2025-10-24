@@ -80,7 +80,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const tokenDecimals = deal.tokenDecimals ?? 4;
   const tokenAmountValue = formatTokenAmount(deal.amount, tokenDecimals);
   const fiatAmountFormatted = fiatAmount ? formatFiatAmount(fiatAmount) : null;
-  const metaFiatLabel = fiatAmountFormatted ? `≈ ${fiatAmountFormatted}` : "—";
+  const metaFiatLabel = fiatAmountFormatted ? `≈ ${fiatAmountFormatted} ${deal.currencyCode}` : "—";
 
   const counterpartyLabel = isMaker ? "Client" : "Merchant";
   const counterpartyAddress = isMaker ? deal.taker : deal.maker;
@@ -115,10 +115,12 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     userActionDescription: `You ${userAction} crypto`,
     tokenSymbol: deal.token,
     tokenAmountLabel: tokenAmountValue,
-    fiatSymbol: deal.fiatCode,
+    countryCode: deal.countryCode,
+    fiatLabel: deal.fiat,
+    fiatSymbol: deal.currencyCode,
     fiatAmountLabel: metaFiatLabel,
     priceValue: priceValue ? (
-      <PriceMetaValue priceLabel={priceValue} fiatSymbol={deal.fiatCode} tokenSymbol={deal.token} />
+      <PriceMetaValue priceLabel={priceValue} fiatSymbol={deal.currencyCode} tokenSymbol={deal.token} />
     ) : undefined
   });
 

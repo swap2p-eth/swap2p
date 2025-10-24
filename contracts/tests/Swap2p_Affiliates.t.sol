@@ -13,14 +13,14 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
 
     function test_SelfPartnerIgnored() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealAs(
             taker,
             address(token),
             Swap2p.Side.SELL,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -33,7 +33,7 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
 
     function test_Partner_BindsOnce() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, _fiat("DE"), 100e18, 1, 500e18, "sepa", "", address(0));
 
         // first request binds partner
         bytes32 firstDeal = _requestDealDefault(
@@ -41,7 +41,7 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
             Swap2p.Side.BUY,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             "",
             "",
@@ -54,7 +54,7 @@ contract Swap2p_AffiliatesTest is Swap2p_TestBase {
             Swap2p.Side.BUY,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             "",
             "",

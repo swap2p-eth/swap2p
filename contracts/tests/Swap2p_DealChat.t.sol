@@ -15,7 +15,7 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             1,
             500e18,
@@ -25,7 +25,7 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             50e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "wire",
             "",

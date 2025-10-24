@@ -12,13 +12,13 @@ contract Swap2p_ChatEventsTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.setOnline(true);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",

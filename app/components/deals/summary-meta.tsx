@@ -45,16 +45,18 @@ export function createTokenMetaItem({
 
 export function createFiatMetaItem({
   id = "fiat",
-  fiat,
+  countryCode,
+  label,
   amountLabel
 }: {
   id?: string;
-  fiat: string;
+  countryCode: string;
+  label: string;
   amountLabel: string;
 }): SummaryMetaItem {
   return {
     id,
     label: "Fiat",
-    value: <FiatAmountCell fiat={fiat} amountLabel={amountLabel} />
+    value: <FiatAmountCell countryCode={countryCode} label={label} amountLabel={amountLabel} />
   };
 }

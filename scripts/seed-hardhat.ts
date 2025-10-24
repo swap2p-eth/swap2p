@@ -14,36 +14,21 @@ import {
 
 const { network, artifacts } = hardhat;
 
-export function toFiatCode(code: string): number {
-  const s = code.trim().toUpperCase();
-  if (s.length !== 3) throw new Error("Fiat code must be 3 characters");
-  const c0 = s.charCodeAt(0), c1 = s.charCodeAt(1), c2 = s.charCodeAt(2);
-  // Разрешаем только A-Z (ISO 4217 использует верхний регистр)
-  if (
-      c0 < 65 || c0 > 90 ||
-      c1 < 65 || c1 > 90 ||
-      c2 < 65 || c2 > 90
-  ) {
-    throw new Error("Fiat code must be A-Z letters (e.g., 'USD')");
+export function toCountryCode(code: string): number {
+  const value = code.trim().toUpperCase();
+  if (value.length !== 2) {
+    throw new Error("Country code must contain exactly 2 characters, received \"" + code + "\"");
   }
-  return c0 * 0x10000 + c1 * 0x100 + c2; // 0..0xFFFFFF
+  const c0 = value.charCodeAt(0);
+  const c1 = value.charCodeAt(1);
+  if (c0 < 65 || c0 > 90 || c1 < 65 || c1 > 90) {
+    throw new Error("Country code must be A-Z letters (e.g., 'US'), received \"" + code + "\"");
+  }
+  return (c0 << 8) | c1;
 }
 
-/**
- * 0x55_53_44 -> "USD"
- */
-export function fiatCodeToString(u24: number): string {
-  if (!Number.isInteger(u24) || u24 < 0 || u24 > 0xFFFFFF) {
-    throw new Error("Value must be an integer in range 0..0xFFFFFF");
-  }
-  const c0 = Math.floor(u24 / 0x10000) & 0xFF;
-  const c1 = Math.floor(u24 / 0x100) & 0xFF;
-  const c2 = u24 & 0xFF;
-  return String.fromCharCode(c0, c1, c2);
-}
-
-const USD = toFiatCode('USD');
-const THB = toFiatCode('THB');
+const US = toCountryCode("US");
+const TH = toCountryCode("TH");
 
 const makerProfiles = [
   {
@@ -70,7 +55,7 @@ const tokenConfigs = [
     takerMint: "12",
     offers: {
       sell: {
-        fiat: USD,
+        fiat: US,
         price: 68_350_000n,
         min: "0.01",
         max: "2.5",
@@ -78,7 +63,7 @@ const tokenConfigs = [
         requirements: "Video KYC, proof of funds",
       },
       buy: {
-        fiat: THB,
+        fiat: TH,
         price: 2_420_000_000n,
         min: "0.01",
         max: "1.5",
@@ -96,7 +81,7 @@ const tokenConfigs = [
     takerMint: "120000",
     offers: {
       sell: {
-        fiat: USD,
+        fiat: US,
         price: 100_050n,
         min: "10",
         max: "15000",
@@ -104,7 +89,7 @@ const tokenConfigs = [
         requirements: "Name match with bank account",
       },
       buy: {
-        fiat: THB,
+        fiat: TH,
         price: 3_560_000n,
         min: "10",
         max: "12000",
@@ -122,7 +107,7 @@ const tokenConfigs = [
     takerMint: "110000",
     offers: {
       sell: {
-        fiat: USD,
+        fiat: US,
         price: 100_000n,
         min: "50",
         max: "20000",
@@ -130,7 +115,7 @@ const tokenConfigs = [
         requirements: "US resident with KYC",
       },
       buy: {
-        fiat: THB,
+        fiat: TH,
         price: 3_480_000n,
         min: "50",
         max: "18000",
@@ -148,7 +133,7 @@ const tokenConfigs = [
     takerMint: "120",
     offers: {
       sell: {
-        fiat: USD,
+        fiat: US,
         price: 3_320_000n,
         min: "0.05",
         max: "20",
@@ -156,7 +141,7 @@ const tokenConfigs = [
         requirements: "Company docs + compliance call",
       },
       buy: {
-        fiat: THB,
+        fiat: TH,
         price: 120_500_000n,
         min: "0.05",
         max: "18",

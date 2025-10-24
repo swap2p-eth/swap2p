@@ -14,7 +14,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /// - No admin/owner: protocol economics are encoded; fees are distributed automatically.
 ///
 /// Core flow
-/// 1) Maker publishes an offer (token, side BUY/SELL, price, amount bounds).
+/// 1) Maker publishes an offer (token, side BUY/SELL, price, amount bounds, ISO country code).
 /// 2) Taker requests: deposit is pulled (BUY: 2×amount, SELL: 1×amount).
 /// 3) Maker accepts: maker deposit is pulled (BUY: 1×amount, SELL: 2×amount). State → ACCEPTED.
 /// 4) Fiat payer calls markFiatPaid (BUY: maker; SELL: taker). State → PAID.
@@ -50,7 +50,7 @@ contract Swap2p is ReentrancyGuard {
     uint32 private constant FEE_BPS              = 50;    // 0.50%
     uint32 private constant TAKER_AFF_SHARE_BP   = 2000;  // 20% of protocol fee goes to taker affiliate
     uint32 private constant MAKER_AFF_SHARE_BP   = 3000;  // 30% of protocol fee goes to maker affiliate
-    type   FiatCode is uint24;
+    type   FiatCode is uint16;
 
     enum Side { BUY, SELL }
     enum DealState { NONE, REQUESTED, ACCEPTED, PAID, RELEASED, CANCELED }
@@ -64,7 +64,7 @@ contract Swap2p is ReentrancyGuard {
         uint128  maxAmt;
         uint96   priceFiatPerToken;   // fiat/token price ratio
         uint40   ts;                  // last update timestamp
-        FiatCode fiat;
+        FiatCode fiat;                // ISO 3166-1 alpha-2 country code
         Side     side;
         address  token;               // ERC20 token address
         address  maker;
@@ -437,7 +437,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Creates/updates an offer for the caller (maker).
     /// @param token ERC20 token address.
     /// @param s Side (BUY/SELL).
-    /// @param f Fiat code (uint24).
+    /// @param f ISO 3166-1 alpha-2 country code (uint16).
     /// @param price Fiat per token price (unit is UI-defined).
     /// @param minAmt Minimum per-request amount.
     /// @param maxAmt Maximum per-request amount.

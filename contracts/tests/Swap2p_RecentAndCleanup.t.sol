@@ -18,13 +18,13 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
     function test_Recent_OnCancelRequest_BothSides() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -43,13 +43,13 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
     function test_Recent_OnCancelDeal_SellAndBuy() public {
         // SELL: taker cancels after accept
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         bytes32 sellDeal = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             5e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -64,13 +64,13 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
         // BUY: maker cancels after accept
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, _fiat("DE"), 100e18, 1, 500e18, "sepa", "", address(0));
         bytes32 buyDeal = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,
             maker,
             6e18,
-            Swap2p.FiatCode.wrap(978),
+            _fiat("DE"),
             100e18,
             "",
             "",
@@ -86,13 +86,13 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
     function test_Recent_OnRelease_BothSides() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             7e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -114,13 +114,13 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
     function test_Cleanup_RevertBelow48() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             8e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -137,13 +137,13 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
     function test_Cleanup_MixedStates() public {
         // A: canceled, old enough -> should be deleted
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealA = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             9e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -155,13 +155,13 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
         // B: released, but not old enough -> should stay
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealB = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -177,13 +177,13 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
 
         // C: accepted (wrong state) -> should be ignored
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1, 500e18, "wire", "", address(0));
         bytes32 dealC = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             11e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -217,7 +217,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
     function test_Cleanup_SameMakerTaker() public {
         // maker == taker should never reach REQUESTED state
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 0, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 0, 500e18, "wire", "", address(0));
         vm.prank(maker);
         vm.expectRevert(Swap2p.WrongCaller.selector);
         swap.taker_requestOffer(
@@ -225,7 +225,7 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             maker,
             0,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             bytes(""),

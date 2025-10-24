@@ -21,13 +21,13 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
         vm.warp(block.timestamp + 100);
         // create offer for SELL
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1e18, 500e18, "wire", "", address(0));
         _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
@@ -39,13 +39,13 @@ contract Swap2p_ActivityTest is Swap2p_TestBase {
 
     function test_LastActivity_OnAccept_Cancel_Pay_Release_And_Messages() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 100e18, 1e18, 500e18, "wire", "", address(0));
         bytes32 dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
             maker,
             10e18,
-            Swap2p.FiatCode.wrap(840),
+            _fiat("US"),
             100e18,
             "",
             "",
