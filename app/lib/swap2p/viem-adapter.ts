@@ -187,26 +187,25 @@ const mapOfferStruct = (raw: any): Offer | null => {
   if (maxAmt === undefined) return null;
   const maxBigInt = toBigInt(maxAmt);
   if (maxBigInt === ZERO) return null;
-  const token = raw.token ?? raw[7] ?? "0x0000000000000000000000000000000000000000";
-  const maker = raw.maker ?? raw[8] ?? "0x0000000000000000000000000000000000000000";
-  const fiat = raw.fiat ?? raw[5] ?? 0;
-  const side = raw.side ?? raw[6] ?? SwapSide.BUY;
+  const token = raw.token ?? raw[6] ?? "0x0000000000000000000000000000000000000000";
+  const maker = raw.maker ?? raw[7] ?? "0x0000000000000000000000000000000000000000";
+  const fiat = raw.fiat ?? raw[4] ?? 0;
+  const side = raw.side ?? raw[5] ?? SwapSide.BUY;
   return {
     minAmount: toBigInt(raw.minAmt ?? raw[0] ?? 0),
     maxAmount: maxBigInt,
-    reserve: toBigInt(raw.reserve ?? raw[2] ?? 0),
-    priceFiatPerToken: toBigInt(raw.priceFiatPerToken ?? raw[3] ?? 0),
+    priceFiatPerToken: toBigInt(raw.priceFiatPerToken ?? raw[2] ?? 0),
     fiat: toNumber(fiat),
     side: toSide(side),
     token: getAddress(token),
-    paymentMethods: raw.paymentMethods ?? raw[9] ?? "",
+    paymentMethods: raw.paymentMethods ?? raw[8] ?? "",
     requirements:
       raw.requirements !== undefined
         ? String(raw.requirements)
-        : raw[10] !== undefined
-        ? String(raw[10])
+        : raw[9] !== undefined
+        ? String(raw[9])
         : "",
-    updatedAt: toNumber(raw.ts ?? raw[4] ?? 0),
+    updatedAt: toNumber(raw.ts ?? raw[3] ?? 0),
     maker: getAddress(maker),
   };
 };
@@ -633,14 +632,12 @@ const readDealStruct = async (id: Hex) => {
         side,
         fiat,
         price,
-        reserve,
         minAmount,
-      maxAmount,
-      paymentMethods,
-      requirements,
-      comment,
-      partner,
-    } = args;
+        maxAmount,
+        paymentMethods,
+        requirements,
+        partner,
+      } = args;
       const sender = withAccount(account);
       const signer = ensureWalletClient(walletClient, "maker_makeOffer");
       if (!sender) {
@@ -659,14 +656,10 @@ const readDealStruct = async (id: Hex) => {
           side,
           fiat,
           price,
-          reserve,
           minAmount,
           maxAmount,
-          {
-            paymentMethods,
-            requirements: requirements ?? "",
-            comment: comment ?? "",
-          },
+          paymentMethods,
+          requirements ?? "",
           partnerAddress,
         ] as const,
         sender,

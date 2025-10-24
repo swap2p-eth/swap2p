@@ -89,7 +89,6 @@ export function OfferView({
   const [tokenSymbol, setTokenSymbol] = React.useState<string>(existingOffer?.token ?? network.tokens[0]?.symbol ?? "");
   const [fiat, setFiat] = React.useState<string>(existingOffer?.fiat ?? network.fiats[0]?.code ?? "");
   const [price, setPrice] = React.useState(existingOffer ? String(existingOffer.price) : "");
-  const [reserve, setReserve] = React.useState(existingOffer ? String(existingOffer.reserve) : "");
   const [minAmount, setMinAmount] = React.useState(existingOffer ? String(existingOffer.minAmount) : "");
   const [maxAmount, setMaxAmount] = React.useState(existingOffer ? String(existingOffer.maxAmount) : "");
   const [requirements, setRequirements] = React.useState(existingOffer?.requirements ?? "");
@@ -116,7 +115,6 @@ export function OfferView({
       setTokenSymbol(existingOffer.token);
       setFiat(existingOffer.fiat);
       setPrice(String(existingOffer.price));
-      setReserve(String(existingOffer.reserve));
       setMinAmount(String(existingOffer.minAmount));
       setMaxAmount(String(existingOffer.maxAmount));
       setRequirements(existingOffer.requirements ?? "");
@@ -132,7 +130,6 @@ export function OfferView({
       setTokenSymbol(network.tokens[0]?.symbol ?? "");
       setFiat(network.fiats[0]?.code ?? "");
       setPrice("");
-      setReserve("");
       setMinAmount("");
       setMaxAmount("");
       setRequirements("");
@@ -187,16 +184,11 @@ export function OfferView({
     }
 
     const parsedPrice = Number(price);
-    const parsedReserve = Number(reserve);
     const parsedMin = Number(minAmount);
     const parsedMax = Number(maxAmount);
 
     if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
       setError("Enter a positive price.");
-      return;
-    }
-    if (!Number.isFinite(parsedReserve) || parsedReserve <= 0) {
-      setError("Enter the amount of tokens you plan to reserve.");
       return;
     }
     if (!Number.isFinite(parsedMin) || parsedMin <= 0) {
@@ -217,7 +209,6 @@ export function OfferView({
     if (isEdit && existingOffer) {
       const updated = updateOffer(existingOffer.id, {
         price: parsedPrice,
-        reserve: parsedReserve,
         minAmount: parsedMin,
         maxAmount: parsedMax,
         paymentMethods: selectedMethods
@@ -243,7 +234,6 @@ export function OfferView({
       token: tokenSymbol,
       fiat,
       price: parsedPrice,
-      reserve: parsedReserve,
       minAmount: parsedMin,
       maxAmount: parsedMax,
       paymentMethods: selectedMethods,
@@ -397,7 +387,7 @@ export function OfferView({
               <p className="text-xs text-muted-foreground">Price per token unit in {fiat}.</p>
             </section>
 
-            <section className="grid gap-6 md:grid-cols-3">
+            <section className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
                 <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Minimum amount</label>
                 <Input
@@ -413,18 +403,6 @@ export function OfferView({
                 <Input
                   value={maxAmount}
                   onChange={event => setMaxAmount(event.target.value)}
-                  inputMode="decimal"
-                  placeholder="e.g. 2500"
-                  className="rounded-full"
-                />
-              </div>
-              <div className="space-y-3">
-                <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
-                  Reserve (token units)
-                </label>
-                <Input
-                  value={reserve}
-                  onChange={event => setReserve(event.target.value)}
                   inputMode="decimal"
                   placeholder="e.g. 2500"
                   className="rounded-full"

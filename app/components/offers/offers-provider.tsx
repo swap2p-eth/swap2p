@@ -36,7 +36,6 @@ interface CreateOfferInput {
   token: string;
   fiat: string;
   price: number;
-  reserve: number;
   minAmount: number;
   maxAmount: number;
   paymentMethods: string[];
@@ -45,7 +44,6 @@ interface CreateOfferInput {
 
 interface OfferUpdateInput {
   price?: number;
-  reserve?: number;
   minAmount?: number;
   maxAmount?: number;
   paymentMethods?: string[];
@@ -90,7 +88,6 @@ const mapOffer = (
     tokenDecimals: options.tokenDecimals,
     fiat: fiatLabel,
     price: Number(offer.priceFiatPerToken) / PRICE_SCALE,
-    reserve: Number(formatUnits(offer.reserve, options.tokenDecimals)),
     minAmount: Number(formatUnits(offer.minAmount, options.tokenDecimals)),
     maxAmount: Number(formatUnits(offer.maxAmount, options.tokenDecimals)),
     paymentMethods: offer.paymentMethods ?? "",
@@ -454,7 +451,6 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       token,
       fiat,
       price,
-      reserve,
       minAmount,
       maxAmount,
       paymentMethods,
@@ -478,7 +474,6 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         tokenDecimals: decimals,
         fiat,
         price,
-        reserve,
         minAmount,
         maxAmount,
         paymentMethods: paymentMethods.join(", "),
@@ -501,7 +496,6 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           const next: OfferRow = {
             ...offer,
             price: updates.price ?? offer.price,
-            reserve: updates.reserve ?? offer.reserve,
             minAmount: updates.minAmount ?? offer.minAmount,
             maxAmount: updates.maxAmount ?? offer.maxAmount,
             paymentMethods:

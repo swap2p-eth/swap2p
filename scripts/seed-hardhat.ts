@@ -72,7 +72,6 @@ const tokenConfigs = [
       sell: {
         fiat: USD,
         price: 68_350_000n,
-        reserve: "6",
         min: "0.01",
         max: "2.5",
         paymentMethods: "Fedwire, Wise USD",
@@ -81,7 +80,6 @@ const tokenConfigs = [
       buy: {
         fiat: THB,
         price: 2_420_000_000n,
-        reserve: "4",
         min: "0.01",
         max: "1.5",
         paymentMethods: "SCB PromptPay, Wise THB",
@@ -100,7 +98,6 @@ const tokenConfigs = [
       sell: {
         fiat: USD,
         price: 100_050n,
-        reserve: "60000",
         min: "10",
         max: "15000",
         paymentMethods: "ACH, Wise USD, Revolut",
@@ -109,7 +106,6 @@ const tokenConfigs = [
       buy: {
         fiat: THB,
         price: 3_560_000n,
-        reserve: "40000",
         min: "10",
         max: "12000",
         paymentMethods: "PromptPay, Bangkok Bank",
@@ -128,7 +124,6 @@ const tokenConfigs = [
       sell: {
         fiat: USD,
         price: 100_000n,
-        reserve: "70000",
         min: "50",
         max: "20000",
         paymentMethods: "ACH, Zelle",
@@ -137,7 +132,6 @@ const tokenConfigs = [
       buy: {
         fiat: THB,
         price: 3_480_000n,
-        reserve: "50000",
         min: "50",
         max: "18000",
         paymentMethods: "Krungsri, Kasikorn",
@@ -156,7 +150,6 @@ const tokenConfigs = [
       sell: {
         fiat: USD,
         price: 3_320_000n,
-        reserve: "70",
         min: "0.05",
         max: "20",
         paymentMethods: "SWIFT USD, Wise Business",
@@ -165,7 +158,6 @@ const tokenConfigs = [
       buy: {
         fiat: THB,
         price: 120_500_000n,
-        reserve: "60",
         min: "0.05",
         max: "18",
         paymentMethods: "SCB PromptPay, Krungthai",
@@ -328,7 +320,6 @@ for (const maker of makerContexts) {
     const sell = token.config.offers.sell;
     const buy = token.config.offers.buy;
 
-    const sellReserve = parseAmount(sell.reserve, token.decimals);
     const sellMin = parseAmount(sell.min, token.decimals);
     const sellMax = parseAmount(sell.max, token.decimals);
 
@@ -341,7 +332,6 @@ for (const maker of makerContexts) {
         1,
         sell.fiat,
         sell.price,
-        sellReserve,
         sellMin,
         sellMax,
         sell.paymentMethods,
@@ -361,7 +351,6 @@ for (const maker of makerContexts) {
       paymentMethods: sell.paymentMethods,
     });
 
-    const buyReserve = parseAmount(buy.reserve, token.decimals);
     const buyMin = parseAmount(buy.min, token.decimals);
     const buyMax = parseAmount(buy.max, token.decimals);
 
@@ -374,7 +363,6 @@ for (const maker of makerContexts) {
         0,
         buy.fiat,
         buy.price,
-        buyReserve,
         buyMin,
         buyMax,
         buy.paymentMethods,
@@ -395,9 +383,8 @@ for (const maker of makerContexts) {
     });
 
     // Extra liquidity: mirror SELL settings as a USD BUY market so the UI shows both sides by default.
-    const mirroredBuyReserve = parseAmount(sell.reserve, token.decimals) * 2n;
-    const mirroredBuyMin = parseAmount(sell.min, token.decimals) * 2n;
-    const mirroredBuyMax = parseAmount(sell.max, token.decimals) * 2n;
+    const mirroredBuyMin = sellMin * 2n;
+    const mirroredBuyMax = sellMax * 2n;
 
     await writeWith(maker.client, {
       address: swap.address as Address,
@@ -408,7 +395,6 @@ for (const maker of makerContexts) {
         0,
         sell.fiat,
         sell.price,
-        mirroredBuyReserve,
         mirroredBuyMin,
         mirroredBuyMax,
         sell.paymentMethods,

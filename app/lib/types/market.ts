@@ -10,7 +10,6 @@ export interface OfferRow {
   tokenDecimals: number;
   fiat: string;
   price: number;
-  reserve: number;
   minAmount: number;
   maxAmount: number;
   paymentMethods: string;

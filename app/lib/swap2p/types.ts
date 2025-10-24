@@ -33,7 +33,6 @@ export type OfferKey = OfferFilter & {
 export type Offer = {
   minAmount: bigint;
   maxAmount: bigint;
-  reserve: bigint;
   priceFiatPerToken: bigint;
   fiat: FiatCode;
   side: SwapSide;
@@ -99,12 +98,10 @@ export type SetOnlineArgs = {
 export type MakerMakeOfferArgs = OfferFilter & {
   account: Address;
   price: bigint;
-  reserve: bigint;
   minAmount: bigint;
   maxAmount: bigint;
   paymentMethods: string;
   requirements?: string;
-  comment?: string;
   partner?: Address | null;
 };
 
