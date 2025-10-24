@@ -102,6 +102,11 @@ async function fetchChainDeals(
 ): Promise<DealRow[]> {
   if (!adapter || !userAddress) return [];
 
+  console.debug("[mydeals] fetchChainDeals:start", {
+    user: userAddress,
+    network: network.name,
+  });
+
   const tokenMap = new Map<string, { symbol: string; decimals: number }>();
   for (const token of network.tokens) {
     tokenMap.set(getAddress(token.address).toLowerCase(), {
@@ -117,12 +122,17 @@ async function fetchChainDeals(
     adapter.getRecentDeals({ user, limit: DEAL_FETCH_LIMIT, offset: 0 }),
   ]);
 
+  console.debug("[mydeals] fetchChainDeals:reads", {
+    openCount: open.length,
+    recentCount: recent.length,
+  });
+
   const byId = new Map<string, ContractDeal>();
   for (const deal of [...open, ...recent]) {
     byId.set(deal.id.toString(), deal);
   }
 
-  return Array.from(byId.values())
+  const mapped = Array.from(byId.values())
     .map(deal => {
       const tokenKey = deal.token.toLowerCase();
       const tokenInfo = tokenMap.get(tokenKey) ?? {
@@ -136,6 +146,12 @@ async function fetchChainDeals(
       });
     })
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+  console.debug("[mydeals] fetchChainDeals:completed", {
+    total: mapped.length,
+  });
+
+  return mapped;
 }
 
 export function DealsProvider({ children }: { children: React.ReactNode }) {

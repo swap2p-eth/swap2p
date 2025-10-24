@@ -233,11 +233,24 @@ const mapOfferInfo = (raw: any): OfferWithKey | null => {
 
 const mapDeal = (id: Hex, raw: any): Deal | null => {
   if (!raw) return null;
-  const state = toDealState(raw.state ?? SwapDealState.NONE);
+  const amount = raw.amount ?? raw[0] ?? 0;
+  const price = raw.price ?? raw[1] ?? 0;
+  const fiat = raw.fiat ?? raw[2] ?? 0;
+  const stateValue = raw.state ?? raw[3] ?? SwapDealState.NONE;
+  const sideValue = raw.side ?? raw[4] ?? SwapSide.BUY;
+  const tsRequest = raw.tsRequest ?? raw[5] ?? 0;
+  const tsLast = raw.tsLast ?? raw[6] ?? tsRequest ?? 0;
+  const makerAddr = raw.maker ?? raw[7] ?? "0x0000000000000000000000000000000000000000";
+  const takerAddr = raw.taker ?? raw[8] ?? "0x0000000000000000000000000000000000000000";
+  const tokenAddr = raw.token ?? raw[9] ?? "0x0000000000000000000000000000000000000000";
+  const paymentMethodRaw = raw.paymentMethod ?? raw[10] ?? "";
+  const chatSource = raw.chat ?? raw[11];
+
+  const state = toDealState(stateValue);
   if (state === SwapDealState.NONE) return null;
   const paymentMethod =
-    raw.paymentMethod !== undefined ? String(raw.paymentMethod) : "";
-  const chatRaw = Array.isArray(raw.chat) ? raw.chat : [];
+    paymentMethodRaw !== undefined ? String(paymentMethodRaw) : "";
+  const chatRaw = Array.isArray(chatSource) ? chatSource : Array.isArray(raw.chat) ? raw.chat : [];
   const chat: DealChatMessage[] = chatRaw.map((entry: any) => {
     const ts = toNumber(entry?.ts ?? entry?.[0] ?? 0);
     const toMaker = Boolean(entry?.toMaker ?? entry?.[1] ?? false);
@@ -252,19 +265,28 @@ const mapDeal = (id: Hex, raw: any): Deal | null => {
   });
   return {
     id: BigInt(id),
-    amount: toBigInt(raw.amount ?? 0),
-    price: toBigInt(raw.price ?? 0),
+    amount: toBigInt(amount),
+    price: toBigInt(price),
     state,
-    side: toSide(raw.side ?? SwapSide.BUY),
-    maker: getAddress(raw.maker ?? "0x0000000000000000000000000000000000000000"),
-    taker: getAddress(raw.taker ?? "0x0000000000000000000000000000000000000000"),
-    fiat: toNumber(raw.fiat ?? 0),
-    requestedAt: toNumber(raw.tsRequest ?? 0),
-    updatedAt: toNumber(raw.tsLast ?? raw.tsRequest ?? 0),
-    token: getAddress(raw.token ?? "0x0000000000000000000000000000000000000000"),
+    side: toSide(sideValue),
+    maker: getAddress(makerAddr),
+    taker: getAddress(takerAddr),
+    fiat: toNumber(fiat),
+    requestedAt: toNumber(tsRequest),
+    updatedAt: toNumber(tsLast || tsRequest),
+    token: getAddress(tokenAddr),
     paymentMethod,
     chat,
   };
+};
+
+const mapDealInfo = (entry: any): Deal | null => {
+  if (!entry) return null;
+  const idValue = entry.id ?? entry[0];
+  const rawDeal = entry.deal ?? entry[1];
+  const bytesId = toBytes32(idValue);
+  if (!bytesId) return null;
+  return mapDeal(bytesId, rawDeal);
 };
 
 const mapMakerProfile = (_address: Address, raw: any): MakerProfile | null => {
@@ -461,37 +483,51 @@ const readDealStruct = async (id: Hex) => {
     async getOpenDeals(query: DealsQuery) {
       const limit = query.limit ?? DEFAULT_LIMIT;
       const offset = query.offset ?? 0;
-      const ids = (await read({
-        functionName: "getOpenDeals",
+      debugLog("[mydeals] getOpenDeals:request", {
+        user: query.user,
+        offset,
+        limit,
+      });
+      const detailed = (await read({
+        functionName: "getOpenDealsDetailed",
         args: [query.user, offset, limit] as const,
       })) as readonly unknown[] | null;
-      if (!ids || ids.length === 0) return [];
-      const bytesIds = ids
-        .map((value) => toBytes32(value))
-        .filter((value): value is Hex => value !== null);
-      if (bytesIds.length === 0) return [];
-      const deals = await Promise.all(
-        bytesIds.map((value) => readDealStruct(value)),
-      );
-      return deals.filter((deal): deal is Deal => deal !== null);
+      debugLog("[mydeals] getOpenDeals:detailed", {
+        count: detailed?.length ?? 0,
+      });
+      if (!detailed || detailed.length === 0) return [];
+      const deals = detailed
+        .map((value) => mapDealInfo(value))
+        .filter((deal): deal is Deal => deal !== null);
+      debugLog("[mydeals] getOpenDeals:deals", {
+        count: deals.length,
+      });
+      return deals;
     },
 
     async getRecentDeals(query: DealsQuery) {
       const limit = query.limit ?? DEFAULT_LIMIT;
       const offset = query.offset ?? 0;
-      const ids = (await read({
-        functionName: "getRecentDeals",
+      debugLog("[mydeals] getRecentDeals:request", {
+        user: query.user,
+        offset,
+        limit,
+      });
+      const detailed = (await read({
+        functionName: "getRecentDealsDetailed",
         args: [query.user, offset, limit] as const,
       })) as readonly unknown[] | null;
-      if (!ids || ids.length === 0) return [];
-      const bytesIds = ids
-        .map((value) => toBytes32(value))
-        .filter((value): value is Hex => value !== null);
-      if (bytesIds.length === 0) return [];
-      const deals = await Promise.all(
-        bytesIds.map((value) => readDealStruct(value)),
-      );
-      return deals.filter((deal): deal is Deal => deal !== null);
+      debugLog("[mydeals] getRecentDeals:detailed", {
+        count: detailed?.length ?? 0,
+      });
+      if (!detailed || detailed.length === 0) return [];
+      const deals = detailed
+        .map((value) => mapDealInfo(value))
+        .filter((deal): deal is Deal => deal !== null);
+      debugLog("[mydeals] getRecentDeals:deals", {
+        count: deals.length,
+      });
+      return deals;
     },
 
     async getMakerProfile(addr: Address) {
