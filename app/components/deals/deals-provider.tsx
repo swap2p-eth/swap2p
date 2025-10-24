@@ -77,6 +77,7 @@ const toDealRow = (
 ): DealRow => {
   const amount = Number(formatUnits(deal.amount, options.tokenDecimals));
   const price = Number(deal.price) / PRICE_SCALE;
+  // Fiat values arriving from the contract are ISO country codes (uint16)
   const encoded = typeof deal.fiat === "number" ? deal.fiat : 0;
   const decoded = decodeCountryCode(encoded);
   const countryCode = decoded ? decoded.toUpperCase() : "";

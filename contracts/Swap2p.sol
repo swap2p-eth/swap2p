@@ -50,6 +50,7 @@ contract Swap2p is ReentrancyGuard {
     uint32 private constant FEE_BPS              = 50;    // 0.50%
     uint32 private constant TAKER_AFF_SHARE_BP   = 2000;  // 20% of protocol fee goes to taker affiliate
     uint32 private constant MAKER_AFF_SHARE_BP   = 3000;  // 30% of protocol fee goes to maker affiliate
+    /// @dev ISO 3166-1 alpha-2 country code (packed as uint16, e.g. "US")
     type   FiatCode is uint16;
 
     enum Side { BUY, SELL }

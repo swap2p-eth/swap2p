@@ -73,6 +73,7 @@ contract Swap2p_TestBase is Test {
         return swap.getOfferId(token_, maker_, side_, fiat_);
     }
 
+    /// @dev helper to pack ISO 3166-1 alpha-2 country codes into FiatCode
     function _fiat(string memory code) internal pure returns (Swap2p.FiatCode) {
         bytes memory raw = bytes(code);
         require(raw.length == 2, "fiat code must be 2 chars");

@@ -123,6 +123,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     [network.tokens],
   );
 
+  // NOTE: fiat values hold ISO country codes; display labels come from FIAT_INFOS
   const fiatEntries = React.useMemo(() =>
     FIAT_INFOS.map(info => ({
       info,

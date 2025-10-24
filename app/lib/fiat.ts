@@ -6,6 +6,7 @@ const MAX_COUNTRY_CODE = 0xffff;
 
 const normalizeCountry = (code: string): string => code.trim().toUpperCase();
 
+// All FiatCode values are ISO 3166-1 alpha-2 country codes
 export function encodeCountryCode(code: string): number {
   const normalized = normalizeCountry(code);
   if (normalized.length !== 2) {
