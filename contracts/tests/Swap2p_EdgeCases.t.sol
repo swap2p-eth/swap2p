@@ -72,28 +72,26 @@ contract Swap2p_EdgeCasesTest is Swap2p_TestBase {
         swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840));
     }
 
-    // Covers _removeOpen pos==0 via same maker/taker (line ~198)
-    function test_CancelRequest_SameMakerTaker_RemovesOnce() public {
+    // Same-address maker/taker requests are rejected.
+    function test_Request_Revert_WhenMakerEqualsTaker() public {
         vm.prank(maker);
         swap.setOnline(true);
-        // maker posts SELL, then self-requests as taker==maker
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
-        bytes32 dealId = _requestDealAs(
-            maker,
+        vm.prank(maker);
+        vm.expectRevert(Swap2p.WrongCaller.selector);
+        swap.taker_requestOffer(
             address(token),
             Swap2p.Side.SELL,
             maker,
             1e18,
             Swap2p.FiatCode.wrap(840),
             100e18,
-            "",
-            "",
+            "wire",
+            bytes(""),
             address(0)
         );
-        // maker cancels; second _removeOpen sees pos==0
-        vm.prank(maker);
-        swap.cancelRequest(dealId, bytes(""));
+        assertEq(swap.getOpenDealCount(maker), 0, "self-request should not be tracked");
     }
 
     // Covers _pull amt==0 early return (line ~218) and _push amt==0 (line ~226)

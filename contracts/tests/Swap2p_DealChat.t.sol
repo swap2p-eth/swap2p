@@ -34,10 +34,13 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
         );
     }
 
-    function test_PaymentMethodStoredOnRequest() public {
+    function test_PaymentMethodStoredOnRequest() public view {
         Swap2p.DealInfo memory info = swap.getDeal(dealId);
         assertEq(info.deal.paymentMethod, "wire");
-        assertEq(info.deal.chat.length, 0);
+        assertEq(info.deal.chat.length, 1);
+        assertTrue(info.deal.chat[0].toMaker);
+        assertEq(uint256(info.deal.chat[0].state), uint256(Swap2p.DealState.REQUESTED));
+        assertEq(string(info.deal.chat[0].text), "");
     }
 
     function test_ChatLogRecordsMessagesAndStates() public {
@@ -57,26 +60,30 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
         swap.release(dealId, bytes("released"));
 
         Swap2p.ChatMessage[] memory chat = swap.getDealChat(dealId);
-        assertEq(chat.length, 5);
+        assertEq(chat.length, 6);
 
-        assertEq(chat[0].toMaker, false);
-        assertEq(uint256(chat[0].state), uint256(Swap2p.DealState.NONE));
-        assertEq(string(chat[0].text), "maker");
+        assertTrue(chat[0].toMaker);
+        assertEq(uint256(chat[0].state), uint256(Swap2p.DealState.REQUESTED));
+        assertEq(string(chat[0].text), "");
 
-        assertEq(chat[1].toMaker, true);
+        assertEq(chat[1].toMaker, false);
         assertEq(uint256(chat[1].state), uint256(Swap2p.DealState.NONE));
-        assertEq(string(chat[1].text), "taker");
+        assertEq(string(chat[1].text), "maker");
 
-        assertEq(chat[2].toMaker, false);
-        assertEq(uint256(chat[2].state), uint256(Swap2p.DealState.ACCEPTED));
-        assertEq(string(chat[2].text), "accepted");
+        assertEq(chat[2].toMaker, true);
+        assertEq(uint256(chat[2].state), uint256(Swap2p.DealState.NONE));
+        assertEq(string(chat[2].text), "taker");
 
-        assertEq(chat[3].toMaker, true);
-        assertEq(uint256(chat[3].state), uint256(Swap2p.DealState.PAID));
-        assertEq(string(chat[3].text), "paid");
+        assertEq(chat[3].toMaker, false);
+        assertEq(uint256(chat[3].state), uint256(Swap2p.DealState.ACCEPTED));
+        assertEq(string(chat[3].text), "accepted");
 
-        assertEq(chat[4].toMaker, false);
-        assertEq(uint256(chat[4].state), uint256(Swap2p.DealState.RELEASED));
-        assertEq(string(chat[4].text), "released");
+        assertEq(chat[4].toMaker, true);
+        assertEq(uint256(chat[4].state), uint256(Swap2p.DealState.PAID));
+        assertEq(string(chat[4].text), "paid");
+
+        assertEq(chat[5].toMaker, false);
+        assertEq(uint256(chat[5].state), uint256(Swap2p.DealState.RELEASED));
+        assertEq(string(chat[5].text), "released");
     }
 }

@@ -593,6 +593,7 @@ contract Swap2p is ReentrancyGuard {
         address  partner
     ) external nonReentrant touchActivity {
         address taker = msg.sender;
+        if (taker == maker) revert WrongCaller();
         bytes32 id = _allocateDeal(token, s, maker, taker, amount, f, expectedPrice, paymentMethod);
 
         _addOpen(maker, id);

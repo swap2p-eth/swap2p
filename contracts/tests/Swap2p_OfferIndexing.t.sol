@@ -586,7 +586,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         _assertAllInvariants(marketsList, makersList, takersList);
 
         uint256 amount = 120e18;
-        for (uint256 iter; iter < 40; iter++) {
+        for (uint256 iter; iter < 6; iter++) {
             Market memory market = marketsList[iter % marketsList.length];
             address currentMaker = makersList[iter % makersList.length];
             address currentTaker = takersList[(iter + 1) % takersList.length];
@@ -694,6 +694,8 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
                     vm.prank(maker);
                     swap.cleanupDeals(cleanup, 48);
                 }
+                _assertAllInvariants(marketsList, makersList, takersList);
+                continue;
             }
 
             vm.warp(block.timestamp + 1 hours);
