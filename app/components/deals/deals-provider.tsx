@@ -27,10 +27,10 @@ interface DealsContextValue {
   deals: DealRow[];
   isLoading: boolean;
   createDeal: (input: CreateDealInput) => DealRow;
-  acceptDeal: (dealId: number, comment?: string) => void;
-  cancelDeal: (dealId: number, actor: DealParticipant, comment?: string) => void;
-  markDealPaid: (dealId: number, actor: DealParticipant, comment?: string) => void;
-  releaseDeal: (dealId: number, actor: DealParticipant, comment?: string) => void;
+  acceptDeal: (dealId: string, comment?: string) => void;
+  cancelDeal: (dealId: string, actor: DealParticipant, comment?: string) => void;
+  markDealPaid: (dealId: string, actor: DealParticipant, comment?: string) => void;
+  releaseDeal: (dealId: string, actor: DealParticipant, comment?: string) => void;
   refresh: () => Promise<void>;
 }
 
@@ -76,7 +76,7 @@ const toDealRow = (
       : null;
 
   return {
-    id: Number(deal.id),
+    id: deal.id.toString(),
     contractId: deal.id,
     contract: deal,
     side: toSideLabel(deal.side),
@@ -203,8 +203,9 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     ({ offer, amount, amountKind, paymentMethod }: CreateDealInput) => {
       void amountKind;
       const now = new Date().toISOString();
+      const id = `${Date.now()}`;
       const entry: DealRow = {
-        id: Date.now(),
+        id,
         side: offer.side,
         amount,
         fiatCode: offer.fiat,
@@ -217,15 +218,15 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         tokenDecimals: offer.tokenDecimals,
         price: offer.price,
         fiatAmount: offer.price * amount,
-        paymentMethod,
-      };
+      paymentMethod,
+    };
       setDraftDeals(current => [entry, ...current]);
       return entry;
     },
     [currentUserAddress],
   );
 
-  const updateDeal = React.useCallback((dealId: number, updater: (deal: DealRow) => DealRow | null) => {
+  const updateDeal = React.useCallback((dealId: string, updater: (deal: DealRow) => DealRow | null) => {
     let modified = false;
     setDraftDeals(current =>
       current.map(deal => {
@@ -248,7 +249,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const acceptDeal = React.useCallback(
-    (dealId: number) => {
+    (dealId: string) => {
       updateDeal(dealId, deal => {
         if (deal.state !== "REQUESTED") return null;
         return { ...deal, state: "ACCEPTED", updatedAt: new Date().toISOString() };
@@ -258,7 +259,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const cancelDeal = React.useCallback(
-    (dealId: number, actor: DealParticipant) => {
+    (dealId: string, actor: DealParticipant) => {
       updateDeal(dealId, deal => {
         if (deal.state === "REQUESTED") {
           return { ...deal, state: "CANCELED", updatedAt: new Date().toISOString() };
@@ -277,7 +278,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const markDealPaid = React.useCallback(
-    (dealId: number, actor: DealParticipant) => {
+    (dealId: string, actor: DealParticipant) => {
       updateDeal(dealId, deal => {
         if (deal.state !== "ACCEPTED") return null;
         const makerPays = deal.side === "BUY" && actor === "MAKER";
@@ -290,7 +291,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const releaseDeal = React.useCallback(
-    (dealId: number, actor: DealParticipant) => {
+    (dealId: string, actor: DealParticipant) => {
       updateDeal(dealId, deal => {
         if (deal.state !== "PAID") return null;
         const takerReleases = deal.side === "BUY" && actor === "TAKER";

@@ -28,7 +28,7 @@ type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
 interface NewDealViewProps {
   offerId: number;
   onCancel?: () => void;
-  onCreated?: (dealId: number) => void;
+  onCreated?: (dealId: string) => void;
   returnHash?: string;
 }
 

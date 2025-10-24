@@ -19,7 +19,7 @@ import { getDealSideCopy } from "@/lib/deal-copy";
 import type { ApprovalMode } from "./token-approval-button";
 
 export interface DealDetailViewProps {
-  dealId: number;
+  dealId: string;
   onBack?: () => void;
 }
 

@@ -15,7 +15,7 @@ import { useUser } from "@/context/user-context";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 
 interface DealsViewProps {
-  onSelectDeal?: (dealId: number) => void;
+  onSelectDeal?: (dealId: string) => void;
 }
 
 export function DealsView({ onSelectDeal }: DealsViewProps) {
@@ -88,7 +88,7 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
             emptyMessage="There are no deals in this view yet."
             isLoading={dealsLoading}
             onRowClick={deal => {
-              const id = (deal as { id: number }).id;
+              const id = (deal as { id: string }).id;
               onSelectDeal?.(id);
             }}
           />

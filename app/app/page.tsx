@@ -14,7 +14,7 @@ type ViewState =
   | { type: "offers" }
   | { type: "dashboard" }
   | { type: "new-deal"; offerId: number }
-  | { type: "deal-detail"; dealId: number }
+  | { type: "deal-detail"; dealId: string }
   | { type: "offer"; offerId?: number };
 
 function parseHash(hash: string): ViewState {
@@ -32,8 +32,8 @@ function parseHash(hash: string): ViewState {
   }
   if (normalized.startsWith("deal/")) {
     const [, idPart] = normalized.split("/");
-    const dealId = Number.parseInt(idPart ?? "", 10);
-    if (Number.isFinite(dealId)) {
+    const dealId = decodeURIComponent(idPart ?? "").trim();
+    if (dealId.length > 0) {
       return { type: "deal-detail", dealId };
     }
     return { type: "dashboard" };

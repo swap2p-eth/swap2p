@@ -22,7 +22,7 @@ export interface OfferRow {
 }
 
 export interface DealRow {
-  id: number;
+  id: string;
   side: DealSide;
   amount: number;
   fiatCode: string;
