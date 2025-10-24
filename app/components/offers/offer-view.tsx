@@ -18,6 +18,11 @@ import { FiatFlag } from "@/components/fiat-flag";
 import type { OfferRow } from "@/lib/types/market";
 import { SideToggle } from "@/components/deals/side-toggle";
 
+const TOKEN_STORAGE_KEY = "swap2p:offer:last-token";
+const FIAT_STORAGE_KEY = "swap2p:offer:last-fiat";
+const DEFAULT_TOKEN_SYMBOL = "USDT";
+const DEFAULT_FIAT_CODE = "US";
+
 type DealSide = "BUY" | "SELL";
 type OfferEditorMode = "create" | "edit";
 
@@ -86,9 +91,39 @@ export function OfferView({
     [isEdit, normalizedOfferId, makerOffers, offers]
   );
 
+  const sortedTokens = React.useMemo(
+    () => [...network.tokens].sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    [network.tokens],
+  );
+
+  const preferredTokenSymbol = React.useMemo(() => {
+    const fallback = sortedTokens.find(item => item.symbol === DEFAULT_TOKEN_SYMBOL)?.symbol ?? sortedTokens[0]?.symbol ?? "";
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (stored && sortedTokens.some(item => item.symbol === stored)) {
+        return stored;
+      }
+    }
+    return fallback;
+  }, [sortedTokens]);
+
+  const preferredFiatCode = React.useMemo(() => {
+    const fallback = FIAT_INFOS.find(info => info.countryCode.toUpperCase() === DEFAULT_FIAT_CODE)?.countryCode ?? defaultFiat;
+    if (typeof window !== "undefined") {
+      const stored = window.localStorage.getItem(FIAT_STORAGE_KEY);
+      if (stored) {
+        const normalized = stored.toUpperCase();
+        if (FIAT_INFOS.some(info => info.countryCode.toUpperCase() === normalized)) {
+          return normalized;
+        }
+      }
+    }
+    return fallback;
+  }, [defaultFiat]);
+
   const [side, setSide] = React.useState<DealSide>(existingOffer?.side ?? "SELL");
-  const [tokenSymbol, setTokenSymbol] = React.useState<string>(existingOffer?.token ?? network.tokens[0]?.symbol ?? "");
-  const [fiat, setFiat] = React.useState<string>(existingOffer?.countryCode ?? defaultFiat);
+  const [tokenSymbol, setTokenSymbol] = React.useState<string>(existingOffer?.token ?? preferredTokenSymbol);
+  const [fiat, setFiat] = React.useState<string>(existingOffer?.countryCode ?? preferredFiatCode);
   const selectedFiatInfo = React.useMemo(() => FIAT_BY_COUNTRY.get(fiat.toUpperCase()), [fiat]);
   const [price, setPrice] = React.useState(existingOffer ? String(existingOffer.price) : "");
   const [minAmount, setMinAmount] = React.useState(existingOffer ? String(existingOffer.minAmount) : "");
@@ -105,10 +140,10 @@ export function OfferView({
   const fallbackHash = returnHash ?? "offers";
 
   React.useEffect(() => {
-    if (!fiat && FIAT_INFOS.length > 0) {
-      setFiat(FIAT_INFOS[0].countryCode);
+    if (!fiat && preferredFiatCode) {
+      setFiat(preferredFiatCode);
     }
-  }, [fiat]);
+  }, [fiat, preferredFiatCode]);
 
   const navigateBack = React.useCallback(() => {
     if (onCancel) {
@@ -136,8 +171,8 @@ export function OfferView({
 
   React.useEffect(() => {
     if (!isEdit) {
-      setTokenSymbol(network.tokens[0]?.symbol ?? "");
-      setFiat(defaultFiat);
+      setTokenSymbol(preferredTokenSymbol);
+      setFiat(preferredFiatCode);
       setPrice("");
       setMinAmount("");
       setMaxAmount("");
@@ -147,7 +182,7 @@ export function OfferView({
       setError(null);
       setSuccessState(null);
     }
-  }, [network, isEdit, defaultFiat]);
+  }, [network, isEdit, preferredFiatCode, preferredTokenSymbol]);
 
   React.useEffect(() => {
     if (!isEdit) {
@@ -179,6 +214,20 @@ export function OfferView({
   const handleRemoveMethod = (method: string) => {
     setSelectedMethods(prev => prev.filter(item => item !== method));
   };
+
+  const handleTokenChange = React.useCallback((symbol: string) => {
+    setTokenSymbol(symbol);
+    if (!isEdit && typeof window !== "undefined") {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, symbol);
+    }
+  }, [isEdit]);
+
+  const handleFiatChange = React.useCallback((code: string) => {
+    setFiat(code);
+    if (!isEdit && typeof window !== "undefined") {
+      window.localStorage.setItem(FIAT_STORAGE_KEY, code.toUpperCase());
+    }
+  }, [isEdit]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -284,12 +333,12 @@ export function OfferView({
   };
 
   const tokenOptions = React.useMemo(() => {
-    const symbols = network.tokens.map(item => item.symbol);
+    const symbols = sortedTokens.map(item => item.symbol);
     if (isEdit && existingOffer && !symbols.includes(existingOffer.token)) {
       return [existingOffer.token, ...symbols];
     }
     return symbols;
-  }, [network, isEdit, existingOffer]);
+  }, [sortedTokens, isEdit, existingOffer]);
 
   const fiatOptions = React.useMemo(() => FIAT_INFOS, []);
 
@@ -369,7 +418,7 @@ export function OfferView({
                 <Select
                   disabled={disableImmutable}
                   value={tokenSymbol}
-                  onValueChange={symbol => setTokenSymbol(symbol)}
+                  onValueChange={handleTokenChange}
                 >
                   <SelectTrigger className="rounded-full">
                     <SelectValue placeholder="Select token" />
@@ -388,7 +437,11 @@ export function OfferView({
               </div>
               <div className="space-y-3 rounded-3xl border border-border/60 bg-background/60 p-6">
                 <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Fiat currency</span>
-                <Select disabled={disableImmutable} value={fiat} onValueChange={code => setFiat(code)}>
+                <Select
+                  disabled={disableImmutable}
+                  value={fiat}
+                  onValueChange={handleFiatChange}
+                >
                   <SelectTrigger className="rounded-full">
                     <SelectValue placeholder="Select fiat" />
                   </SelectTrigger>
