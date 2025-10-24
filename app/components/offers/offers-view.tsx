@@ -19,21 +19,26 @@ import {
   readStoredFilters
 } from "@/components/offers/filter-storage";
 import { RefreshCw } from "lucide-react";
+import { useUser } from "@/context/user-context";
 const DEFAULT_FIAT = "USD";
 
 interface OffersViewProps {
   onStartDeal?: (offer: OfferRow) => void;
   onCreateOffer?: () => void;
+  onEditOffer?: (offer: OfferRow) => void;
 }
 
-export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
+export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersViewProps) {
   const { offers, isLoading, ensureMarket, tokens, fiats, activeMarket, refresh } = useOffers();
+  const { address } = useUser();
   const [side, setSide] = React.useState<"BUY" | "SELL">(activeMarket.side);
   const [token, setToken] = React.useState(ANY_FILTER_OPTION);
   const [fiat, setFiat] = React.useState(activeMarket.fiat.toUpperCase());
   const [paymentMethod, setPaymentMethod] = React.useState(ANY_FILTER_OPTION);
   const [amount, setAmount] = React.useState("");
   const [filtersReady, setFiltersReady] = React.useState(false);
+
+  const normalizedAddress = React.useMemo(() => (typeof address === "string" ? address.trim().toLowerCase() : ""), [address]);
 
   React.useEffect(() => {
     if (filtersReady) {
@@ -341,7 +346,16 @@ export function OffersView({ onStartDeal, onCreateOffer }: OffersViewProps) {
               emptyMessage="No offers match the current filters."
               isLoading={isLoading}
               onRowClick={offer => {
-                onStartDeal?.(offer as OfferRow);
+                const selected = offer as OfferRow;
+                if (normalizedAddress && selected.maker?.toLowerCase() === normalizedAddress) {
+                  if (onEditOffer) {
+                    onEditOffer(selected);
+                  } else if (typeof window !== "undefined") {
+                    window.location.hash = `offer/${selected.id}`;
+                  }
+                  return;
+                }
+                onStartDeal?.(selected);
               }}
             />
           </div>

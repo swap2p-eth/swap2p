@@ -134,6 +134,7 @@ function HomePageRouter() {
         <OffersView
           onStartDeal={offer => setHash(`new-deal/${offer.id}`)}
           onCreateOffer={() => setHash("offer")}
+          onEditOffer={offer => setHash(`offer/${offer.id}`)}
         />
       );
   }
