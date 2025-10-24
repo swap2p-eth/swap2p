@@ -56,6 +56,25 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient({ chainId });
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
+  const ownerAddress = React.useMemo(() => {
+    const account = walletClient?.account;
+    if (!account) return null;
+    if (typeof account === "string") {
+      try {
+        return getAddress(account);
+      } catch {
+        return null;
+      }
+    }
+    if (typeof account === "object" && "address" in account && account.address) {
+      try {
+        return getAddress(account.address as string);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, [walletClient]);
 
   const [amountKind, setAmountKind] = React.useState<AmountKind>("crypto");
   const [amount, setAmount] = React.useState("");
@@ -66,6 +85,9 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const [actionBusy, setActionBusy] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [approvalBusy, setApprovalBusy] = React.useState(false);
+  const [allowanceLoading, setAllowanceLoading] = React.useState(false);
+  const [allowanceNonce, setAllowanceNonce] = React.useState(0);
+  const [tokenAllowance, setTokenAllowance] = React.useState<bigint | null>(null);
 
   React.useEffect(() => {
     if (!offer) return;
@@ -80,6 +102,42 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   React.useEffect(() => {
     setActionError(null);
   }, [amount, paymentMethod, paymentDetails]);
+
+  React.useEffect(() => {
+    if (!offer?.contractKey?.token || !ownerAddress || !publicClient) {
+      setTokenAllowance(null);
+      setAllowanceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const loadAllowance = async () => {
+      setAllowanceLoading(true);
+      try {
+        const value = await publicClient.readContract({
+          abi: erc20Abi,
+          address: offer.contractKey.token as Address,
+          functionName: "allowance",
+          args: [ownerAddress, network.swap2pAddress as Address]
+        });
+        if (!cancelled) {
+          setTokenAllowance(value as bigint);
+        }
+      } catch (error) {
+        console.error("[new-deal] allowance read failed", error);
+        if (!cancelled) {
+          setTokenAllowance(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setAllowanceLoading(false);
+        }
+      }
+    };
+    void loadAllowance();
+    return () => {
+      cancelled = true;
+    };
+  }, [offer?.contractKey?.token, ownerAddress, publicClient, network.swap2pAddress, allowanceNonce]);
 
   if (offersLoading) {
     return (
@@ -110,11 +168,12 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     );
   }
 
-  const tokenDecimals = offer.tokenDecimals ?? 2;
+  const tokenDecimals = offer.tokenDecimals ?? 18;
+  const displayTokenDecimals = Math.min(tokenDecimals, 8);
 
   const paymentOptions = parsePaymentMethods(offer.paymentMethods);
   const hasPaymentOptions = paymentOptions.length > 0;
-  const limitsRange = `${formatTokenAmount(offer.minAmount, tokenDecimals)} – ${formatTokenAmount(offer.maxAmount, tokenDecimals)} ${offer.token}`;
+  const limitsRange = `${formatTokenAmount(offer.minAmount, displayTokenDecimals)} – ${formatTokenAmount(offer.maxAmount, displayTokenDecimals)} ${offer.token}`;
   const amountNumber = Number(amount);
   const amountEntered = amount.trim().length > 0 && Number.isFinite(amountNumber) && amountNumber > 0;
   const rawTokenAmount =
@@ -125,6 +184,27 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       : null;
   const tokenAmount =
     rawTokenAmount !== null && Number.isFinite(rawTokenAmount) && rawTokenAmount > 0 ? rawTokenAmount : null;
+  const tokenAmountString = (() => {
+    if (tokenAmount === null) return null;
+    if (amountKind === "crypto") {
+      const trimmed = amount.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    }
+    return tokenAmount.toLocaleString("en-US", {
+      useGrouping: false,
+      maximumFractionDigits: Math.min(tokenDecimals, 18)
+    });
+  })();
+  const baseTokenUnits = (() => {
+    if (!tokenAmountString) return null;
+    try {
+      return parseUnits(tokenAmountString, tokenDecimals);
+    } catch {
+      return null;
+    }
+  })();
+  const depositMultiplier = offer.side === "BUY" ? 2n : 1n;
+  const requiredAllowance = baseTokenUnits !== null ? baseTokenUnits * depositMultiplier : null;
   const amountValid =
     tokenAmount !== null && tokenAmount >= offer.minAmount && tokenAmount <= offer.maxAmount;
   const paymentMethodValid = !hasPaymentOptions || paymentMethod.trim().length > 0;
@@ -141,8 +221,8 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const merchantSide = offer.side.toUpperCase();
   const userSide = merchantSide === "SELL" ? "BUY" : "SELL";
   const userAction = userSide === "SELL" ? "sell" : "buy";
-  const minLabel = `${formatTokenAmount(offer.minAmount, tokenDecimals)} ${offer.token}`;
-  const maxLabel = `${formatTokenAmount(offer.maxAmount, tokenDecimals)} ${offer.token}`;
+  const minLabel = `${formatTokenAmount(offer.minAmount, displayTokenDecimals)} ${offer.token}`;
+  const maxLabel = `${formatTokenAmount(offer.maxAmount, displayTokenDecimals)} ${offer.token}`;
   let amountError: string | null = null;
   if (!amountValid) {
     if (!amountEntered) {
@@ -160,6 +240,29 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const paymentMethodError =
     hasPaymentOptions && !paymentMethod ? "Choose a payment method." : null;
   const paymentDetailsError = paymentDetailsValid ? null : "Payment details must be at least 5 characters.";
+  const hasSufficientAllowance =
+    requiredAllowance !== null && tokenAllowance !== null && tokenAllowance >= requiredAllowance;
+  const approvalRequested = Boolean(requiredAllowance !== null && offer.contractKey?.token && ownerAddress);
+  const approvalButtonVisible = Boolean(requiredAllowance !== null && offer.contractKey?.token && ownerAddress);
+  const approvalApproved = approvalButtonVisible && hasSufficientAllowance;
+  const primaryDisabled = Boolean(
+    !ownerAddress ||
+    (approvalRequested && !hasSufficientAllowance) ||
+      allowanceLoading ||
+      approvalBusy,
+  );
+  const primaryDisabledHint = (() => {
+    if (!ownerAddress) {
+      return "Connect your wallet to continue.";
+    }
+    if (allowanceLoading) {
+      return "Checking allowance…";
+    }
+    if (approvalRequested && !hasSufficientAllowance) {
+      return "Approve the token allowance before continuing.";
+    }
+    return undefined;
+  })();
   const validationIssues: Array<{ field: ValidationField; message: string }> = [];
   if (amountError) {
     validationIssues.push({ field: "amount", message: amountError });
@@ -238,15 +341,15 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   };
 
   const handleApproveTokens = async (mode: ApprovalMode) => {
-    if (!offer || !offer.contractKey) {
+    if (!offer?.contractKey) {
       setActionError("Offer data unavailable for approval.");
       return;
     }
-    if (!publicClient || !walletClient) {
+    if (!publicClient || !walletClient || !ownerAddress) {
       setActionError("Connect your wallet to approve tokens.");
       return;
     }
-    if (tokenAmount === null || tokenAmount <= 0) {
+    if (!requiredAllowance) {
       setActionError("Enter a valid amount before approving tokens.");
       focusField("amount");
       return;
@@ -254,19 +357,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
 
     const tokenAddress = offer.contractKey.token as Address;
     const spender = network.swap2pAddress as Address;
-    const decimals = offer.tokenDecimals ?? 18;
-    const baseAmount = parseUnits(String(tokenAmount), decimals);
-    const allowance = mode === "max" ? maxUint256 : baseAmount * 2n;
-    const accountValue = walletClient.account;
-    const owner = typeof accountValue === "string"
-      ? getAddress(accountValue)
-      : accountValue && "address" in accountValue
-        ? getAddress(accountValue.address)
-        : null;
-    if (!owner) {
-      setActionError("Unable to resolve connected account.");
-      return;
-    }
+    const allowanceTarget = mode === "max" ? maxUint256 : requiredAllowance;
 
     setApprovalBusy(true);
     setActionError(null);
@@ -275,11 +366,12 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         abi: erc20Abi,
         address: tokenAddress,
         functionName: "approve",
-        args: [spender, allowance],
-        account: owner
+        args: [spender, allowanceTarget],
+        account: ownerAddress
       });
       const txHash = await walletClient.writeContract(request);
       await publicClient.waitForTransactionReceipt({ hash: txHash });
+      setAllowanceNonce(value => value + 1);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Token approval failed.";
       console.error("[deal] approval failed", error);
@@ -308,11 +400,11 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     if (amountKind === "crypto") {
       return `≈ ${formatFiatAmount(tokenAmount * offer.price)} ${offer.currencyCode}`;
     }
-    return `≈ ${formatTokenAmount(tokenAmount, tokenDecimals)} ${offer.token}`;
+    return `≈ ${formatTokenAmount(tokenAmount, displayTokenDecimals)} ${offer.token}`;
   })();
 
   const summaryTokenAmount = tokenAmount ?? offer.minAmount;
-  const summaryTokenLabel = formatTokenAmount(summaryTokenAmount, tokenDecimals);
+  const summaryTokenLabel = formatTokenAmount(summaryTokenAmount, displayTokenDecimals);
   const summaryFiatAmount = summaryTokenAmount * offer.price;
   const summaryFiatLabel = `≈ ${formatFiatAmount(summaryFiatAmount)}`;
 
@@ -377,8 +469,13 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         onCancel={handleCancel}
         onApproveTokens={handleApproveTokens}
         busy={actionBusy}
-        approvalBusy={approvalBusy}
+        approvalBusy={approvalBusy || allowanceLoading}
         approvalModeStorageKey={`swap2p:approval:new-deal:${offer.id}`}
+        approvalVisible={approvalButtonVisible}
+        primaryDisabled={primaryDisabled}
+        primaryDisabledHint={primaryDisabledHint}
+        approvalApproved={approvalApproved}
+        approvalApprovedLabel="Approved"
       />
 
       {actionError ? (

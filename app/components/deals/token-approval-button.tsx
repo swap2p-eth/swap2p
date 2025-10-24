@@ -14,6 +14,8 @@ interface TokenApprovalButtonProps {
   busy?: boolean;
   approvalModeStorageKey?: string;
   onApprove?: (mode: ApprovalMode) => void;
+  approved?: boolean;
+  approvedLabel?: string;
 }
 
 const DEFAULT_STORAGE_KEY = "swap2p:approval-mode";
@@ -23,7 +25,9 @@ export function TokenApprovalButton({
   disabled,
   busy,
   approvalModeStorageKey = DEFAULT_STORAGE_KEY,
-  onApprove
+  onApprove,
+  approved = false,
+  approvedLabel = "Approved"
 }: TokenApprovalButtonProps) {
   const [mode, setMode] = React.useState<ApprovalMode>(() => {
     if (typeof window === "undefined") {
@@ -47,6 +51,7 @@ export function TokenApprovalButton({
   }, [mode, approvalModeStorageKey]);
 
   const handleApproveClick = () => {
+    if (approved) return;
     onApprove?.(mode);
   };
 
@@ -56,8 +61,23 @@ export function TokenApprovalButton({
     }
   };
 
-  const label = mode === "max" ? "Approve MAX" : "Approve amount";
-  const isDisabled = disabled || busy;
+  const label = approved ? approvedLabel : mode === "max" ? "Approve MAX" : "Approve amount";
+  const isDisabled = approved || disabled || busy;
+  const buttonClass = cn(
+    "h-full rounded-none rounded-l-full px-4 text-sm font-semibold pr-2 uppercase tracking-[0.2em] transition-colors",
+    approved
+      ? "bg-emerald-700 text-primary-foreground hover:bg-emerald-500"
+      : "bg-primary text-primary-foreground hover:bg-primary/90",
+    "focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-60"
+  );
+  const triggerClass = cn(
+    "relative h-full justify-center rounded-none rounded-r-full border-0 pr-3 pl-0 text-primary-foreground transition-colors",
+    "after:absolute after:inset-y-2 after:-left-px after:w-px after:rounded-full after:content-['']",
+    approved
+      ? "bg-emerald-700 text-primary-foreground after:bg-emerald-400"
+      : "bg-primary text-primary-foreground after:bg-white/50 after:dark:bg-muted-foreground/50",
+    "hover:bg-primary/90 focus:outline-none focus:ring-0 focus:ring-offset-0 disabled:opacity-60"
+  );
 
   return (
     <div
@@ -70,20 +90,13 @@ export function TokenApprovalButton({
         type="button"
         onClick={handleApproveClick}
         disabled={isDisabled}
-        className={cn(
-          "h-full rounded-none rounded-l-full bg-primary px-4 text-sm font-semibold uppercase tracking-[0.2em] text-primary-foreground transition-colors",
-          "hover:bg-primary/90 focus-visible:ring-0 focus-visible:ring-offset-0 disabled:opacity-60"
-        )}
+        className={buttonClass}
       >
         {label}
       </Button>
       <Select value={mode} onValueChange={handleModeChange} disabled={isDisabled}>
         <SelectTrigger
-          className={cn(
-            "relative h-full justify-center rounded-none rounded-r-full border-0 bg-primary pr-3 pl-0 text-primary-foreground transition-colors",
-            "after:absolute after:inset-y-2 after:-left-px after:w-px after:rounded-full after:bg-white/50 after:content-[''] after:dark:bg-muted-foreground/50",
-            "hover:bg-primary/90 focus:outline-none focus:ring-0 focus:ring-offset-0 disabled:opacity-60"
-          )}
+          className={triggerClass}
           aria-label="Select approval amount"
         >
         </SelectTrigger>

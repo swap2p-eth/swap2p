@@ -34,6 +34,11 @@ interface DealStatusPanelProps {
   onApproveTokens?: (mode: ApprovalMode) => void;
   approvalBusy?: boolean;
   approvalModeStorageKey?: string;
+  approvalVisible?: boolean;
+  primaryDisabled?: boolean;
+  primaryDisabledHint?: string;
+  approvalApproved?: boolean;
+  approvalApprovedLabel?: string;
 }
 
 interface TimelineStep {
@@ -101,7 +106,12 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
     onRequest,
     onApproveTokens,
     approvalBusy,
-    approvalModeStorageKey
+    approvalModeStorageKey,
+    approvalVisible,
+    primaryDisabled,
+    primaryDisabledHint,
+    approvalApproved,
+    approvalApprovedLabel,
   } = props;
   const scenario = getScenarioConfig(role, side, state);
 
@@ -174,8 +184,12 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
   const progressIndex =
     state === "NEW" ? -1 : TIMELINE_STEPS.findIndex(step => step.id === state);
   const showApprovalButton =
-    scenario?.primaryAction &&
-    (scenario.primaryAction.type === "REQUEST" || scenario.primaryAction.type === "ACCEPT");
+    Boolean(
+      scenario?.primaryAction &&
+      (scenario.primaryAction.type === "REQUEST" || scenario.primaryAction.type === "ACCEPT") &&
+      approvalVisible !== false &&
+      onApproveTokens,
+    );
 
   return (
     <section className="rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">
@@ -266,41 +280,48 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
               ) : null}
 
               {(scenario.primaryAction || scenario.secondaryAction) ? (
-                <div className="mt-2 flex items-center gap-3">
-                  {showApprovalButton ? (
-                    <TokenApprovalButton
-                      className="flex-shrink-0"
-                      disabled={disabled || busy}
-                      busy={approvalBusy}
-                      onApprove={onApproveTokens}
-                      approvalModeStorageKey={approvalModeStorageKey}
-                    />
-                  ) : null}
-                  {scenario.primaryAction ? (
-                    <Button
-                      type="button"
-                      onClick={() => invokeAction(scenario.primaryAction, true)}
-                      disabled={disabled || busy}
-                      className="rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em]"
-                    >
-                      {scenario.primaryAction.label}
-                    </Button>
-                  ) : null}
-                  {scenario.secondaryAction ? (
-                    <Button
-                      type="button"
-                      variant={scenario.secondaryAction.variant ?? "outline"}
-                      onClick={() => invokeAction(scenario.secondaryAction, false)}
-                      disabled={disabled || busy}
-                      className={cn(
-                        "ml-auto rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em]",
-                        scenario.secondaryAction.variant === "outline"
-                          ? "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50"
-                          : undefined
-                      )}
-                    >
-                      {scenario.secondaryAction.label}
-                    </Button>
+                <div className="mt-2 flex flex-col gap-2">
+                  <div className="flex items-center gap-3">
+                    {showApprovalButton ? (
+                      <TokenApprovalButton
+                        className="flex-shrink-0"
+                        disabled={disabled || busy}
+                        busy={approvalBusy}
+                        onApprove={onApproveTokens}
+                        approvalModeStorageKey={approvalModeStorageKey}
+                        approved={approvalApproved}
+                        approvedLabel={approvalApprovedLabel}
+                      />
+                    ) : null}
+                    {scenario.primaryAction ? (
+                      <Button
+                        type="button"
+                        onClick={() => invokeAction(scenario.primaryAction, true)}
+                        disabled={disabled || busy || primaryDisabled}
+                        className="rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em]"
+                      >
+                        {scenario.primaryAction.label}
+                      </Button>
+                    ) : null}
+                    {scenario.secondaryAction ? (
+                      <Button
+                        type="button"
+                        variant={scenario.secondaryAction.variant ?? "outline"}
+                        onClick={() => invokeAction(scenario.secondaryAction, false)}
+                        disabled={disabled || busy}
+                        className={cn(
+                          "ml-auto rounded-full px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em]",
+                          scenario.secondaryAction.variant === "outline"
+                            ? "border-muted-foreground/30 text-muted-foreground hover:bg-muted/50"
+                            : undefined
+                        )}
+                      >
+                        {scenario.secondaryAction.label}
+                      </Button>
+                    ) : null}
+                  </div>
+                  {primaryDisabled && primaryDisabledHint ? (
+                    <p className="text-xs text-muted-foreground">{primaryDisabledHint}</p>
                   ) : null}
                 </div>
               ) : null}

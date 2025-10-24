@@ -41,12 +41,52 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient({ chainId });
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
+  const ownerAddress = React.useMemo(() => {
+    const account = walletClient?.account;
+    if (!account) return null;
+    if (typeof account === "string") {
+      try {
+        return getAddress(account);
+      } catch {
+        return null;
+      }
+    }
+    if (typeof account === "object" && "address" in account && account.address) {
+      try {
+        return getAddress(account.address as string);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }, [walletClient]);
   const deal = deals.find(item => item.id === dealId);
   const { address } = useUser();
   const perspective = useDealPerspective(deal ?? null, address);
   const [actionBusy, setActionBusy] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [approvalBusy, setApprovalBusy] = React.useState(false);
+  const [allowanceLoading, setAllowanceLoading] = React.useState(false);
+  const [allowanceNonce, setAllowanceNonce] = React.useState(0);
+  const [tokenAllowance, setTokenAllowance] = React.useState<bigint | null>(null);
+  const role = perspective.role ?? "MAKER";
+  const tokenDecimals = deal?.tokenDecimals ?? 18;
+  const displayTokenDecimals = Math.min(tokenDecimals, 8);
+  const needsAllowanceCheck = Boolean(deal && role === "MAKER" && deal.state === "REQUESTED" && deal.contract?.token);
+  const baseTokenUnits = React.useMemo(() => {
+    if (!needsAllowanceCheck || !deal) return null;
+    try {
+      const amountString = deal.amount.toLocaleString("en-US", {
+        useGrouping: false,
+        maximumFractionDigits: Math.min(tokenDecimals, 18)
+      });
+      return parseUnits(amountString, tokenDecimals);
+    } catch {
+      return null;
+    }
+  }, [needsAllowanceCheck, deal, tokenDecimals]);
+  const makerDepositMultiplier = deal?.side === "BUY" ? 1n : 2n;
+  const requiredAllowance = needsAllowanceCheck && baseTokenUnits !== null ? baseTokenUnits * makerDepositMultiplier : null;
 
   const withAction = React.useCallback(async (task: () => Promise<void>) => {
     setActionBusy(true);
@@ -61,6 +101,71 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
       setActionBusy(false);
     }
   }, []);
+
+  React.useEffect(() => {
+    if (!needsAllowanceCheck) {
+      setTokenAllowance(null);
+      setAllowanceLoading(false);
+      return;
+    }
+    if (!deal?.contract?.token || !ownerAddress || !publicClient) {
+      setTokenAllowance(null);
+      setAllowanceLoading(false);
+      return;
+    }
+    let cancelled = false;
+    const loadAllowance = async () => {
+      setAllowanceLoading(true);
+      try {
+        const value = await publicClient.readContract({
+          abi: erc20Abi,
+          address: deal.contract.token as Address,
+          functionName: "allowance",
+          args: [ownerAddress, network.swap2pAddress as Address]
+        });
+        if (!cancelled) {
+          setTokenAllowance(value as bigint);
+        }
+      } catch (error) {
+        console.error("[deal-detail] allowance read failed", error);
+        if (!cancelled) {
+          setTokenAllowance(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setAllowanceLoading(false);
+        }
+      }
+    };
+    void loadAllowance();
+    return () => {
+      cancelled = true;
+    };
+  }, [needsAllowanceCheck, deal, ownerAddress, publicClient, network.swap2pAddress, allowanceNonce]);
+
+  const hasSufficientAllowance =
+    requiredAllowance !== null && tokenAllowance !== null && tokenAllowance >= requiredAllowance;
+  const approvalButtonVisible = Boolean(needsAllowanceCheck && requiredAllowance !== null && ownerAddress);
+  const approvalApproved = approvalButtonVisible && hasSufficientAllowance;
+  const primaryDisabled = Boolean(
+    !ownerAddress ||
+      (needsAllowanceCheck && requiredAllowance !== null && !hasSufficientAllowance) ||
+      allowanceLoading ||
+      approvalBusy,
+  );
+  const primaryDisabledHint = (() => {
+    if (!ownerAddress) {
+      return "Connect your wallet to continue.";
+    }
+    if (!needsAllowanceCheck) return undefined;
+    if (allowanceLoading) {
+      return "Checking allowance…";
+    }
+    if (requiredAllowance !== null && !hasSufficientAllowance) {
+      return "Approve the token allowance before continuing.";
+    }
+    return undefined;
+  })();
 
   if (isLoading) {
     return (
@@ -90,7 +195,6 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   }
 
   const summary = getDealSideCopy(deal.side);
-  const role = perspective.role ?? "MAKER";
   const isMaker = perspective.isMaker;
   const userSide = (perspective.userSide ?? deal.side).toUpperCase();
   const userAction = userSide === "SELL" ? "sell" : "buy";
@@ -103,8 +207,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
         : null;
   const priceValue = pricePerToken !== null ? formatPrice(pricePerToken) : null;
 
-  const tokenDecimals = deal.tokenDecimals ?? 4;
-  const tokenAmountValue = formatTokenAmount(deal.amount, tokenDecimals);
+  const tokenAmountValue = formatTokenAmount(deal.amount, displayTokenDecimals);
   const fiatAmountFormatted = fiatAmount ? formatFiatAmount(fiatAmount) : null;
   const metaFiatLabel = fiatAmountFormatted ? `≈ ${fiatAmountFormatted} ${deal.currencyCode}` : "—";
 
@@ -112,30 +215,22 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const counterpartyAddress = isMaker ? deal.taker : deal.maker;
 
   const handleApproveTokens = async (mode: ApprovalMode) => {
-    if (!deal || !deal.contract?.token) {
+    if (!needsAllowanceCheck || !deal?.contract?.token) {
       setActionError("Deal data unavailable for approval.");
       return;
     }
-    if (!publicClient || !walletClient) {
+    if (!publicClient || !walletClient || !ownerAddress) {
       setActionError("Connect your wallet to approve tokens.");
       return;
     }
-
-    const tokenDecimals = deal.tokenDecimals ?? 18;
-    const baseAmount = parseUnits(String(deal.amount), tokenDecimals);
-    const allowance = mode === "max" ? maxUint256 : baseAmount * 2n;
-    const tokenAddress = deal.contract.token as Address;
-    const spender = network.swap2pAddress as Address;
-    const accountValue = walletClient.account;
-    const owner = typeof accountValue === "string"
-      ? getAddress(accountValue)
-      : accountValue && "address" in accountValue
-        ? getAddress(accountValue.address)
-        : null;
-    if (!owner) {
-      setActionError("Unable to resolve connected account.");
+    if (!requiredAllowance) {
+      setActionError("Unable to determine required allowance.");
       return;
     }
+
+    const tokenAddress = deal.contract.token as Address;
+    const spender = network.swap2pAddress as Address;
+    const allowanceTarget = mode === "max" ? maxUint256 : requiredAllowance;
 
     setApprovalBusy(true);
     setActionError(null);
@@ -144,11 +239,12 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
         abi: erc20Abi,
         address: tokenAddress,
         functionName: "approve",
-        args: [spender, allowance],
-        account: owner
+        args: [spender, allowanceTarget],
+        account: ownerAddress
       });
       const txHash = await walletClient.writeContract(request);
       await publicClient.waitForTransactionReceipt({ hash: txHash });
+      setAllowanceNonce(value => value + 1);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Token approval failed.";
       console.error("[deal-detail] approval failed", error);
@@ -241,8 +337,13 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
         onRelease={handleRelease}
         onApproveTokens={handleApproveTokens}
         busy={actionBusy}
-        approvalBusy={approvalBusy}
+        approvalBusy={approvalBusy || allowanceLoading}
         approvalModeStorageKey={`swap2p:approval:deal:${deal.id}`}
+        approvalVisible={approvalButtonVisible}
+        primaryDisabled={primaryDisabled}
+        primaryDisabledHint={primaryDisabledHint}
+        approvalApproved={approvalApproved}
+        approvalApprovedLabel="Approved"
       />
 
       {actionError ? (
