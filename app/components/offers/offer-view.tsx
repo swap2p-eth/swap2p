@@ -153,6 +153,8 @@ export function OfferView({
     return [...base, ...extra].map(method => ({ id: method, label: method }));
   }, [network, fiat, selectedMethods]);
 
+  const tokenLabel = (tokenSymbol || "token").toUpperCase();
+
   const addCustomMethod = React.useCallback(() => {
     const trimmed = customMethodInput.trim();
     if (!trimmed) return;
@@ -389,7 +391,9 @@ export function OfferView({
 
             <section className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3">
-                <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Minimum amount</label>
+                <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
+                  Minimum amount ({tokenLabel})
+                </label>
                 <Input
                   value={minAmount}
                   onChange={event => setMinAmount(event.target.value)}
@@ -399,7 +403,9 @@ export function OfferView({
                 />
               </div>
               <div className="space-y-3">
-                <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Maximum amount</label>
+                <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
+                  Maximum amount ({tokenLabel})
+                </label>
                 <Input
                   value={maxAmount}
                   onChange={event => setMaxAmount(event.target.value)}
