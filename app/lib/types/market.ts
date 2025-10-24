@@ -3,7 +3,7 @@ export type DealSide = "BUY" | "SELL";
 export type DealState = "REQUESTED" | "ACCEPTED" | "PAID" | "RELEASED" | "CANCELED";
 
 export interface OfferRow {
-  id: number;
+  id: string;
   side: DealSide;
   maker: string;
   token: string;
@@ -19,6 +19,7 @@ export interface OfferRow {
   contractKey?: import("@/lib/swap2p/types").OfferKey;
   contract?: import("@/lib/swap2p/types").Offer;
   contractFiatCode?: number;
+  contractId?: string;
 }
 
 export interface DealRow {

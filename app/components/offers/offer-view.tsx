@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Loader2, Trash2, Trophy, X } from "lucide-react";
 import { useChainId } from "wagmi";
+import { isHex } from "viem";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +23,7 @@ type OfferEditorMode = "create" | "edit";
 
 interface OfferViewProps {
   mode?: OfferEditorMode;
-  offerId?: number;
+  offerId?: string;
   onCancel?: () => void;
   onCreated?: () => void;
   onDelete?: () => void;
@@ -61,12 +62,27 @@ export function OfferView({
 }: OfferViewProps) {
   const chainId = useChainId();
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
-  const { offers, createOffer, updateOffer, removeOffer } = useOffers();
+  const { offers, makerOffers, createOffer, updateOffer, removeOffer } = useOffers();
 
-  const isEdit = mode === "edit" && typeof offerId === "number";
+  const rawOfferId = React.useMemo(() => (typeof offerId === "string" ? offerId.trim() : ""), [offerId]);
+  const normalizedOfferId = React.useMemo(() => {
+    if (!rawOfferId) return null;
+    const prefixed = rawOfferId.startsWith("0x") ? rawOfferId : `0x${rawOfferId}`;
+    const normalized = prefixed.toLowerCase();
+    if (!isHex(normalized, { strict: false })) return null;
+    if (normalized.length !== 66) return null;
+    return normalized;
+  }, [rawOfferId]);
+  const wantsEdit = mode === "edit";
+  const hasInvalidOfferId = wantsEdit && rawOfferId.length > 0 && !normalizedOfferId;
+  const isEdit = wantsEdit && Boolean(normalizedOfferId);
+
   const existingOffer = React.useMemo<OfferRow | undefined>(
-    () => (isEdit ? offers.find(item => item.id === offerId) : undefined),
-    [isEdit, offers, offerId]
+    () =>
+      isEdit && normalizedOfferId
+        ? [...makerOffers, ...offers].find(entry => entry.id.toLowerCase() === normalizedOfferId)
+        : undefined,
+    [isEdit, normalizedOfferId, makerOffers, offers]
   );
 
   const [side, setSide] = React.useState<DealSide>(existingOffer?.side ?? "SELL");
@@ -264,6 +280,20 @@ export function OfferView({
     }
     return codes;
   }, [network, isEdit, existingOffer]);
+
+  if (hasInvalidOfferId) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
+        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Invalid offer identifier</h1>
+        <p className="text-sm text-muted-foreground">
+          The requested offer id must be a 32-byte hex string. Return to the dashboard and choose another offer.
+        </p>
+        <Button type="button" onClick={navigateBack} className="mx-auto rounded-full px-6">
+          {backLabel}
+        </Button>
+      </div>
+    );
+  }
 
   if (isEdit && !existingOffer) {
     return (

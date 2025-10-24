@@ -217,7 +217,11 @@ const mapOfferInfo = (raw: any): OfferWithKey | null => {
   const offer = mapOfferStruct(offerStruct);
   if (!offer) return null;
   const maker = raw.maker ?? raw[1] ?? offer.maker;
+  const idValue = raw.id ?? raw[0];
+  const idHex = toBytes32(idValue);
+  if (!idHex) return null;
   return {
+    id: idHex,
     key: {
       token: offer.token,
       side: offer.side,

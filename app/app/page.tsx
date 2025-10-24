@@ -13,9 +13,9 @@ import { OfferView } from "@/components/offers/offer-view";
 type ViewState =
   | { type: "offers" }
   | { type: "dashboard" }
-  | { type: "new-deal"; offerId: number }
+  | { type: "new-deal"; offerId: string }
   | { type: "deal-detail"; dealId: string }
-  | { type: "offer"; offerId?: number };
+  | { type: "offer"; offerId?: string };
 
 function parseHash(hash: string): ViewState {
   const normalized = hash || "offers";
@@ -24,8 +24,8 @@ function parseHash(hash: string): ViewState {
   }
   if (normalized.startsWith("new-deal/")) {
     const [, idPart] = normalized.split("/");
-    const offerId = Number.parseInt(idPart ?? "", 10);
-    if (Number.isFinite(offerId)) {
+    const offerId = decodeURIComponent(idPart ?? "").trim();
+    if (offerId.length > 0) {
       return { type: "new-deal", offerId };
     }
     return { type: "offers" };
@@ -43,8 +43,8 @@ function parseHash(hash: string): ViewState {
   }
   if (normalized.startsWith("offer/")) {
     const [, idPart] = normalized.split("/");
-    const offerId = Number.parseInt(idPart ?? "", 10);
-    if (Number.isFinite(offerId)) {
+    const offerId = decodeURIComponent(idPart ?? "").trim();
+    if (offerId.length > 0) {
       return { type: "offer", offerId };
     }
     return { type: "offers" };
@@ -107,7 +107,7 @@ function HomePageRouter() {
     }
     case "offer": {
       const backTarget = lastStableHash.current;
-      if (typeof view.offerId === "number") {
+      if (typeof view.offerId === "string") {
         return (
           <OfferView
             mode="edit"

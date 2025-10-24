@@ -9,7 +9,7 @@ import { getNetworkConfigForChain, type TokenConfig } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { safeFiatCodeToString, toFiatCode } from "@/lib/fiat";
 import type { OfferRow } from "@/lib/types/market";
-import { SwapSide, type OfferKey, type OfferWithKey } from "@/lib/swap2p/types";
+import { SwapSide, type OfferWithKey } from "@/lib/swap2p/types";
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
 
 interface OffersContextValue {
@@ -27,8 +27,8 @@ interface OffersContextValue {
   refresh: () => Promise<void>;
   refreshMakerOffers: () => Promise<void>;
   createOffer: (input: CreateOfferInput) => OfferRow;
-  updateOffer: (id: number, updates: OfferUpdateInput) => OfferRow | null;
-  removeOffer: (id: number) => void;
+  updateOffer: (id: string, updates: OfferUpdateInput) => OfferRow | null;
+  removeOffer: (id: string) => void;
 }
 
 interface CreateOfferInput {
@@ -59,15 +59,15 @@ const OFFER_CACHE_TTL_MS = 60_000;
 const toSideLabel = (side: SwapSide): OfferRow["side"] =>
   side === SwapSide.SELL ? "SELL" : "BUY";
 
-const hashOfferKey = (key: OfferKey): number => {
-  const input = `${key.token.toLowerCase()}|${key.maker.toLowerCase()}|${key.side}|${key.fiat}`;
-  let hash = 0;
-  for (let index = 0; index < input.length; index += 1) {
-    const char = input.charCodeAt(index);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
+const generateOfferId = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+    return `0x${hex}`;
   }
-  return Math.abs(hash);
+  const fallback = Date.now().toString(16).padStart(16, "0");
+  return `0x${fallback.padEnd(64, "0").slice(0, 64)}`;
 };
 
 const mapOffer = (
@@ -83,7 +83,7 @@ const mapOffer = (
   const timestampMs = (offer.updatedAt ?? 0) * 1000;
   const fiatLabel = safeFiatCodeToString(options.fiatId) || options.fiatCode;
   return {
-    id: hashOfferKey(key),
+    id: entry.id,
     side: toSideLabel(offer.side),
     maker: key.maker,
     token: options.tokenSymbol,
@@ -99,6 +99,7 @@ const mapOffer = (
     contractKey: entry.key,
     contract: offer,
     contractFiatCode: offer.fiat,
+    contractId: entry.id,
   };
 };
 
@@ -401,7 +402,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   }, [address]);
 
   const makerOffers = React.useMemo(() => {
-    const merged = new Map<number, OfferRow>();
+    const merged = new Map<string, OfferRow>();
     for (const offer of makerChainOffers) {
       merged.set(offer.id, offer);
     }
@@ -422,7 +423,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     if (!fiatEntry) return draftOffers.slice();
     const makerSide = activeMarket.side === "BUY" ? SwapSide.SELL : SwapSide.BUY;
     const expectedSideLabel = toSideLabel(makerSide);
-    const merged = new Map<number, OfferRow>();
+    const merged = new Map<string, OfferRow>();
     for (const token of tokenConfigs) {
       const key = makeCacheKey(token.address, makerSide, fiatEntry.value);
       const bucket = cacheRef.current.get(key);
@@ -468,8 +469,9 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         contractFiatCode = undefined;
       }
 
+      const id = generateOfferId();
       const entry: OfferRow = {
-        id: Date.now(),
+        id,
         side,
         maker: address,
         token,
@@ -491,7 +493,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateOffer = React.useCallback(
-    (id: number, updates: OfferUpdateInput) => {
+    (id: string, updates: OfferUpdateInput) => {
       let updated: OfferRow | null = null;
       setDraftOffers(current =>
         current.map(offer => {
@@ -517,7 +519,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const removeOffer = React.useCallback((id: number) => {
+  const removeOffer = React.useCallback((id: string) => {
     setDraftOffers(current => current.filter(offer => offer.id !== id));
   }, []);
 

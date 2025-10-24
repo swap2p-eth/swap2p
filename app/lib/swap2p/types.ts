@@ -1,6 +1,7 @@
 import type {
   Address,
   Hash,
+  Hex,
 } from "viem";
 
 export type FiatCode = number;
@@ -51,6 +52,7 @@ export type DealChatMessage = {
 };
 
 export type OfferWithKey = {
+  id: Hex;
   key: OfferKey;
   offer: Offer;
 };

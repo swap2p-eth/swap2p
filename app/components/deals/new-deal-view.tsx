@@ -26,7 +26,7 @@ type AmountKind = "crypto" | "fiat";
 type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
 
 interface NewDealViewProps {
-  offerId: number;
+  offerId: string;
   onCancel?: () => void;
   onCreated?: (dealId: string) => void;
   returnHash?: string;
