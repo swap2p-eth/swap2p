@@ -21,7 +21,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
         vm.stopPrank();
 
         vm.prank(maker);
-        swap.maker_makeOffer(address(ft), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(ft), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1e18, 500e18, "wire", "", address(0));
 
         vm.prank(taker);
         vm.expectRevert(Swap2p.FeeOnTransferTokenNotSupported.selector);
@@ -36,7 +36,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
         vm.stopPrank();
 
         vm.prank(maker);
-        swap.maker_makeOffer(address(ft), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1e18, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(ft), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1e18, 500e18, "sepa", "", address(0));
 
         vm.prank(taker);
         vm.expectRevert(Swap2p.FeeOnTransferTokenNotSupported.selector);
@@ -47,7 +47,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
     function test_Revert_WorsePrice_SELL_WhenOfferPriceHigherThanExpected() public {
         // Offer price = 100; expected = 99 -> revert
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100, 1_000e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100, 1, 500e18, "wire", "", address(0));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WorsePrice.selector);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 10e18, Swap2p.FiatCode.wrap(840), 99, "", bytes(""), address(0));
@@ -56,7 +56,7 @@ contract Swap2p_NegativeAndEventsTest is Swap2p_TestBase {
     function test_Revert_WorsePrice_BUY_WhenOfferPriceLowerThanExpected() public {
         // Offer price = 100; expected = 101 -> revert
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100, 1_000e18, 1, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100, 1, 500e18, "sepa", "", address(0));
         vm.prank(taker);
         vm.expectRevert(Swap2p.WorsePrice.selector);
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 10e18, Swap2p.FiatCode.wrap(978), 101, "", bytes(""), address(0));

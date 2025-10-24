@@ -13,7 +13,7 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
 
     function _setupSell(uint128 amount) internal returns (bytes32 dealId) {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1e18, 500e18, "wire", "", address(0));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,
@@ -29,7 +29,7 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
 
     function _setupBuy(uint128 amount) internal returns (bytes32 dealId) {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1e18, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1e18, 500e18, "sepa", "", address(0));
         dealId = _requestDealDefault(
             address(token),
             Swap2p.Side.BUY,
@@ -43,36 +43,36 @@ contract Swap2p_CancelTest is Swap2p_TestBase {
         );
     }
 
-    function test_CancelRequest_Sell_ByMakerOrTaker_ReserveRestored() public {
+    function test_CancelRequest_Sell_ByMakerOrTaker_AllowsReRequest() public {
         bytes32 dealId = _setupSell(100e18);
         // cancel by maker
         vm.prank(maker);
         swap.cancelRequest(dealId, bytes("cancel"));
-        // request again to ensure reserve restored
+        // request again to ensure offer remains usable
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 100e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
     }
 
-    function test_CancelDeal_Sell_ByTaker_ReserveRestored() public {
+    function test_CancelDeal_Sell_ByTaker_AllowsReRequest() public {
         bytes32 dealId = _setupSell(100e18);
         vm.prank(maker);
         swap.maker_acceptRequest(dealId, bytes("ok"));
         // cancel by taker (SELL)
         vm.prank(taker);
         swap.cancelDeal(dealId, bytes("later"));
-        // request again to ensure reserve restored
+        // request again to ensure offer remains usable
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 100e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
     }
 
-    function test_CancelDeal_Buy_ByMaker_ReserveRestored() public {
+    function test_CancelDeal_Buy_ByMaker_AllowsReRequest() public {
         bytes32 dealId = _setupBuy(50e18);
         vm.prank(maker);
         swap.maker_acceptRequest(dealId, bytes("ok"));
         // cancel by maker (BUY)
         vm.prank(maker);
         swap.cancelDeal(dealId, bytes("later"));
-        // request again to ensure reserve restored
+        // request again to ensure offer remains usable
         vm.prank(taker);
         swap.taker_requestOffer(address(token), Swap2p.Side.BUY, maker, 50e18, Swap2p.FiatCode.wrap(978), 100e18, "", bytes(""), address(0));
     }

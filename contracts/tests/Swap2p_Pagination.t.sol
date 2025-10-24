@@ -14,7 +14,7 @@ contract Swap2p_PaginationTest is Swap2p_TestBase {
     function test_OfferKeys_Pagination() public {
         // single key
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
         assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840)), 1);
         address[] memory k0 = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1);
         assertEq(k0.length, 1);
@@ -25,7 +25,7 @@ contract Swap2p_PaginationTest is Swap2p_TestBase {
     function test_OpenDeals_Pagination() public {
         // create two deals
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
         bytes32 d1 = _requestDealDefault(
             address(token),
             Swap2p.Side.SELL,

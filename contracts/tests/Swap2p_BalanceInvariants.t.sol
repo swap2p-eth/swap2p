@@ -13,7 +13,7 @@ contract Swap2p_BalanceInvariantsTest is Swap2p_TestBase {
 
     function test_Invariant_Balances_OnRelease_SELL() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1, 500e18, "wire", "", address(0));
         uint128 amount = 100e18;
         bytes32 dealId = _requestDealDefault(
             address(token),

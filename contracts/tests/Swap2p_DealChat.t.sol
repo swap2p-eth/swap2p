@@ -17,7 +17,6 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(840),
             100e18,
-            1_000e18,
             1,
             500e18,
             "wire", "", address(0));

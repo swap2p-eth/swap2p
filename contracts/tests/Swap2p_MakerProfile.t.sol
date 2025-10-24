@@ -18,7 +18,6 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(840),
             100e18,
-            1_000e18,
             1e18,
             500e18,
             "wire", "KYC + selfie", address(0));
@@ -38,7 +37,6 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(840),
             100e18,
-            1_000e18,
             1e18,
             500e18,
             "wire", "", address(0));
@@ -52,7 +50,6 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(978),
             100e18,
-            1_000e18,
             1e18,
             500e18,
             "sepa", "passport only", address(0));
@@ -112,7 +109,6 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(840),
             100e18,
-            1_000e18,
             1e18,
             500e18,
             "wire", "", address(0));
@@ -138,7 +134,6 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.BUY,
             Swap2p.FiatCode.wrap(978),
             100e18,
-            1_000e18,
             1e18,
             500e18,
             "sepa", "", address(0));
@@ -166,7 +161,6 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(840),
             100e18,
-            1_000e18,
             1e18,
             500e18,
             "wire", "", address(0));

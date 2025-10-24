@@ -231,11 +231,11 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
 
         // same token/side/fiat, three makers
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
         vm.prank(maker2);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
         vm.prank(maker3);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1, 500e18, "wire", "", address(0));
 
         address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 10);
         assertEq(keys.length, 3);
@@ -250,10 +250,10 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         assertTrue((keys[0] == maker && keys[1] == maker3) || (keys[0] == maker3 && keys[1] == maker));
     }
 
-    function test_Reserve_NotRestored_WhenOfferDeleted() public {
+    function test_OfferDeletion_AllowsNewRequests() public {
         // create offer
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 1_000e18, 10e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 10e18, 500e18, "wire", "", address(0));
         // request amount 50
         bytes32 dealId = _requestDealDefault(
             address(token),
@@ -272,12 +272,11 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         // cancel request
         vm.prank(taker);
         swap.cancelRequest(dealId, bytes(""));
-        // new offer and request same amount: reserve should not be auto-restored from old offer
+        // new offer can still accept the same amount
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 0, 10e18, 500e18, "wire", "", address(0));
-        // reserve is 0, request of 50 should fail with InsufficientReserve
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 100e18, 10e18, 500e18, "wire", "", address(0));
+        // requesting again should succeed without additional bookkeeping
         vm.prank(taker);
-        vm.expectRevert(Swap2p.InsufficientReserve.selector);
         swap.taker_requestOffer(address(token), Swap2p.Side.SELL, maker, 50e18, Swap2p.FiatCode.wrap(840), 100e18, "", bytes(""), address(0));
     }
 
@@ -286,7 +285,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         swap.setOnline(true);
         (bytes32 predicted,) = swap.previewNextOfferId(maker);
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 200e18, 2_000e18, 5e18, 600e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 200e18, 5e18, 600e18, "sepa", "", address(0));
         bytes32 storedId = _offerId(address(token), maker, Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978));
         assertEq(storedId, predicted, "offer id should match preview");
 
@@ -294,7 +293,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         assertEq(items.length, 1);
         assertEq(items[0].id, storedId);
         assertEq(items[0].maker, maker);
-        assertEq(items[0].offer.reserve, 2_000e18);
+        assertEq(items[0].offer.maxAmt, 600e18);
         assertEq(items[0].offer.minAmt, 5e18);
 
         Swap2p.OfferInfo memory fetched = swap.getOfferById(storedId);
@@ -318,7 +317,6 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(840),
             101e18,
-            5_000e18,
             50e18,
             2_000e18,
             "wire", "KYC + selfie", address(0));
@@ -328,7 +326,6 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.Side.BUY,
             Swap2p.FiatCode.wrap(978),
             99e18,
-            4_000e18,
             25e18,
             1_500e18,
             "sepa", "passport", address(0));
@@ -340,7 +337,6 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(840),
             102e18,
-            3_500e18,
             40e18,
             1_800e18,
             "pix", "video-call", address(0));
@@ -350,7 +346,6 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(978),
             100e18,
-            2_500e18,
             20e18,
             1_200e18,
             "swift", "", address(0));
@@ -415,14 +410,13 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         address taker2 = makeAddr("taker2");
         _setupTaker(taker2);
 
-        // ensure maker offer has enough reserve
+        // ensure maker offer is available for upcoming deals
         vm.prank(maker);
         swap.maker_makeOffer(
             address(token),
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(840),
             101e18,
-            5_000e18,
             50e18,
             2_000e18,
             "wire", "KYC + selfie", address(0));
@@ -533,10 +527,10 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         assertEq(recentDetailedTaker2.length, 1);
         assertEq(recentDetailedTaker2[0].id, deal2);
 
-        // ensure active offer still reflects reserve adjustments
+        // ensure active offer parameters remain intact after deal churn
         Swap2p.OfferInfo memory active = swap.getOfferById(activeOffer);
-        uint256 expectedReserve = 5_000e18 - 200e18 - 150e18 - 120e18 + 150e18;
-        assertEq(active.offer.reserve, expectedReserve);
+        assertEq(active.offer.minAmt, 50e18);
+        assertEq(active.offer.maxAmt, 2_000e18);
     }
 
     function test_Churn_Invariants() public {
@@ -573,7 +567,6 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
                     mkt.side,
                     mkt.fiat,
                     uint96(100e18 + i * 5e18 + j * 3e18),
-                    uint96(4_000e18 + j * 500e18),
                     uint128(20e18),
                     uint128(2_000e18),
                     "init",
@@ -599,7 +592,6 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
                     market.side,
                     market.fiat,
                     uint96(90e18 + iter * 1e18),
-                    uint96(5_000e18 + iter * 100e18),
                     uint128(10e18),
                     uint128(2_500e18),
                     "update",
@@ -610,21 +602,23 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
                 bytes32 offerId = swap.getOfferId(market.token, currentMaker, market.side, market.fiat);
                 if (offerId != bytes32(0)) {
                     Swap2p.OfferInfo memory info = swap.getOfferById(offerId);
-                    if (info.offer.reserve >= amount) {
-                        bytes32 dealId = _requestDealAs(
-                            currentTaker,
-                            market.token,
-                            market.side,
-                            currentMaker,
-                            uint128(amount),
-                            market.fiat,
-                            uint96(info.offer.priceFiatPerToken),
-                            "",
-                            "",
-                            address(0)
-                        );
-                        _trackDeal(dealId);
+                    uint128 amt = uint128(amount);
+                    if (amt < info.offer.minAmt || amt > info.offer.maxAmt) {
+                        amt = info.offer.minAmt;
                     }
+                    bytes32 dealId = _requestDealAs(
+                        currentTaker,
+                        market.token,
+                        market.side,
+                        currentMaker,
+                        amt,
+                        market.fiat,
+                        uint96(info.offer.priceFiatPerToken),
+                        "",
+                        "",
+                        address(0)
+                    );
+                    _trackDeal(dealId);
                 }
             } else if (scenario == 2) {
                 bytes32[] memory makerOpen = swap.getOpenDeals(currentMaker, 0, 10);

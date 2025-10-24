@@ -19,11 +19,10 @@ contract ActorProxy {
         Swap2p.Side side,
         Swap2p.FiatCode fiat,
         uint96 price,
-        uint96 reserve,
         uint128 minAmt,
         uint128 maxAmt
     ) external {
-        swap.maker_makeOffer(tokenAddr, side, fiat, price, reserve, minAmt, maxAmt, "echidna", "", address(0));
+        swap.maker_makeOffer(tokenAddr, side, fiat, price, minAmt, maxAmt, "echidna", "", address(0));
     }
 
     function makerDeleteOffer(
@@ -174,7 +173,6 @@ contract Swap2pEchidnaHarness {
         uint8 actorIdx,
         uint8 marketIdx,
         uint96 price,
-        uint96 reserve,
         uint128 minAmt,
         uint128 maxAmt
     ) external {
@@ -186,12 +184,11 @@ contract Swap2pEchidnaHarness {
         if (maxAmt < minAmt) maxAmt = minAmt;
         if (maxAmt > uint128(type(uint96).max)) maxAmt = uint128(type(uint96).max);
         if (minAmt > maxAmt) minAmt = maxAmt;
-        if (reserve < uint96(maxAmt)) reserve = uint96(maxAmt);
         price = uint96(uint256(price) % 1_000_000_000_000 + 1);
 
         _topUp(proxy, uint256(maxAmt) * 5);
         proxy.setOnline(true);
-        proxy.makerMakeOffer(m.tokenAddr, m.side, m.fiat, price, reserve, minAmt, maxAmt);
+        proxy.makerMakeOffer(m.tokenAddr, m.side, m.fiat, price, minAmt, maxAmt);
     }
 
     function actionDeleteOffer(uint8 actorIdx, uint8 marketIdx) external {

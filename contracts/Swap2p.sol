@@ -14,8 +14,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /// - No admin/owner: protocol economics are encoded; fees are distributed automatically.
 ///
 /// Core flow
-/// 1) Maker publishes an offer (token, side BUY/SELL, price, reserve, amount bounds).
-/// 2) Taker requests: deposit is pulled (BUY: 2×amount, SELL: 1×amount). Offer reserve is reduced by `amount`.
+/// 1) Maker publishes an offer (token, side BUY/SELL, price, amount bounds).
+/// 2) Taker requests: deposit is pulled (BUY: 2×amount, SELL: 1×amount).
 /// 3) Maker accepts: maker deposit is pulled (BUY: 1×amount, SELL: 2×amount). State → ACCEPTED.
 /// 4) Fiat payer calls markFiatPaid (BUY: maker; SELL: taker). State → PAID.
 /// 5) Counterparty calls release: main payout (amount minus fee) is paid, and both deposits (1× each) are refunded. State → RELEASED.
@@ -62,7 +62,6 @@ contract Swap2p is ReentrancyGuard {
     struct Offer {
         uint128  minAmt;
         uint128  maxAmt;
-        uint96   reserve;             // token amount reserved for offers
         uint96   priceFiatPerToken;   // fiat/token price ratio
         uint40   ts;                  // last update timestamp
         FiatCode fiat;
@@ -165,7 +164,6 @@ contract Swap2p is ReentrancyGuard {
     error NotFiatPayer();
     error MakerOffline();
     error WorsePrice();
-    error InsufficientReserve();
     error FeeOnTransferTokenNotSupported();
     error AuthorZero();
     error NicknameTaken();
@@ -441,7 +439,6 @@ contract Swap2p is ReentrancyGuard {
     /// @param s Side (BUY/SELL).
     /// @param f Fiat code (uint24).
     /// @param price Fiat per token price (unit is UI-defined).
-    /// @param reserve Amount of tokens reserved for this offer.
     /// @param minAmt Minimum per-request amount.
     /// @param maxAmt Maximum per-request amount.
     /// @param paymentMethods Supported fiat payment methods.
@@ -451,14 +448,13 @@ contract Swap2p is ReentrancyGuard {
         Side     s,
         FiatCode f,
         uint96   price,
-        uint96   reserve,
         uint128  minAmt,
         uint128  maxAmt,
         string calldata paymentMethods,
         string calldata requirements,
         address  partner
     ) external {
-        _makerMakeOffer(token, s, f, price, reserve, minAmt, maxAmt, paymentMethods, requirements);
+        _makerMakeOffer(token, s, f, price, minAmt, maxAmt, paymentMethods, requirements);
         _setAffiliateIfNotSet(msg.sender, partner);
     }
 
@@ -467,7 +463,6 @@ contract Swap2p is ReentrancyGuard {
         Side s,
         FiatCode f,
         uint96 price,
-        uint96 reserve,
         uint128 minAmt,
         uint128 maxAmt,
         string calldata paymentMethods,
@@ -487,7 +482,6 @@ contract Swap2p is ReentrancyGuard {
 
         o.minAmt = minAmt;
         o.maxAmt = maxAmt;
-        o.reserve = reserve;
         o.priceFiatPerToken = price;
         o.paymentMethods = paymentMethods;
         o.requirements = requirements;
@@ -547,9 +541,6 @@ contract Swap2p is ReentrancyGuard {
         }
 
         if (amount < off.minAmt || amount > off.maxAmt) revert AmountOutOfBounds();
-        if (off.reserve < uint96(amount)) revert InsufficientReserve();
-        off.reserve -= uint96(amount);
-
         uint128 need = s == Side.BUY ? amount * 2 : amount;
         _pull(token, taker, need);
 
@@ -609,7 +600,7 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Cancel before accept (maker or taker)
-    /// @notice Cancels a REQUESTED deal by maker or taker, restores reserve and refunds taker.
+    /// @notice Cancels a REQUESTED deal by maker or taker and refunds taker.
     /// @param id Deal id.
     /// @param reason Optional message (sent via Chat before state change).
     function cancelRequest(bytes32 id, bytes calldata reason) external nonReentrant touchActivity {
@@ -622,11 +613,6 @@ contract Swap2p is ReentrancyGuard {
         d.tsLast = uint40(block.timestamp);
         _addRecent(d.maker, id);
         _addRecent(d.taker, id);
-        bytes32 oid = _offerId[d.token][d.maker][d.side][d.fiat];
-        if (oid != bytes32(0)) {
-            Offer storage off = _offers[oid];
-            if (off.ts != 0) off.reserve += uint96(d.amount);
-        }
         uint128 back = d.side == Side.BUY ? d.amount * 2 : d.amount;
         _push(d.token, d.taker, back);
         _closeBoth(d.maker, d.taker, id);
@@ -678,7 +664,7 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Cancel after accept (restricted by side)
-    /// @notice Cancels an ACCEPTED deal (SELL: taker; BUY: maker). Restores reserve and refunds.
+    /// @notice Cancels an ACCEPTED deal (SELL: taker; BUY: maker) and refunds deposits.
     /// @param id Deal id.
     /// @param reason Optional message (sent via Chat before state change).
     function cancelDeal(bytes32 id, bytes calldata reason) external nonReentrant touchActivity {
@@ -697,12 +683,6 @@ contract Swap2p is ReentrancyGuard {
         _sendChat(id, reason, DealState.CANCELED);
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
-        // restore maker offer reserve
-        bytes32 oid = _offerId[d.token][d.maker][d.side][d.fiat];
-        if (oid != bytes32(0)) {
-            Offer storage off = _offers[oid];
-            if (off.ts != 0) off.reserve += uint96(d.amount);
-        }
         _addRecent(d.maker, id);
         _addRecent(d.taker, id);
         if (d.side == Side.BUY) {

@@ -13,7 +13,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
 
     function test_Fees_NoPartner() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1_000e18, 1e18, 500e18, "wire", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.SELL, Swap2p.FiatCode.wrap(840), 0, 1e18, 500e18, "wire", "", address(0));
         uint128 amount = 300e18;
         bytes32 dealId = _requestDealDefault(
             address(token),
@@ -40,7 +40,7 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
 
     function test_Fees_WithPartner() public {
         vm.prank(maker);
-        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1_000e18, 1e18, 500e18, "sepa", "", address(0));
+        swap.maker_makeOffer(address(token), Swap2p.Side.BUY, Swap2p.FiatCode.wrap(978), 100e18, 1e18, 500e18, "sepa", "", address(0));
         uint128 amount = 120e18;
         bytes32 dealId = _requestDealDefault(
             address(token),
@@ -82,7 +82,6 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
             Swap2p.Side.BUY,
             Swap2p.FiatCode.wrap(840),
             100e18,
-            1_000e18,
             1e18,
             500e18,
             "wire", "", address(0));
@@ -111,7 +110,6 @@ contract Swap2p_FeesTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             Swap2p.FiatCode.wrap(978),
             100e18,
-            1_000e18,
             1e18,
             500e18,
             "sepa", "", address(0));
