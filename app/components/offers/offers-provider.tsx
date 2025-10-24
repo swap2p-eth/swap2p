@@ -429,7 +429,11 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
     console.debug("[OffersProvider] offers computed", JSON.stringify({
-      market: { side: activeMarket.side, fiat: fiatEntry.info.shortLabel },
+      market: {
+        side: activeMarket.side,
+        countryCode: activeMarket.fiat,
+        label: fiatEntry.info.shortLabel,
+      },
       makerSide: expectedSideLabel,
       count: result.length,
       cacheVersion,

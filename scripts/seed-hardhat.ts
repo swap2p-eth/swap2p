@@ -398,6 +398,38 @@ for (const maker of makerContexts) {
       max: mirroredBuyMax,
       paymentMethods: sell.paymentMethods,
     });
+
+    // Provide a SELL-side offer for the buy fiat so both market directions are populated.
+    const mirroredSellMin = parseAmount(buy.min, token.decimals);
+    const mirroredSellMax = parseAmount(buy.max, token.decimals);
+
+    await writeWith(maker.client, {
+      address: swap.address as Address,
+      abi: swapArtifact.abi,
+      functionName: "maker_makeOffer",
+      args: [
+        token.address,
+        1,
+        buy.fiat,
+        buy.price,
+        mirroredSellMin,
+        mirroredSellMax,
+        buy.paymentMethods,
+        `${buy.requirements}. Mirrored SELL offer for takers buying ${token.config.symbol}`,
+        zeroAddress,
+      ],
+    }, `create SELL offer (mirrored) for ${token.config.symbol} (${maker.profile.nickname})`);
+
+    maker.offers.push({
+      maker,
+      token,
+      side: 1,
+      fiat: buy.fiat,
+      price: buy.price,
+      min: mirroredSellMin,
+      max: mirroredSellMax,
+      paymentMethods: buy.paymentMethods,
+    });
   }
 }
 
