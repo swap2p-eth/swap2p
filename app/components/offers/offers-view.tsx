@@ -20,6 +20,7 @@ import {
 } from "@/components/offers/filter-storage";
 import { RefreshCw } from "lucide-react";
 import { useUser } from "@/context/user-context";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
 const DEFAULT_FIAT = "USD";
 
 interface OffersViewProps {
@@ -31,6 +32,7 @@ interface OffersViewProps {
 export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersViewProps) {
   const { offers, isLoading, ensureMarket, tokens, fiats, activeMarket, refresh } = useOffers();
   const { address } = useUser();
+  const { openConnectModal } = useConnectModal();
   const [side, setSide] = React.useState<"BUY" | "SELL">(activeMarket.side);
   const [token, setToken] = React.useState(ANY_FILTER_OPTION);
   const [fiat, setFiat] = React.useState(activeMarket.fiat.toUpperCase());
@@ -38,7 +40,8 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
   const [amount, setAmount] = React.useState("");
   const [filtersReady, setFiltersReady] = React.useState(false);
 
-  const normalizedAddress = React.useMemo(() => (typeof address === "string" ? address.trim().toLowerCase() : ""), [address]);
+  const normalizedAddress = React.useMemo(() => address.trim().toLowerCase(), [address]);
+  const [createRequested, setCreateRequested] = React.useState(false);
 
   React.useEffect(() => {
     if (filtersReady) {
@@ -212,13 +215,29 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     void refresh();
   }, [refresh]);
 
-  const handleCreateOffer = React.useCallback(() => {
+  const triggerCreateOffer = React.useCallback(() => {
     if (onCreateOffer) {
       onCreateOffer();
     } else if (typeof window !== "undefined") {
       window.location.hash = "offer";
     }
   }, [onCreateOffer]);
+
+  const handleCreateOffer = React.useCallback(() => {
+    if (!normalizedAddress) {
+      setCreateRequested(true);
+      openConnectModal?.();
+      return;
+    }
+    triggerCreateOffer();
+  }, [normalizedAddress, openConnectModal, triggerCreateOffer]);
+
+  React.useEffect(() => {
+    if (createRequested && normalizedAddress) {
+      triggerCreateOffer();
+      setCreateRequested(false);
+    }
+  }, [createRequested, normalizedAddress, triggerCreateOffer]);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-8">
