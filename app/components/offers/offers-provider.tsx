@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useChainId } from "wagmi";
-import { formatUnits, getAddress } from "viem";
+import { useChainId, usePublicClient } from "wagmi";
+import { formatUnits, getAddress, parseUnits, type Hash } from "viem";
 
 import { useUser } from "@/context/user-context";
 import { getNetworkConfigForChain, FIAT_INFOS, type FiatInfo, type TokenConfig } from "@/config";
@@ -26,9 +26,9 @@ interface OffersContextValue {
   fiats: FiatInfo[];
   refresh: () => Promise<void>;
   refreshMakerOffers: () => Promise<void>;
-  createOffer: (input: CreateOfferInput) => OfferRow;
-  updateOffer: (id: string, updates: OfferUpdateInput) => OfferRow | null;
-  removeOffer: (id: string) => void;
+  createOffer: (input: CreateOfferInput) => Promise<OfferRow>;
+  updateOffer: (offer: OfferRow, updates: OfferUpdateInput) => Promise<OfferRow>;
+  removeOffer: (offer: OfferRow) => Promise<void>;
 }
 
 interface CreateOfferInput {
@@ -111,6 +111,7 @@ const makeCacheKey = (tokenAddress: string, side: SwapSide, fiat: number) =>
 export function OffersProvider({ children }: { children: React.ReactNode }) {
   const { address } = useUser();
   const chainId = useChainId();
+  const publicClient = usePublicClient({ chainId });
   const { adapter } = useSwap2pAdapter();
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
 
@@ -246,16 +247,16 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   );
 
   const loadMakerOffers = React.useCallback(
-    async (force = false) => {
+    async (force = false): Promise<OfferRow[]> => {
       if (!adapter || !address) {
         makerCacheRef.current = null;
         setMakerChainOffers([]);
-        return;
+        return [];
       }
       const cached = makerCacheRef.current;
       if (!force && cached && Date.now() - cached.fetchedAt <= OFFER_CACHE_TTL_MS) {
         setMakerChainOffers(cached.items);
-        return;
+        return cached.items;
       }
       setIsMakerLoading(true);
       try {
@@ -264,21 +265,27 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           offset: 0,
           limit: OFFER_FETCH_LIMIT,
         });
-        const mapped = entries.map(entry => {
-          const tokenInfo = tokenConfigs.find(token => token.address.toLowerCase() === entry.key.token.toLowerCase());
-          const tokenSymbol = tokenInfo?.symbol ?? entry.offer.token;
-          const tokenDecimals = tokenInfo?.decimals ?? 18;
-                    return mapOffer(entry, {
-            tokenSymbol,
-            tokenDecimals,
-          });
-        });
+        const mapped = entries
+          .map(entry => {
+            const tokenInfo = tokenConfigs.find(
+              token => token.address.toLowerCase() === entry.key.token.toLowerCase(),
+            );
+            const tokenSymbol = tokenInfo?.symbol ?? entry.offer.token;
+            const tokenDecimals = tokenInfo?.decimals ?? 18;
+            return mapOffer(entry, {
+              tokenSymbol,
+              tokenDecimals,
+            });
+          })
+          .filter((item): item is OfferRow => Boolean(item));
         makerCacheRef.current = { items: mapped, fetchedAt: Date.now() };
         setMakerChainOffers(mapped);
+        return mapped;
       } catch (error) {
         console.error("[swap2p] failed to fetch maker offers", { maker: address }, error);
         makerCacheRef.current = { items: [], fetchedAt: Date.now() };
         setMakerChainOffers([]);
+        return [];
       } finally {
         setIsMakerLoading(false);
       }
@@ -443,7 +450,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   }, [activeMarket, cacheVersion, draftOffers, tokenConfigs, fiatLookup, defaultFiat]);
 
   const createOffer = React.useCallback(
-    ({
+    async ({
       side,
       token,
       countryCode,
@@ -453,8 +460,21 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       paymentMethods,
       requirements,
     }: CreateOfferInput) => {
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!address) {
+        throw new Error("Connect your wallet to publish an offer.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+
       const tokenInfo = tokenConfigs.find(item => item.symbol === token);
-      const decimals = tokenInfo?.decimals ?? 18;
+      if (!tokenInfo) {
+        throw new Error(`Unsupported token ${token}.`);
+      }
+      const decimals = tokenInfo.decimals ?? 18;
       const normalizedCountry = countryCode.toUpperCase();
       const fiatInfo = getFiatInfoByCountry(normalizedCountry);
       let contractFiatCode: number | undefined;
@@ -463,13 +483,15 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       } catch {
         contractFiatCode = undefined;
       }
+      if (contractFiatCode === undefined) {
+        throw new Error(`Unsupported fiat currency ${normalizedCountry}.`);
+      }
 
       const fiatLabel = fiatInfo?.shortLabel ?? normalizedCountry;
       const currencyCode = fiatInfo?.currencyCode ?? normalizedCountry;
-
-      const id = generateOfferId();
-      const entry: OfferRow = {
-        id,
+      const paymentMethodsValue = paymentMethods.join(", ");
+      const fallbackEntry: OfferRow = {
+        id: generateOfferId(),
         side,
         maker: address,
         token,
@@ -480,46 +502,165 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         price,
         minAmount,
         maxAmount,
-        paymentMethods: paymentMethods.join(", "),
+        paymentMethods: paymentMethodsValue,
         requirements: requirements ?? "",
         updatedAt: new Date().toISOString(),
         contractFiatCode,
       };
-      setDraftOffers(current => [entry, ...current]);
-      return entry;
+
+      const makerAccount = getAddress(address);
+      const sideValue = side === "SELL" ? SwapSide.SELL : SwapSide.BUY;
+      const priceScaled = BigInt(Math.round(price * PRICE_SCALE));
+      const minAmountScaled = parseUnits(String(minAmount), decimals);
+      const maxAmountScaled = parseUnits(String(maxAmount), decimals);
+      const requirementsValue = requirements?.trim() ?? "";
+
+      const txHash: Hash = await adapter.makerMakeOffer({
+        account: makerAccount,
+        token: tokenInfo.address,
+        side: sideValue,
+        fiat: contractFiatCode,
+        price: priceScaled,
+        minAmount: minAmountScaled,
+        maxAmount: maxAmountScaled,
+        paymentMethods: paymentMethodsValue,
+        requirements: requirementsValue,
+        partner: null,
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      cacheRef.current.clear();
+      setCacheVersion(version => version + 1);
+      makerCacheRef.current = null;
+
+      const makerList = await loadMakerOffers(true);
+      await refresh();
+
+      const created = makerList.find(entry => {
+        const key = entry.contractKey;
+        if (!key) return false;
+        return (
+          key.maker.toLowerCase() === makerAccount.toLowerCase() &&
+          key.token.toLowerCase() === tokenInfo.address.toLowerCase() &&
+          key.side === sideValue &&
+          key.fiat === contractFiatCode
+        );
+      });
+
+      return created ?? fallbackEntry;
     },
-    [address, tokenConfigs],
+    [adapter, address, loadMakerOffers, publicClient, refresh, tokenConfigs],
   );
 
   const updateOffer = React.useCallback(
-    (id: string, updates: OfferUpdateInput) => {
-      let updated: OfferRow | null = null;
-      setDraftOffers(current =>
-        current.map(offer => {
-          if (offer.id !== id) return offer;
-          const next: OfferRow = {
-            ...offer,
-            price: updates.price ?? offer.price,
-            minAmount: updates.minAmount ?? offer.minAmount,
-            maxAmount: updates.maxAmount ?? offer.maxAmount,
-            paymentMethods:
-              updates.paymentMethods !== undefined
-                ? updates.paymentMethods.join(", ")
-                : offer.paymentMethods,
-            updatedAt: new Date().toISOString(),
-          };
-          updated = next;
-          return next;
-        }),
-      );
-      return updated;
+    async (offer: OfferRow, updates: OfferUpdateInput) => {
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!address) {
+        throw new Error("Connect your wallet to update an offer.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+      const key = offer.contractKey;
+      if (!key) {
+        throw new Error("Offer is not published on-chain yet.");
+      }
+
+      const makerAccount = getAddress(address);
+      const tokenAddress = key.token;
+      const normalizedToken = tokenAddress.toLowerCase();
+      const tokenInfo = tokenConfigs.find(item => item.address.toLowerCase() === normalizedToken);
+      const decimals = offer.tokenDecimals ?? tokenInfo?.decimals ?? 18;
+
+      const nextPrice = updates.price ?? offer.price;
+      const nextMinAmount = updates.minAmount ?? offer.minAmount;
+      const nextMaxAmount = updates.maxAmount ?? offer.maxAmount;
+      const existingMethods = offer.paymentMethods
+        ? offer.paymentMethods.split(",").map(method => method.trim()).filter(Boolean)
+        : [];
+      const nextMethodsList =
+        updates.paymentMethods !== undefined ? updates.paymentMethods : existingMethods;
+      const paymentMethodsValue = nextMethodsList.join(", ");
+
+      const txHash: Hash = await adapter.makerMakeOffer({
+        account: makerAccount,
+        token: tokenAddress,
+        side: key.side,
+        fiat: key.fiat,
+        price: BigInt(Math.round(nextPrice * PRICE_SCALE)),
+        minAmount: parseUnits(String(nextMinAmount), decimals),
+        maxAmount: parseUnits(String(nextMaxAmount), decimals),
+        paymentMethods: paymentMethodsValue,
+        requirements: (offer.requirements ?? "").trim(),
+        partner: null,
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      cacheRef.current.clear();
+      setCacheVersion(version => version + 1);
+      makerCacheRef.current = null;
+
+      const makerList = await loadMakerOffers(true);
+      await refresh();
+
+      const updated = makerList.find(entry => entry.id.toLowerCase() === offer.id.toLowerCase());
+      if (updated) {
+        return updated;
+      }
+
+      return {
+        ...offer,
+        price: nextPrice,
+        minAmount: nextMinAmount,
+        maxAmount: nextMaxAmount,
+        paymentMethods: paymentMethodsValue,
+        updatedAt: new Date().toISOString(),
+      };
     },
-    [],
+    [adapter, address, loadMakerOffers, publicClient, refresh, tokenConfigs],
   );
 
-  const removeOffer = React.useCallback((id: string) => {
-    setDraftOffers(current => current.filter(offer => offer.id !== id));
-  }, []);
+  const removeOffer = React.useCallback(
+    async (offer: OfferRow) => {
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!address) {
+        throw new Error("Connect your wallet to delete an offer.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+      const key = offer.contractKey;
+      if (!key) {
+        // Fallback: remove locally if not on-chain yet
+        setDraftOffers(current => current.filter(entry => entry.id !== offer.id));
+        return;
+      }
+
+      const txHash: Hash = await adapter.makerDeleteOffer({
+        account: getAddress(address),
+        token: key.token,
+        side: key.side,
+        fiat: key.fiat,
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      cacheRef.current.clear();
+      setCacheVersion(version => version + 1);
+      makerCacheRef.current = null;
+      setDraftOffers(current => current.filter(entry => entry.id !== offer.id));
+
+      await loadMakerOffers(true);
+      await refresh();
+    },
+    [adapter, address, loadMakerOffers, publicClient, refresh],
+  );
 
   const contextValue = React.useMemo<OffersContextValue>(
     () => ({

@@ -1,8 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useChainId } from "wagmi";
-import { formatUnits, getAddress } from "viem";
+import { useChainId, usePublicClient } from "wagmi";
+import { formatUnits, getAddress, parseUnits, type Hash } from "viem";
 
 import { useUser } from "@/context/user-context";
 import { getNetworkConfigForChain } from "@/config";
@@ -12,6 +12,7 @@ import { normalizeAddress } from "@/lib/deal-utils";
 import type { DealRow, DealState } from "@/lib/types/market";
 import type { OfferRow } from "@/lib/types/market";
 import { SwapDealState, SwapSide, type Deal as ContractDeal } from "@/lib/swap2p/types";
+import { swap2pAbi } from "@/lib/swap2p/generated";
 
 type AmountKind = "crypto" | "fiat";
 export type DealParticipant = "MAKER" | "TAKER";
@@ -21,16 +22,18 @@ interface CreateDealInput {
   amount: number;
   amountKind: AmountKind;
   paymentMethod: string;
+  paymentDetails: string;
 }
 
 interface DealsContextValue {
   deals: DealRow[];
   isLoading: boolean;
-  createDeal: (input: CreateDealInput) => DealRow;
-  acceptDeal: (dealId: string, comment?: string) => void;
-  cancelDeal: (dealId: string, actor: DealParticipant, comment?: string) => void;
-  markDealPaid: (dealId: string, actor: DealParticipant, comment?: string) => void;
-  releaseDeal: (dealId: string, actor: DealParticipant, comment?: string) => void;
+  createDeal: (input: CreateDealInput) => Promise<DealRow>;
+  acceptDeal: (dealId: string, comment?: string) => Promise<void>;
+  cancelDeal: (dealId: string, actor: DealParticipant, comment?: string) => Promise<void>;
+  markDealPaid: (dealId: string, actor: DealParticipant, comment?: string) => Promise<void>;
+  releaseDeal: (dealId: string, actor: DealParticipant, comment?: string) => Promise<void>;
+  sendMessage: (dealId: string, message: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -181,12 +184,23 @@ async function fetchChainDeals(
 export function DealsProvider({ children }: { children: React.ReactNode }) {
   const { address: currentUserAddress } = useUser();
   const chainId = useChainId();
+  const publicClient = usePublicClient({ chainId });
   const { adapter } = useSwap2pAdapter();
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
 
   const [chainDeals, setChainDeals] = React.useState<DealRow[]>([]);
   const [draftDeals, setDraftDeals] = React.useState<DealRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+
+  const fetchAndSetDeals = React.useCallback(async () => {
+    if (!adapter || !currentUserAddress) {
+      setChainDeals([]);
+      return [] as DealRow[];
+    }
+    const next = await fetchChainDeals(adapter, network, currentUserAddress);
+    setChainDeals(next);
+    return next;
+  }, [adapter, currentUserAddress, network]);
 
   const refresh = React.useCallback(async () => {
     if (!adapter || !currentUserAddress) {
@@ -196,12 +210,11 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     }
     setIsLoading(true);
     try {
-      const next = await fetchChainDeals(adapter, network, currentUserAddress);
-      setChainDeals(next);
+      await fetchAndSetDeals();
     } finally {
       setIsLoading(false);
     }
-  }, [adapter, network, currentUserAddress]);
+  }, [adapter, currentUserAddress, fetchAndSetDeals]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -224,20 +237,86 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const createDeal = React.useCallback(
-    ({ offer, amount, amountKind, paymentMethod }: CreateDealInput) => {
+    async ({ offer, amount, amountKind, paymentMethod, paymentDetails }: CreateDealInput) => {
       void amountKind;
-      const now = new Date().toISOString();
-      const id = generateDraftId();
-      const entry: DealRow = {
-        id,
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!currentUserAddress) {
+        throw new Error("Connect your wallet to request a deal.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+      const key = offer.contractKey;
+      const fiatCode = key?.fiat ?? offer.contractFiatCode;
+      if (!key || fiatCode === undefined) {
+        throw new Error("Offer is not available on-chain or fiat code missing.");
+      }
+
+      const decimals = offer.tokenDecimals ?? 18;
+      const takerAccount = getAddress(currentUserAddress);
+      const amountScaled = parseUnits(String(amount), decimals);
+      const expectedPrice = BigInt(Math.round(offer.price * PRICE_SCALE));
+      const previousIds = new Set(chainDeals.map(deal => deal.id.toLowerCase()));
+
+      let expectedDealId: string | null = null;
+      try {
+        const result = (await publicClient.readContract({
+          address: network.swap2pAddress,
+          abi: swap2pAbi,
+          functionName: "previewNextDealId",
+          args: [takerAccount],
+        })) as readonly [string, bigint];
+        const [previewId] = result;
+        if (typeof previewId === "string") {
+          expectedDealId = previewId;
+        }
+      } catch (error) {
+        console.debug("[swap2p] previewNextDealId failed", error);
+      }
+
+      const txHash: Hash = await adapter.takerRequestOffer({
+        account: takerAccount,
+        token: key.token,
+        side: key.side,
+        maker: key.maker,
+        amount: amountScaled,
+        fiat: fiatCode,
+        expectedPrice,
+        paymentMethod,
+        details: paymentDetails,
+        partner: null,
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      const nextDeals = await fetchAndSetDeals();
+      setDraftDeals([]);
+
+      const expectedIdLower = expectedDealId ? expectedDealId.toLowerCase() : null;
+      const created =
+        (expectedIdLower
+          ? nextDeals.find(deal => deal.id.toLowerCase() === expectedIdLower)
+          : undefined) ??
+        nextDeals.find(deal => !previousIds.has(deal.id.toLowerCase()));
+
+      if (created) {
+        return created;
+      }
+
+      const fallbackId = expectedDealId ?? generateDraftId();
+      return {
+        id: fallbackId,
+        contractId: expectedDealId ? BigInt(expectedDealId) : undefined,
         side: offer.side,
         amount,
         fiat: offer.fiat,
         countryCode: offer.countryCode,
         currencyCode: offer.currencyCode,
-        partner: null,
+        partner: offer.maker,
         state: "REQUESTED",
-        updatedAt: now,
+        updatedAt: new Date().toISOString(),
         maker: offer.maker,
         taker: currentUserAddress ?? "",
         token: offer.token,
@@ -246,92 +325,179 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         fiatAmount: offer.price * amount,
         paymentMethod,
       };
-      setDraftDeals(current => [entry, ...current]);
-      return entry;
     },
-    [currentUserAddress],
+    [adapter, chainDeals, currentUserAddress, fetchAndSetDeals, network.swap2pAddress, publicClient],
   );
 
-  const updateDeal = React.useCallback((dealId: string, updater: (deal: DealRow) => DealRow | null) => {
-    let modified = false;
-    setDraftDeals(current =>
-      current.map(deal => {
-        if (deal.id !== dealId) return deal;
-        const next = updater(deal);
-        if (next) {
-          modified = true;
-        }
-        return next ?? deal;
-      }),
-    );
-    if (modified) return;
-    setChainDeals(current =>
-      current.map(deal => {
-        if (deal.id !== dealId) return deal;
-        const next = updater(deal);
-        return next ?? deal;
-      }),
-    );
-  }, []);
+  const findDeal = React.useCallback(
+    (dealId: string): DealRow | null =>
+      chainDeals.find(deal => deal.id === dealId) ??
+      draftDeals.find(deal => deal.id === dealId) ??
+      null,
+    [chainDeals, draftDeals],
+  );
+
+  const requireContractDeal = React.useCallback(
+    (dealId: string) => {
+      const deal = findDeal(dealId);
+      if (!deal || deal.contractId === undefined) {
+        throw new Error("Deal is not synced on-chain yet. Refresh and try again.");
+      }
+      return deal;
+    },
+    [findDeal],
+  );
 
   const acceptDeal = React.useCallback(
-    (dealId: string) => {
-      updateDeal(dealId, deal => {
-        if (deal.state !== "REQUESTED") return null;
-        return { ...deal, state: "ACCEPTED", updatedAt: new Date().toISOString() };
+    async (dealId: string, comment?: string) => {
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!currentUserAddress) {
+        throw new Error("Connect your wallet to accept the deal.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+      const deal = requireContractDeal(dealId);
+      const txHash: Hash = await adapter.makerAcceptRequest({
+        account: getAddress(currentUserAddress),
+        id: deal.contractId,
+        message: comment,
       });
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      await fetchAndSetDeals();
     },
-    [updateDeal],
+    [adapter, currentUserAddress, fetchAndSetDeals, publicClient, requireContractDeal],
   );
 
   const cancelDeal = React.useCallback(
-    (dealId: string, actor: DealParticipant) => {
-      updateDeal(dealId, deal => {
-        if (deal.state === "REQUESTED") {
-          return { ...deal, state: "CANCELED", updatedAt: new Date().toISOString() };
-        }
-        if (deal.state === "ACCEPTED") {
-          const makerCanCancel = deal.side === "BUY" && actor === "MAKER";
-          const takerCanCancel = deal.side === "SELL" && actor === "TAKER";
-          if (makerCanCancel || takerCanCancel) {
-            return { ...deal, state: "CANCELED", updatedAt: new Date().toISOString() };
-          }
-        }
-        return null;
-      });
+    async (dealId: string, actor: DealParticipant, comment?: string) => {
+      void actor;
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!currentUserAddress) {
+        throw new Error("Connect your wallet to cancel the deal.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+      const deal = requireContractDeal(dealId);
+      let txHash: Hash;
+      if (deal.state === "REQUESTED") {
+        txHash = await adapter.cancelRequest({
+          account: getAddress(currentUserAddress),
+          id: deal.contractId,
+          reason: comment,
+        });
+      } else if (deal.state === "ACCEPTED") {
+        txHash = await adapter.cancelDeal({
+          account: getAddress(currentUserAddress),
+          id: deal.contractId,
+          reason: comment,
+        });
+      } else {
+        throw new Error("Deal cannot be canceled in its current state.");
+      }
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      await fetchAndSetDeals();
     },
-    [updateDeal],
+    [adapter, currentUserAddress, fetchAndSetDeals, publicClient, requireContractDeal],
   );
 
   const markDealPaid = React.useCallback(
-    (dealId: string, actor: DealParticipant) => {
-      updateDeal(dealId, deal => {
-        if (deal.state !== "ACCEPTED") return null;
-        const makerPays = deal.side === "BUY" && actor === "MAKER";
-        const takerPays = deal.side === "SELL" && actor === "TAKER";
-        if (!makerPays && !takerPays) return null;
-        return { ...deal, state: "PAID", updatedAt: new Date().toISOString() };
+    async (dealId: string, actor: DealParticipant, comment?: string) => {
+      void actor;
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!currentUserAddress) {
+        throw new Error("Connect your wallet to mark the deal as paid.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+      const deal = requireContractDeal(dealId);
+      if (deal.state !== "ACCEPTED") {
+        throw new Error("Deal must be accepted before marking as paid.");
+      }
+      const txHash: Hash = await adapter.markFiatPaid({
+        account: getAddress(currentUserAddress),
+        id: deal.contractId,
+        message: comment,
       });
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      await fetchAndSetDeals();
     },
-    [updateDeal],
+    [adapter, currentUserAddress, fetchAndSetDeals, publicClient, requireContractDeal],
   );
 
   const releaseDeal = React.useCallback(
-    (dealId: string, actor: DealParticipant) => {
-      updateDeal(dealId, deal => {
-        if (deal.state !== "PAID") return null;
-        const takerReleases = deal.side === "BUY" && actor === "TAKER";
-        const makerReleases = deal.side === "SELL" && actor === "MAKER";
-        if (!takerReleases && !makerReleases) return null;
-        return { ...deal, state: "RELEASED", updatedAt: new Date().toISOString() };
+    async (dealId: string, actor: DealParticipant, comment?: string) => {
+      void actor;
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!currentUserAddress) {
+        throw new Error("Connect your wallet to release the deal.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+      const deal = requireContractDeal(dealId);
+      if (deal.state !== "PAID") {
+        throw new Error("Deal must be marked as paid before releasing.");
+      }
+      const txHash: Hash = await adapter.release({
+        account: getAddress(currentUserAddress),
+        id: deal.contractId,
+        message: comment,
       });
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      await fetchAndSetDeals();
     },
-    [updateDeal],
+    [adapter, currentUserAddress, fetchAndSetDeals, publicClient, requireContractDeal],
+  );
+
+  const sendMessage = React.useCallback(
+    async (dealId: string, message: string) => {
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!currentUserAddress) {
+        throw new Error("Connect your wallet to send messages.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+      const trimmed = message.trim();
+      if (!trimmed) return;
+      const deal = requireContractDeal(dealId);
+      const txHash: Hash = await adapter.sendMessage({
+        account: getAddress(currentUserAddress),
+        id: deal.contractId,
+        message: trimmed,
+      });
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+      await fetchAndSetDeals();
+    },
+    [adapter, currentUserAddress, fetchAndSetDeals, publicClient, requireContractDeal],
   );
 
   const value = React.useMemo<DealsContextValue>(
-    () => ({ deals, createDeal, acceptDeal, cancelDeal, markDealPaid, releaseDeal, isLoading, refresh }),
-    [deals, createDeal, acceptDeal, cancelDeal, markDealPaid, releaseDeal, isLoading, refresh],
+    () => ({
+      deals,
+      createDeal,
+      acceptDeal,
+      cancelDeal,
+      markDealPaid,
+      releaseDeal,
+      sendMessage,
+      isLoading,
+      refresh,
+    }),
+    [deals, createDeal, acceptDeal, cancelDeal, markDealPaid, releaseDeal, sendMessage, isLoading, refresh],
   );
 
   return <DealsContext.Provider value={value}>{children}</DealsContext.Provider>;

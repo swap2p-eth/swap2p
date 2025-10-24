@@ -97,6 +97,7 @@ export function OfferView({
   const [selectedMethods, setSelectedMethods] = React.useState<string[]>(parseMethods(existingOffer?.paymentMethods));
   const [customMethodInput, setCustomMethodInput] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [successState, setSuccessState] = React.useState<null | { message: string; summary: string }>(null);
 
@@ -179,7 +180,7 @@ export function OfferView({
     setSelectedMethods(prev => prev.filter(item => item !== method));
   };
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setSuccessState(null);
@@ -222,53 +223,64 @@ export function OfferView({
 
     setIsSubmitting(true);
 
-    if (isEdit && existingOffer) {
-      const updated = updateOffer(existingOffer.id, {
-        price: parsedPrice,
-        minAmount: parsedMin,
-        maxAmount: parsedMax,
-        paymentMethods: selectedMethods
-      });
+    try {
+      if (isEdit && existingOffer) {
+        const updated = await updateOffer(existingOffer, {
+          price: parsedPrice,
+          minAmount: parsedMin,
+          maxAmount: parsedMax,
+          paymentMethods: selectedMethods
+        });
 
-      setIsSubmitting(false);
-
-      if (!updated) {
-        setError("Failed to update offer.");
+        setSuccessState({
+          message: "Offer updated",
+          summary: `${updated.side} ${updated.token} for ${updated.fiat} · ${summarizeMethods(parseMethods(updated.paymentMethods))}`
+        });
+        onCreated?.();
         return;
       }
 
+      const created = await createOffer({
+        side,
+        token: tokenSymbol,
+        countryCode: fiat,
+        price: parsedPrice,
+        minAmount: parsedMin,
+        maxAmount: parsedMax,
+        paymentMethods: selectedMethods,
+        requirements: requirements.trim()
+      });
+
       setSuccessState({
-        message: "Offer updated",
-        summary: `${updated.side} ${updated.token} for ${updated.fiat} · ${summarizeMethods(selectedMethods)}`
+        message: "Offer published",
+        summary: `${created.side} ${created.token} for ${created.fiat} · ${summarizeMethods(parseMethods(created.paymentMethods))}`
       });
       onCreated?.();
-      return;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to publish offer.";
+      console.error("[offer] submit failed", err);
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const created = createOffer({
-      side,
-      token: tokenSymbol,
-      countryCode: fiat,
-      price: parsedPrice,
-      minAmount: parsedMin,
-      maxAmount: parsedMax,
-      paymentMethods: selectedMethods,
-      requirements: requirements.trim()
-    });
-
-    setIsSubmitting(false);
-    setSuccessState({
-      message: "Offer draft prepared",
-      summary: `${created.side} ${created.token} for ${created.fiat} · ${summarizeMethods(selectedMethods)}`
-    });
-    onCreated?.();
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!isEdit || !existingOffer) return;
-    removeOffer(existingOffer.id);
-    onDelete?.();
-    navigateBack();
+    setError(null);
+    setSuccessState(null);
+    setIsDeleting(true);
+    try {
+      await removeOffer(existingOffer);
+      onDelete?.();
+      navigateBack();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete offer.";
+      console.error("[offer] delete failed", err);
+      setError(message);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const tokenOptions = React.useMemo(() => {
@@ -332,8 +344,19 @@ export function OfferView({
           <div className="flex flex-col items-end gap-3">
             <SideToggle value={side} onChange={value => !disableImmutable && setSide(value)} disabled={disableImmutable} />
             {isEdit ? (
-              <Button type="button" variant="destructive" className="rounded-full px-6" onClick={handleDelete}>
-                <Trash2 className="mr-2 h-4 w-4" /> Delete offer
+              <Button
+                type="button"
+                variant="destructive"
+                className="rounded-full px-6"
+                onClick={handleDelete}
+                disabled={isDeleting || isSubmitting}
+              >
+                {isDeleting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="mr-2 h-4 w-4" />
+                )}
+                {isDeleting ? "Deleting…" : "Delete offer"}
               </Button>
             ) : null}
           </div>
@@ -534,10 +557,10 @@ export function OfferView({
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" onClick={navigateBack} className="rounded-full px-6" disabled={isSubmitting}>
+              <Button type="button" variant="outline" onClick={navigateBack} className="rounded-full px-6" disabled={isSubmitting || isDeleting}>
                 Cancel
               </Button>
-              <Button type="submit" className="rounded-full px-6" disabled={isSubmitting}>
+              <Button type="submit" className="rounded-full px-6" disabled={isSubmitting || isDeleting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {submitLabel}
               </Button>

@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useChainId, usePublicClient, useWalletClient } from "wagmi";
+import { erc20Abi, getAddress, maxUint256, parseUnits, type Address } from "viem";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +23,7 @@ import { buildDealMetaItems } from "@/hooks/use-deal-meta";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import type { ApprovalMode } from "./token-approval-button";
+import { getNetworkConfigForChain } from "@/config";
 
 type AmountKind = "crypto" | "fiat";
 type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
@@ -49,6 +52,10 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const { offers, isLoading: offersLoading } = useOffers();
   const offer = React.useMemo(() => offers.find(item => item.id === offerId), [offers, offerId]);
   const { createDeal } = useDeals();
+  const chainId = useChainId();
+  const publicClient = usePublicClient({ chainId });
+  const { data: walletClient } = useWalletClient({ chainId });
+  const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
 
   const [amountKind, setAmountKind] = React.useState<AmountKind>("crypto");
   const [amount, setAmount] = React.useState("");
@@ -56,6 +63,9 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const [paymentDetails, setPaymentDetails] = React.useState("");
   const amountInputRef = React.useRef<HTMLInputElement>(null);
   const paymentMethodTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const [actionBusy, setActionBusy] = React.useState(false);
+  const [actionError, setActionError] = React.useState<string | null>(null);
+  const [approvalBusy, setApprovalBusy] = React.useState(false);
 
   React.useEffect(() => {
     if (!offer) return;
@@ -64,7 +74,12 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     const options = parsePaymentMethods(offer.paymentMethods);
     setPaymentMethod(options.length === 1 ? options[0] : "");
     setPaymentDetails("");
+    setActionError(null);
   }, [offerId, offer]);
+
+  React.useEffect(() => {
+    setActionError(null);
+  }, [amount, paymentMethod, paymentDetails]);
 
   if (offersLoading) {
     return (
@@ -180,31 +195,41 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     options[field]?.();
   };
 
-  const handleCreateDeal = () => {
+  const handleCreateDeal = async (note?: string) => {
     if (!isFormValid || tokenAmount === null) {
       if (validationIssues.length > 0) {
         focusField(validationIssues[0].field);
       }
       return;
     }
-    const deal = createDeal({
-      offer,
-      amount: tokenAmount,
-      amountKind,
-      paymentMethod
-    });
-
-    onCreated?.(deal.id);
+    const effectiveDetails = typeof note === "string" && note.trim().length > 0 ? note.trim() : paymentDetails.trim();
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      const dealRow = await createDeal({
+        offer,
+        amount: tokenAmount,
+        amountKind,
+        paymentMethod,
+        paymentDetails: effectiveDetails
+      });
+      onCreated?.(dealRow.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create deal.";
+      console.error("[new-deal] request failed", error);
+      setActionError(message);
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    handleCreateDeal();
+    void handleCreateDeal(paymentDetails);
   };
 
   const handleRequest = (note: string) => {
-    void note;
-    handleCreateDeal();
+    void handleCreateDeal(note);
   };
 
   const handleCancel = (note: string) => {
@@ -212,9 +237,56 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     onCancel?.();
   };
 
-  const handleApproveTokens = (mode: ApprovalMode) => {
-    void mode;
-    // Token allowance integration can be added here.
+  const handleApproveTokens = async (mode: ApprovalMode) => {
+    if (!offer || !offer.contractKey) {
+      setActionError("Offer data unavailable for approval.");
+      return;
+    }
+    if (!publicClient || !walletClient) {
+      setActionError("Connect your wallet to approve tokens.");
+      return;
+    }
+    if (tokenAmount === null || tokenAmount <= 0) {
+      setActionError("Enter a valid amount before approving tokens.");
+      focusField("amount");
+      return;
+    }
+
+    const tokenAddress = offer.contractKey.token as Address;
+    const spender = network.swap2pAddress as Address;
+    const decimals = offer.tokenDecimals ?? 18;
+    const baseAmount = parseUnits(String(tokenAmount), decimals);
+    const allowance = mode === "max" ? maxUint256 : baseAmount * 2n;
+    const accountValue = walletClient.account;
+    const owner = typeof accountValue === "string"
+      ? getAddress(accountValue)
+      : accountValue && "address" in accountValue
+        ? getAddress(accountValue.address)
+        : null;
+    if (!owner) {
+      setActionError("Unable to resolve connected account.");
+      return;
+    }
+
+    setApprovalBusy(true);
+    setActionError(null);
+    try {
+      const { request } = await publicClient.simulateContract({
+        abi: erc20Abi,
+        address: tokenAddress,
+        functionName: "approve",
+        args: [spender, allowance],
+        account: owner
+      });
+      const txHash = await walletClient.writeContract(request);
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Token approval failed.";
+      console.error("[deal] approval failed", error);
+      setActionError(message);
+    } finally {
+      setApprovalBusy(false);
+    }
   };
 
   const amountLabel =
@@ -304,7 +376,16 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         onRequest={handleRequest}
         onCancel={handleCancel}
         onApproveTokens={handleApproveTokens}
+        busy={actionBusy}
+        approvalBusy={approvalBusy}
+        approvalModeStorageKey={`swap2p:approval:new-deal:${offer.id}`}
       />
+
+      {actionError ? (
+        <div className="rounded-2xl bg-red-500/10 p-4 text-sm text-red-600">
+          {actionError}
+        </div>
+      ) : null}
 
       <form
         onSubmit={handleFormSubmit}

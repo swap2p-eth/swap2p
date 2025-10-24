@@ -6,31 +6,71 @@ import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { DealState } from "@/lib/types/market";
+import type { DealChatMessage } from "@/lib/swap2p/types";
 import { useChatMessages } from "@/hooks/use-chat-messages";
 
 interface ChatWidgetProps {
   className?: string;
   dealState?: DealState;
+  chat?: DealChatMessage[];
+  currentAccount?: string;
+  maker?: string;
+  taker?: string;
+  onSendMessage?: (message: string) => Promise<void>;
 }
 
 const chatEnabledStates: DealState[] = ["ACCEPTED", "PAID"];
 
-export function ChatWidget({ className, dealState }: ChatWidgetProps) {
+export function ChatWidget({
+  className,
+  dealState,
+  chat,
+  currentAccount,
+  maker,
+  taker,
+  onSendMessage
+}: ChatWidgetProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
-  const { messages, draft, setDraft, isTooLong, submitMessage, maxLength } = useChatMessages({ containerRef });
+  const {
+    messages,
+    draft,
+    setDraft,
+    isTooLong,
+    submitMessage,
+    maxLength,
+    sending,
+    error,
+    clearError
+  } = useChatMessages({
+    chat,
+    currentAccount,
+    maker,
+    taker,
+    containerRef,
+    onSend: onSendMessage
+  });
   const isChatEnabled = chatEnabledStates.includes(dealState ?? "REQUESTED");
 
   const onSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      submitMessage();
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
+      void (async () => {
+        await submitMessage();
+        requestAnimationFrame(() => {
+          inputRef.current?.focus();
+        });
+      })();
     },
     [submitMessage]
   );
+
+  const handleInputChange = (value: string) => {
+    if (error) {
+      clearError();
+    }
+    setDraft(value);
+  };
 
   return (
     <ChatContainer
@@ -72,7 +112,7 @@ export function ChatWidget({ className, dealState }: ChatWidgetProps) {
               name="message"
               placeholder="Enter your message here…"
               value={draft}
-              onChange={event => setDraft(event.target.value)}
+              onChange={event => handleInputChange(event.target.value)}
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
             />
             <Button
@@ -80,12 +120,15 @@ export function ChatWidget({ className, dealState }: ChatWidgetProps) {
               size="sm"
               variant="ghost"
               className="rounded-full px-3"
-              disabled={!draft.trim().length || isTooLong}
+              disabled={!draft.trim().length || isTooLong || sending}
             >
               <Send className="h-4 w-4" aria-hidden="true" />
               <span className="sr-only">Send</span>
             </Button>
           </div>
+          {error ? (
+            <p className="mt-2 text-xs text-red-500">{error}</p>
+          ) : null}
           {isTooLong ? (
             <p className="mt-2 text-xs text-orange-500">
               Message is limited to {maxLength} characters.

@@ -2,47 +2,86 @@ import * as React from "react";
 
 import {
   MAX_MESSAGE_LENGTH,
-  createChatMessage,
-  seedMessages,
   type ChatbotMessage
 } from "@/components/chat/chat-utils";
+import type { DealChatMessage } from "@/lib/swap2p/types";
+import { hexToString } from "viem";
 
 interface UseChatMessagesOptions {
-  initialMessages?: ChatbotMessage[];
+  chat?: DealChatMessage[];
+  currentAccount?: string;
+  maker?: string;
+  taker?: string;
   containerRef?: React.RefObject<HTMLDivElement>;
   maxLength?: number;
+  onSend?: (message: string) => Promise<void>;
 }
 
+const formatTimestamp = (value: number) => {
+  const date = value > 0 ? new Date(value * 1000) : new Date();
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+};
+
+const safeDecode = (payload: string): string => {
+  try {
+    return hexToString(payload).trim();
+  } catch {
+    return payload;
+  }
+};
+
 export function useChatMessages({
-  initialMessages = seedMessages,
+  chat = [],
+  currentAccount,
+  maker,
+  taker,
   containerRef,
-  maxLength = MAX_MESSAGE_LENGTH
+  maxLength = MAX_MESSAGE_LENGTH,
+  onSend
 }: UseChatMessagesOptions = {}) {
-  const [messages, setMessages] = React.useState<ChatbotMessage[]>(initialMessages);
   const [draft, setDraft] = React.useState("");
+  const [sending, setSending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const normalizedCurrent = currentAccount?.toLowerCase();
+  const normalizedMaker = maker?.toLowerCase();
+  const normalizedTaker = taker?.toLowerCase();
+
+  const messages = React.useMemo<ChatbotMessage[]>(() => {
+    return chat.map((entry, index) => {
+      const sender = entry.toMaker ? normalizedTaker : normalizedMaker;
+      const role = sender && sender === normalizedCurrent ? "user" : "assistant";
+      const content = safeDecode(entry.payload);
+      return {
+        id: `${entry.timestamp}-${index}`,
+        role,
+        content,
+        timestamp: formatTimestamp(entry.timestamp)
+      };
+    });
+  }, [chat, normalizedCurrent, normalizedMaker, normalizedTaker]);
+
   const isTooLong = draft.length > maxLength;
 
-  const appendAssistantReply = React.useCallback(() => {
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        createChatMessage(
-          "Encrypting and relaying to Swap2p — the bot integration is ready to grow.",
-          "assistant"
-        )
-      ]);
-    }, 450);
-  }, []);
-
-  const submitMessage = React.useCallback(() => {
+  const submitMessage = React.useCallback(async () => {
+    if (!onSend) return;
     const text = draft.trim();
     if (!text || draft.length > maxLength) return;
-
-    const userMessage = createChatMessage(text);
-    setMessages(prev => [...prev, userMessage]);
-    setDraft("");
-    appendAssistantReply();
-  }, [draft, maxLength, appendAssistantReply]);
+    setSending(true);
+    setError(null);
+    try {
+      await onSend(text);
+      setDraft("");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to send message.";
+      setError(message);
+    } finally {
+      setSending(false);
+    }
+  }, [draft, maxLength, onSend]);
 
   React.useEffect(() => {
     if (!containerRef?.current) return;
@@ -50,12 +89,17 @@ export function useChatMessages({
     element.scrollTop = element.scrollHeight;
   }, [messages, containerRef]);
 
+  const clearError = React.useCallback(() => setError(null), []);
+
   return {
     messages,
     draft,
     setDraft,
     isTooLong,
     submitMessage,
-    maxLength
+    maxLength,
+    sending,
+    error,
+    clearError
   };
 }

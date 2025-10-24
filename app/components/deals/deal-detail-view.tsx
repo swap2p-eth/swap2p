@@ -1,5 +1,8 @@
 "use client";
 
+import * as React from "react";
+import { useChainId, usePublicClient, useWalletClient } from "wagmi";
+import { erc20Abi, getAddress, maxUint256, parseUnits, type Address } from "viem";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +20,7 @@ import { useUser } from "@/context/user-context";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import { getDealSideCopy } from "@/lib/deal-copy";
 import type { ApprovalMode } from "./token-approval-button";
+import { getNetworkConfigForChain } from "@/config";
 
 export interface DealDetailViewProps {
   dealId: string;
@@ -30,11 +34,33 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     acceptDeal,
     cancelDeal,
     markDealPaid,
-    releaseDeal
+    releaseDeal,
+    sendMessage
   } = useDeals();
+  const chainId = useChainId();
+  const publicClient = usePublicClient({ chainId });
+  const { data: walletClient } = useWalletClient({ chainId });
+  const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
   const deal = deals.find(item => item.id === dealId);
   const { address } = useUser();
   const perspective = useDealPerspective(deal ?? null, address);
+  const [actionBusy, setActionBusy] = React.useState(false);
+  const [actionError, setActionError] = React.useState<string | null>(null);
+  const [approvalBusy, setApprovalBusy] = React.useState(false);
+
+  const withAction = React.useCallback(async (task: () => Promise<void>) => {
+    setActionBusy(true);
+    setActionError(null);
+    try {
+      await task();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Operation failed.";
+      console.error("[deal] action failed", error);
+      setActionError(message);
+    } finally {
+      setActionBusy(false);
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -85,29 +111,76 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const counterpartyLabel = isMaker ? "Client" : "Merchant";
   const counterpartyAddress = isMaker ? deal.taker : deal.maker;
 
-  const handleApproveTokens = (mode: ApprovalMode) => {
-    void mode;
-    // Token allowance integration can be added here.
+  const handleApproveTokens = async (mode: ApprovalMode) => {
+    if (!deal || !deal.contract?.token) {
+      setActionError("Deal data unavailable for approval.");
+      return;
+    }
+    if (!publicClient || !walletClient) {
+      setActionError("Connect your wallet to approve tokens.");
+      return;
+    }
+
+    const tokenDecimals = deal.tokenDecimals ?? 18;
+    const baseAmount = parseUnits(String(deal.amount), tokenDecimals);
+    const allowance = mode === "max" ? maxUint256 : baseAmount * 2n;
+    const tokenAddress = deal.contract.token as Address;
+    const spender = network.swap2pAddress as Address;
+    const accountValue = walletClient.account;
+    const owner = typeof accountValue === "string"
+      ? getAddress(accountValue)
+      : accountValue && "address" in accountValue
+        ? getAddress(accountValue.address)
+        : null;
+    if (!owner) {
+      setActionError("Unable to resolve connected account.");
+      return;
+    }
+
+    setApprovalBusy(true);
+    setActionError(null);
+    try {
+      const { request } = await publicClient.simulateContract({
+        abi: erc20Abi,
+        address: tokenAddress,
+        functionName: "approve",
+        args: [spender, allowance],
+        account: owner
+      });
+      const txHash = await walletClient.writeContract(request);
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Token approval failed.";
+      console.error("[deal-detail] approval failed", error);
+      setActionError(message);
+    } finally {
+      setApprovalBusy(false);
+    }
   };
 
   const handleAccept = (message: string) => {
-    void message;
-    acceptDeal(deal.id);
+    if (!deal) return;
+    void withAction(() => acceptDeal(deal.id, message));
   };
 
   const handleCancel = (message: string) => {
-    void message;
-    cancelDeal(deal.id, role);
+    if (!deal) return;
+    void withAction(() => cancelDeal(deal.id, role, message));
   };
 
   const handleMarkPaid = (message: string) => {
-    void message;
-    markDealPaid(deal.id, role);
+    if (!deal) return;
+    void withAction(() => markDealPaid(deal.id, role, message));
   };
 
   const handleRelease = (message: string) => {
-    void message;
-    releaseDeal(deal.id, role);
+    if (!deal) return;
+    void withAction(() => releaseDeal(deal.id, role, message));
+  };
+
+  const handleSendMessage = (message: string) => {
+    if (!deal) return Promise.resolve();
+    return sendMessage(deal.id, message);
   };
 
   const metaItems = buildDealMetaItems({
@@ -167,7 +240,16 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
         onMarkPaid={handleMarkPaid}
         onRelease={handleRelease}
         onApproveTokens={handleApproveTokens}
+        busy={actionBusy}
+        approvalBusy={approvalBusy}
+        approvalModeStorageKey={`swap2p:approval:deal:${deal.id}`}
       />
+
+      {actionError ? (
+        <div className="rounded-2xl bg-red-500/10 p-4 text-sm text-red-600">
+          {actionError}
+        </div>
+      ) : null}
 
       <div className="rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">
         <div className="mb-4">
@@ -179,6 +261,11 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
         <ChatWidget
           className={cn("min-h-[360px]", "bg-transparent shadow-none")}
           dealState={deal.state}
+          chat={deal.contract?.chat}
+          currentAccount={address}
+          maker={deal.maker}
+          taker={deal.taker}
+          onSendMessage={handleSendMessage}
         />
       </div>
     </div>
