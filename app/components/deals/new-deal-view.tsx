@@ -242,7 +242,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const summaryTokenAmount = tokenAmount ?? offer.minAmount;
   const summaryTokenLabel = formatTokenAmount(summaryTokenAmount, tokenDecimals);
   const summaryFiatAmount = summaryTokenAmount * offer.price;
-  const summaryFiatLabel = `≈ ${formatFiatAmount(summaryFiatAmount)} ${offer.currencyCode}`;
+  const summaryFiatLabel = `≈ ${formatFiatAmount(summaryFiatAmount)}`;
 
   const metaItems = buildDealMetaItems({
     userSide,

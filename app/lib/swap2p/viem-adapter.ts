@@ -181,6 +181,7 @@ const asHex = (value?: string | Hex | null) => {
   return stringToHex(value);
 };
 
+// contract fiat fields carry ISO country codes (see encodeCountryCode)
 const mapOfferStruct = (raw: any): Offer | null => {
   if (!raw) return null;
   const maxAmt = raw.maxAmt ?? raw[1];
