@@ -123,14 +123,12 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     [network.tokens],
   );
 
-  const fiatEntries = React.useMemo(
-    () =>
-      FIAT_INFOS.map(info => ({
-        info,
-        value: encodeCountryCode(info.countryCode),
-      })),
-    [],
-  );
+  const fiatEntries = React.useMemo(() =>
+    FIAT_INFOS.map(info => ({
+      info,
+      value: encodeCountryCode(info.countryCode),
+    }))
+  , []);
 
   const fiatLookup = React.useMemo(() => {
     const map = new Map<string, { info: FiatInfo; value: number }>();

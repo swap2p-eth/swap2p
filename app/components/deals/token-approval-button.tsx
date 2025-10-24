@@ -87,7 +87,7 @@ export function TokenApprovalButton({
           aria-label="Select approval amount"
         >
         </SelectTrigger>
-        <SelectContent align="end" className="min-w-[12rem]">
+        <SelectContent align="end" className="min-w-[12rem] max-h-64 overflow-y-auto">
           <SelectItem value="max">Approve MAX</SelectItem>
           <SelectItem value="amount">Approve amount</SelectItem>
         </SelectContent>

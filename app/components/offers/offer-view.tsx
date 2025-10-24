@@ -351,7 +351,7 @@ export function OfferView({
                   <SelectTrigger className="rounded-full">
                     <SelectValue placeholder="Select token" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-64 overflow-y-auto">
                     {tokenOptions.map(symbol => (
                       <SelectItem key={symbol} value={symbol}>
                         <span className="flex items-center gap-2">
@@ -369,7 +369,7 @@ export function OfferView({
                   <SelectTrigger className="rounded-full">
                     <SelectValue placeholder="Select fiat" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-64 overflow-y-auto">
                     {fiatOptions.map(option => (
                       <SelectItem key={option.countryCode} value={option.countryCode}>
                         <span className="flex items-center gap-2">

@@ -379,7 +379,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
               >
                 <SelectValue placeholder="Select payment method" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-64 overflow-y-auto">
                 {paymentOptions.map(method => (
                   <SelectItem key={method} value={method}>
                     {method}

@@ -127,10 +127,13 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     return [ANY_FILTER_OPTION, ...symbols.sort((a, b) => a.localeCompare(b))];
   }, [tokens]);
 
-  const fiatOptions = React.useMemo<FiatInfo[]>(() => {
-    const sorted = [...fiats].sort((a, b) => a.currencyCode.localeCompare(b.currencyCode) || a.countryName.localeCompare(b.countryName));
-    return sorted;
-  }, [fiats]);
+  const fiatOptions = React.useMemo(() =>
+    fiats.map(info => ({
+      value: info.countryCode.toUpperCase(),
+      shortLabel: info.shortLabel,
+      longLabel: `${info.currencyCode} - ${info.countryName}`
+    }))
+  , [fiats]);
 
   const columns = React.useMemo(() => {
     const hiddenAccessorKeys = new Set(["side", "fiat"]);
@@ -164,7 +167,7 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     if (!filtersReady) {
       return;
     }
-    if (!fiatOptions.some(option => option.countryCode.toUpperCase() === normalizedFiat)) {
+    if (!fiatOptions.some(option => option.value === normalizedFiat)) {
       setFiat(defaultFiat);
     }
   }, [filtersReady, fiatOptions, normalizedFiat, defaultFiat]);
@@ -279,7 +282,7 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
                 <SelectTrigger>
                   <SelectValue placeholder="Any token" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-64 overflow-y-auto">
                   {tokenOptions.map(option => (
                     <SelectItem key={option} value={option}>
                       {option === ANY_FILTER_OPTION ? (
@@ -301,12 +304,12 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
                 <SelectTrigger>
                   <SelectValue placeholder="Select fiat" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-64 overflow-y-auto">
                   {fiatOptions.map(option => (
-                    <SelectItem key={option.countryCode} value={option.countryCode}>
+                    <SelectItem key={option.value} value={option.value}>
                       <span className="flex items-center gap-2">
-                        <FiatFlag fiat={option.countryCode} size={20} />
-                        {option.currencyCode} - {option.countryName}
+                        <FiatFlag fiat={option.value} size={20} />
+                        {option.longLabel}
                       </span>
                     </SelectItem>
                   ))}
@@ -321,7 +324,7 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
                 <SelectTrigger className="rounded-full bg-background/70 text-left">
                   <SelectValue placeholder="Any payment method" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-64 overflow-y-auto">
                   {paymentMethodOptions.map(option => (
                     <SelectItem key={option} value={option}>
                       {option === ANY_FILTER_OPTION ? "Any payment method" : option}
