@@ -41,15 +41,6 @@ export function createDealColumns(currentUser: string, options: DealColumnOption
 
   const columns: ColumnDef<DealRow>[] = [
     {
-      accessorKey: "id",
-      header: "ID",
-      cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">#{row.getValue("id")}</span>,
-      size: 72,
-      meta: {
-        align: "left"
-      }
-    },
-    {
       id: "userRole",
       header: "You",
       cell: ({ row }) => {

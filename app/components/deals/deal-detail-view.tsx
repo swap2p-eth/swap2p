@@ -125,7 +125,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
       <DealHeader
-        title={`Deal #${deal.id}`}
+        title="Deal"
         subtitle={summary.headline}
         badge={deal.state}
         backLabel="Back to deals"

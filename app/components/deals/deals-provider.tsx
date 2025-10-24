@@ -51,6 +51,22 @@ const stateMap: Record<SwapDealState, DealState> = {
 const toSideLabel = (side: SwapSide): DealRow["side"] =>
   side === SwapSide.SELL ? "SELL" : "BUY";
 
+const toHexId = (value: bigint): string => {
+  const hex = value.toString(16).padStart(64, "0");
+  return `0x${hex}`;
+};
+
+const generateDraftId = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+    return `0x${hex}`;
+  }
+  const fallback = Date.now().toString(16).padStart(16, "0");
+  return `0x${fallback.padEnd(64, "0").slice(0, 64)}`;
+};
+
 const toDealRow = (
   deal: ContractDeal,
   options: {
@@ -76,7 +92,7 @@ const toDealRow = (
       : null;
 
   return {
-    id: deal.id.toString(),
+    id: toHexId(deal.id),
     contractId: deal.id,
     contract: deal,
     side: toSideLabel(deal.side),
@@ -203,7 +219,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     ({ offer, amount, amountKind, paymentMethod }: CreateDealInput) => {
       void amountKind;
       const now = new Date().toISOString();
-      const id = `${Date.now()}`;
+      const id = generateDraftId();
       const entry: DealRow = {
         id,
         side: offer.side,

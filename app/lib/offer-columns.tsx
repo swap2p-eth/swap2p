@@ -20,14 +20,6 @@ export function createOfferColumns(
   const { showMerchant = false } = options;
 
   const columns: ColumnDef<OfferRow>[] = [
-    {
-      accessorKey: "id",
-      header: "ID",
-      cell: ({ row }) => (
-        <span className="font-mono text-xs text-muted-foreground">#{row.getValue("id")}</span>
-      ),
-      size: 60
-    },
     ...(showMerchant
       ? ([
           {
