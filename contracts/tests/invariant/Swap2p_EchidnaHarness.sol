@@ -181,12 +181,18 @@ contract Swap2pEchidnaHarness {
         }
     }
 
-    function _recentDealIds(address user, uint256 off, uint256 lim) internal view returns (bytes32[] memory ids) {
-        Swap2p.DealInfo[] memory infos = swap.getRecentDealsDetailed(user, off, lim);
+    function _recentDealIds(address user) internal view returns (bytes32[] memory ids) {
+        uint256 count = swap.getRecentDealCount(user);
+        Swap2p.DealInfo[] memory infos = swap.getRecentDealsDetailed(user, 0, count);
         ids = new bytes32[](infos.length);
         for (uint256 i; i < infos.length; i++) {
             ids[i] = infos[i].id;
         }
+    }
+
+    function _openDealIds(address user) internal view returns (bytes32[] memory ids) {
+        uint256 count = swap.getOpenDealCount(user);
+        ids = swap.getOpenDeals(user, 0, count);
     }
 
     function _getDeal(bytes32 id) internal view returns (Swap2p.Deal memory d) {
@@ -420,7 +426,7 @@ contract Swap2pEchidnaHarness {
         for (uint256 i; i < actorAddrs.length; i++) {
             address user = actorAddrs[i];
             uint256 openCount = swap.getOpenDealCount(user);
-            bytes32[] memory openIds = swap.getOpenDeals(user, 0, openCount + 5);
+            bytes32[] memory openIds = swap.getOpenDeals(user, 0, openCount);
             if (openIds.length != openCount) return false;
             Swap2p.DealInfo[] memory openDetailed = swap.getOpenDealsDetailed(user, 0, openCount + 5);
             if (openDetailed.length != openCount) return false;
@@ -434,7 +440,7 @@ contract Swap2pEchidnaHarness {
             }
 
             uint256 recentCount = swap.getRecentDealCount(user);
-            bytes32[] memory recentIds = _recentDealIds(user, 0, recentCount + 5);
+            bytes32[] memory recentIds = _recentDealIds(user);
             if (recentIds.length != recentCount) return false;
             Swap2p.DealInfo[] memory recentDetailed = swap.getRecentDealsDetailed(user, 0, recentCount + 5);
             if (recentDetailed.length != recentCount) return false;
@@ -450,10 +456,10 @@ contract Swap2pEchidnaHarness {
             bytes32 id = _trackedDeals[i];
             Swap2p.Deal memory d = _getDeal(id);
             if (d.state == Swap2p.DealState.NONE) continue;
-            bool makerOpen = _contains(swap.getOpenDeals(d.maker, 0, 10), id);
-            bool makerRecent = _contains(_recentDealIds(d.maker, 0, 10), id);
-            bool takerOpen = _contains(swap.getOpenDeals(d.taker, 0, 10), id);
-            bool takerRecent = _contains(_recentDealIds(d.taker, 0, 10), id);
+            bool makerOpen = _contains(_openDealIds(d.maker), id);
+            bool makerRecent = _contains(_recentDealIds(d.maker), id);
+            bool takerOpen = _contains(_openDealIds(d.taker), id);
+            bool takerRecent = _contains(_recentDealIds(d.taker), id);
             if (
                 d.state == Swap2p.DealState.REQUESTED ||
                 d.state == Swap2p.DealState.ACCEPTED ||
