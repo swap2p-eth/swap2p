@@ -670,28 +670,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
                     vm.prank(currentMaker);
                     swap.maker_deleteOffer(market.token, market.side, market.fiat);
                 }
-            } else if (scenario == 5) {
-                vm.warp(block.timestamp + 50 hours);
-                uint256 count;
-                bytes32[] memory candidates = new bytes32[]( _trackedDeals.length);
-                for (uint256 k; k < _trackedDeals.length; k++) {
-                    Swap2p.Deal memory d = _getDeal(_trackedDeals[k]);
-                    if (d.state == Swap2p.DealState.RELEASED || d.state == Swap2p.DealState.CANCELED) {
-                        candidates[count++] = _trackedDeals[k];
-                    }
-                }
-                if (count != 0) {
-                    bytes32[] memory cleanup = new bytes32[](count);
-                    for (uint256 k; k < count; k++) {
-                        cleanup[k] = candidates[k];
-                    }
-                    vm.prank(maker);
-                    swap.cleanupDeals(cleanup, 48);
-                }
-                _assertAllInvariants(marketsList, makersList, takersList);
-                continue;
             }
-
             vm.warp(block.timestamp + 1 hours);
             _assertAllInvariants(marketsList, makersList, takersList);
         }

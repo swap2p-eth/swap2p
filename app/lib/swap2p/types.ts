@@ -165,12 +165,6 @@ export type SendMessageArgs = {
   message: string;
 };
 
-export type CleanupDealsArgs = {
-  account: Address;
-  ids: bigint[];
-  minAgeHours: number;
-};
-
 export type Swap2pWriteResult = Hash;
 
 export type Swap2pAdapterMode = "viem" | "mock";
@@ -200,5 +194,4 @@ export interface Swap2pAdapter {
   markFiatPaid(args: MarkFiatPaidArgs): Promise<Swap2pWriteResult>;
   release(args: ReleaseDealArgs): Promise<Swap2pWriteResult>;
   sendMessage(args: SendMessageArgs): Promise<Swap2pWriteResult>;
-  cleanupDeals(args: CleanupDealsArgs): Promise<Swap2pWriteResult>;
 }

@@ -17,7 +17,6 @@ import { swap2pAbi } from "@/lib/swap2p/generated";
 import type {
   CancelDealArgs,
   CancelRequestArgs,
-  CleanupDealsArgs,
   Deal,
   DealChatMessage,
   MakerAcceptRequestArgs,
@@ -864,22 +863,5 @@ const readDealStruct = async (id: Hex) => {
       );
     },
 
-    async cleanupDeals(args: CleanupDealsArgs) {
-      const sender = withAccount(args.account);
-      const signer = ensureWalletClient(walletClient, "cleanupDeals");
-      if (!sender) {
-        throw new Error(
-          "Swap2pViemAdapter: account is required for cleanupDeals",
-        );
-      }
-      return simulateAndWrite(
-        signer,
-        publicClient,
-        address,
-        "cleanupDeals",
-        [args.ids, BigInt(args.minAgeHours)] as const,
-        sender,
-      );
-    },
   };
 };

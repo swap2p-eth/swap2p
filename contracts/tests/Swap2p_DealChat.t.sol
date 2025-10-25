@@ -33,16 +33,7 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
         );
     }
 
-    function test_PaymentMethodStoredOnRequest() public view {
-        Swap2p.DealInfo memory info = swap.getDeal(dealId);
-        assertEq(info.deal.paymentMethod, "wire");
-        assertEq(info.deal.chat.length, 1);
-        assertTrue(info.deal.chat[0].toMaker);
-        assertEq(uint256(info.deal.chat[0].state), uint256(Swap2p.DealState.REQUESTED));
-        assertEq(string(info.deal.chat[0].text), "");
-    }
-
-    function test_ChatLogRecordsMessagesAndStates() public {
+    function _completeDealWithMessages() internal {
         vm.prank(maker);
         swap.sendMessage(dealId, bytes("maker"));
 
@@ -57,6 +48,19 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
 
         vm.prank(maker);
         swap.release(dealId, bytes("released"));
+    }
+
+    function test_PaymentMethodStoredOnRequest() public view {
+        Swap2p.DealInfo memory info = swap.getDeal(dealId);
+        assertEq(info.deal.paymentMethod, "wire");
+        assertEq(info.deal.chat.length, 1);
+        assertTrue(info.deal.chat[0].toMaker);
+        assertEq(uint256(info.deal.chat[0].state), uint256(Swap2p.DealState.REQUESTED));
+        assertEq(string(info.deal.chat[0].text), "");
+    }
+
+    function test_ChatLogRecordsMessagesAndStates() public {
+        _completeDealWithMessages();
 
         Swap2p.ChatMessage[] memory chat = swap.getDealChat(dealId);
         assertEq(chat.length, 6);
@@ -84,5 +88,26 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
         assertEq(chat[5].toMaker, false);
         assertEq(uint256(chat[5].state), uint256(Swap2p.DealState.RELEASED));
         assertEq(string(chat[5].text), "released");
+    }
+
+    function test_ChatSlicePagination() public {
+        _completeDealWithMessages();
+
+        assertEq(swap.getDealChatLength(dealId), 6);
+
+        Swap2p.ChatMessage[] memory slice = swap.getDealChatSlice(dealId, 1, 2);
+        assertEq(slice.length, 2);
+        assertEq(slice[0].toMaker, false);
+        assertEq(string(slice[0].text), "maker");
+        assertEq(slice[1].toMaker, true);
+        assertEq(string(slice[1].text), "taker");
+
+        // requesting beyond length yields empty array
+        Swap2p.ChatMessage[] memory empty = swap.getDealChatSlice(dealId, 10, 5);
+        assertEq(empty.length, 0);
+
+        // zero limit returns empty array
+        empty = swap.getDealChatSlice(dealId, 0, 0);
+        assertEq(empty.length, 0);
     }
 }

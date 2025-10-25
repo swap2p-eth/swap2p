@@ -31,8 +31,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /// - PAID: after markFiatPaid by the fiat payer; release is performed by the counterparty; chat allowed.
 /// - RELEASED/CANCELED: terminal. Deal id is moved from the open index to the recent index (for both maker and taker).
 ///
-/// Recent & Cleanup
-/// - Recent lists show closed deals (RELEASED/CANCELED) for each party. cleanupDeals deletes old deals (min age 48h) and prunes recent indices.
+/// Recent
+/// - Recent lists show closed deals (RELEASED/CANCELED) for each party.
 ///
 /// Security
 /// - ReentrancyGuard protects functions that transfer tokens.
@@ -952,6 +952,38 @@ contract Swap2p is ReentrancyGuard {
         out = deals[id].chat;
     }
 
+    /// @notice Returns the number of chat messages for a deal.
+    function getDealChatLength(bytes32 id) external view returns (uint256) {
+        return deals[id].chat.length;
+    }
+
+    /// @notice Returns a paginated slice of the chat history for a deal.
+    /// @param id Deal id.
+    /// @param off Offset in the chat array.
+    /// @param lim Maximum number of messages to return.
+    function getDealChatSlice(bytes32 id, uint256 off, uint256 lim)
+        external
+        view
+        returns (ChatMessage[] memory out)
+    {
+        ChatMessage[] storage arr = deals[id].chat;
+        uint256 len = arr.length;
+        if (off >= len || lim == 0) return out;
+        uint256 end = off + lim;
+        if (end < off || end > len) end = len;
+        uint256 slice = end - off;
+        out = new ChatMessage[](slice);
+        for (uint256 i; i < slice; i++) {
+            ChatMessage storage src = arr[off + i];
+            out[i] = ChatMessage({
+                ts: src.ts,
+                state: src.state,
+                toMaker: src.toMaker,
+                text: src.text
+            });
+        }
+    }
+
     /// @notice Returns paginated slice of open deals with details.
     function getOpenDealsDetailed(address u, uint off, uint lim)
         external
@@ -1012,34 +1044,6 @@ contract Swap2p is ReentrancyGuard {
     {
         if (lim == 0) return out;
         out = _collectDealInfos(_recentDeals[u], off, lim);
-    }
-
-    /// @notice Deletes closed deals older than the provided age in hours (min 48h).
-    /// @notice Deletes closed (RELEASED/CANCELED) deals older than `minAgeHours` and prunes recent indices.
-    /// @dev Requires `minAgeHours >= 48`. Best used with small batches.
-    /// @param ids Deal ids to consider for deletion.
-    /// @param minAgeHours Minimal age threshold in hours.
-    function cleanupDeals(bytes32[] calldata ids, uint256 minAgeHours) external {
-        if (minAgeHours < 48) revert WrongState();
-        uint256 minAge = minAgeHours * 1 hours;
-        uint len = ids.length;
-        for (uint i; i < len; i++) {
-            bytes32 id = ids[i];
-            Deal storage d = deals[id];
-            DealState st = d.state;
-            if (st != DealState.RELEASED && st != DealState.CANCELED) {
-                continue;
-            }
-            if (block.timestamp - uint256(d.tsLast) < minAge) {
-                continue;
-            }
-            address maker = d.maker;
-            address taker = d.taker;
-            delete deals[id];
-            _removeRecent(maker, id);
-            _removeRecent(taker, id);
-            emit DealUpdated(id, DealState.NONE, maker, taker);
-        }
     }
 
 }

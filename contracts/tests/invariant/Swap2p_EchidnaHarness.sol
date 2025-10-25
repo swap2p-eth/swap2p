@@ -286,18 +286,6 @@ contract Swap2pEchidnaHarness {
         }
     }
 
-    function actionCleanup(uint8 count, uint8 minAge) external {
-        if (_trackedDeals.length == 0) return;
-        uint256 len = count % _trackedDeals.length;
-        if (len == 0) len = 1;
-        bytes32[] memory ids = new bytes32[](len);
-        uint256 found;
-        for (uint256 i; i < _trackedDeals.length && found < len; i++) {
-            ids[found++] = _trackedDeals[i];
-        }
-        swap.cleanupDeals(ids, 48 + (minAge % 24));
-    }
-
     // ─────────────────────────────── invariants ───────────────────────────────
 
     function echidna_market_index_consistency() external view returns (bool) {
