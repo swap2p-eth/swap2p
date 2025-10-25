@@ -114,7 +114,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             assertTrue(infos[i].offer.ts != 0);
         }
 
-        // ensure getOfferKeys matches maker lists
+        // ensure maker lists in market view match expectations
         address[] memory keys = _marketOfferMakers(market.token, market.side, market.fiat, 0, count + 1);
         assertEq(keys.length, count);
         for (uint256 i; i < keys.length; i++) {

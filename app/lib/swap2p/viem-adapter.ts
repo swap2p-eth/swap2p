@@ -325,23 +325,19 @@ const mapDealInfo = (entry: any): Deal | null => {
 
 const mapMakerProfile = (_address: Address, raw: any): MakerProfile | null => {
   if (!raw) return null;
-  const nicknameRaw = raw.nickname ?? raw[2];
-  const chatPublicKeyRaw = raw.chatPublicKey ?? raw[5];
+  const dealsCancelled = Number(raw.dealsCancelled ?? raw[0] ?? 0);
+  const dealsCompleted = Number(raw.dealsCompleted ?? raw[1] ?? 0);
+  const online = Boolean(raw.online ?? raw[2] ?? false);
+  const nicknameRaw = raw.nickname ?? raw[3];
+  const chatPublicKeyRaw = raw.chatPublicKey ?? raw[4];
   return {
-    online: Boolean(raw[0] ?? raw.online ?? false),
-    lastActivity: toNumber(raw[1] ?? raw.lastActivity ?? 0),
+    online,
+    dealsCancelled,
+    dealsCompleted,
     nickname: decodeBytes32(nicknameRaw),
-    dealsCancelled: Number(raw[3] ?? raw.dealsCancelled ?? 0),
-    dealsCompleted: Number(raw[4] ?? raw.dealsCompleted ?? 0),
     chatPublicKey: decodeBytes32(chatPublicKeyRaw),
   };
 };
-
-const paginateKeys = (keys: Address[], filter: OfferFilter): OfferKey[] =>
-  keys.map((maker) => ({
-    ...filter,
-    maker: getAddress(maker),
-  }));
 
 const ensureWalletClient = (
   walletClient: AnyWalletClient | undefined,
@@ -417,13 +413,43 @@ export const createSwap2pViemAdapter = (
       return result;
     })();
 
-const readDealStruct = async (id: Hex) => {
-  const raw = await read({
-    functionName: "deals",
-    args: [id] as const,
-  });
-  return mapDeal(id, raw);
-};
+  const readDeal = async (id: Hex): Promise<Deal | null> => {
+    const raw = (await read({
+      functionName: "deals",
+      args: [id] as const,
+    })) as any;
+    if (!raw) return null;
+    const stateValue = raw.state ?? raw[3] ?? SwapDealState.NONE;
+    const state = toDealState(stateValue);
+    if (state === SwapDealState.NONE) return null;
+    const chatLengthRaw = await read({
+      functionName: "getDealChatLength",
+      args: [id] as const,
+    });
+    const chatLength = toNumber(chatLengthRaw as bigint | number);
+    let chat: unknown[] = [];
+    if (chatLength > 0) {
+      chat = (await read({
+        functionName: "getDealChatSlice",
+        args: [id, 0n, BigInt(chatLength)] as const,
+      })) as unknown[];
+    }
+    const structured = {
+      amount: raw.amount ?? raw[0],
+      price: raw.price ?? raw[1],
+      fiat: raw.fiat ?? raw[2],
+      state: stateValue,
+      side: raw.side ?? raw[4],
+      tsRequest: raw.tsRequest ?? raw[5],
+      tsLast: raw.tsLast ?? raw[6],
+      maker: raw.maker ?? raw[7],
+      taker: raw.taker ?? raw[8],
+      token: raw.token ?? raw[9],
+      paymentMethod: raw.paymentMethod ?? raw[10],
+      chat,
+    };
+    return mapDeal(id, structured);
+  };
 
   const withAccount = (account?: Address) =>
     normalizeAccount(walletClient, account);
@@ -441,13 +467,8 @@ const readDealStruct = async (id: Hex) => {
     },
 
     async getOfferKeys(filter: OfferFilter & PaginationArgs) {
-      const limit = filter.limit ?? DEFAULT_LIMIT;
-      const offset = filter.offset ?? 0;
-      const result = (await read({
-        functionName: "getOfferKeys",
-        args: [filter.token, filter.side, filter.fiat, offset, limit] as const,
-      })) as Address[];
-      return paginateKeys(result ?? [], filter);
+      const offers = await this.getOffers(filter);
+      return offers.map(({ key }) => key);
     },
 
     async getOffer(key: OfferKey) {
@@ -470,15 +491,27 @@ const readDealStruct = async (id: Hex) => {
       }
       try {
         const raw = await read({
-          functionName: "getOfferById",
+          functionName: "offers",
           args: [offerId] as const,
+        }) as readonly unknown[];
+        if (!raw) return null;
+        const mapped = mapOfferStruct({
+          minAmt: raw[0],
+          maxAmt: raw[1],
+          priceFiatPerToken: raw[2],
+          ts: raw[3],
+          fiat: raw[4],
+          side: raw[5],
+          token: raw[6],
+          maker: raw[7],
+          paymentMethods: raw[8],
+          requirements: raw[9],
         });
-        const mapped = mapOfferInfo(raw);
         if (!mapped) return null;
-        return mapped.offer;
+        return mapped;
       } catch (error) {
         const err = error instanceof Error ? error.message : String(error);
-        debugLog("[swap2p][warn:getOfferById]", { error: err, offerId });
+        debugLog("[swap2p][warn:getOffer]", { error: err, offerId });
         return null;
       }
     },
@@ -509,8 +542,9 @@ const readDealStruct = async (id: Hex) => {
 
     async getDeal(id: bigint) {
       const bytes = toBytes32(id);
-      if (!bytes) return null;
-      return readDealStruct(bytes);
+      if (!bytes || bytes === ZERO_BYTES32) return null;
+      const deal = await readDeal(bytes);
+      return deal;
     },
 
     async getOpenDeals(query: DealsQuery) {
@@ -582,7 +616,6 @@ const readDealStruct = async (id: Hex) => {
           () =>
             ({
               online: false,
-              lastActivity: 0,
               nickname: "",
               dealsCancelled: 0,
               dealsCompleted: 0,
@@ -594,7 +627,6 @@ const readDealStruct = async (id: Hex) => {
         (addr, index) =>
           mapMakerProfile(addr, raw[index]) ?? {
             online: false,
-            lastActivity: 0,
             nickname: "",
             dealsCancelled: 0,
             dealsCompleted: 0,

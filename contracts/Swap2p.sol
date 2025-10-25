@@ -584,19 +584,23 @@ contract Swap2p is ReentrancyGuard {
     /// @param reason Optional message (sent via Chat before state change).
     function cancelRequest(bytes32 id, bytes calldata reason) external nonReentrant {
         Deal storage d = deals[id];
-        if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
+        address maker_ = d.maker;
+        address taker_ = d.taker;
+        address token_ = d.token;
+        Side side = d.side;
+        if (msg.sender != maker_ && msg.sender != taker_) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
         // send reason before changing state to keep chat in allowed states
         _sendChat(id, reason, DealState.CANCELED);
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
-        _addRecent(d.maker, id);
-        _addRecent(d.taker, id);
-        uint128 back = d.side == Side.BUY ? d.amount * 2 : d.amount;
-        _push(d.token, d.taker, back);
-        _closeBoth(d.maker, d.taker, id);
+        _addRecent(maker_, id);
+        _addRecent(taker_, id);
+        uint128 back = side == Side.BUY ? d.amount * 2 : d.amount;
+        _push(token_, taker_, back);
+        _closeBoth(maker_, taker_, id);
         makerInfo[msg.sender].dealsCancelled += int32(1);
-        emit DealUpdated(id, DealState.CANCELED, d.maker, d.taker);
+        emit DealUpdated(id, DealState.CANCELED, maker_, taker_);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -606,23 +610,27 @@ contract Swap2p is ReentrancyGuard {
     /// @param msg_ Optional message (sent via Chat after state change).
     function maker_acceptRequest(bytes32 id, bytes calldata msg_) external nonReentrant {
         Deal storage d = deals[id];
-        if (msg.sender != d.maker) revert WrongCaller();
+        address maker_ = d.maker;
+        address taker_ = d.taker;
+        if (msg.sender != maker_) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
         uint128 need = d.side == Side.BUY ? d.amount : d.amount * 2;
-        _pull(d.token, msg.sender, need);
+        _pull(d.token, maker_, need);
         d.state  = DealState.ACCEPTED;
         d.tsLast = uint40(block.timestamp);
-        emit DealUpdated(id, DealState.ACCEPTED, d.maker, d.taker);
+        emit DealUpdated(id, DealState.ACCEPTED, maker_, taker_);
         _sendChat(id, msg_, DealState.ACCEPTED);
     }
 
     /// @dev Emits a chat message for REQUESTED/ACCEPTED/PAID if caller is maker or taker.
     function _sendChat(bytes32 id, bytes calldata t, DealState context) private {
         Deal storage d = deals[id];
-        if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
+        address maker_ = d.maker;
+        address taker_ = d.taker;
+        if (msg.sender != maker_ && msg.sender != taker_) revert WrongCaller();
         DealState st = d.state;
         if (st != DealState.REQUESTED && st != DealState.ACCEPTED && st != DealState.PAID) revert WrongState();
-        bool toMaker = msg.sender == d.taker;
+        bool toMaker = msg.sender == taker_;
         DealState chatState = context;
         d.chat.push(
             ChatMessage({
@@ -633,7 +641,7 @@ contract Swap2p is ReentrancyGuard {
             })
         );
         uint32 idx = uint32(d.chat.length - 1);
-        address to = toMaker ? d.maker : d.taker;
+        address to = toMaker ? maker_ : taker_;
         emit Chat(id, msg.sender, to, idx);
     }
 
@@ -652,11 +660,15 @@ contract Swap2p is ReentrancyGuard {
     function cancelDeal(bytes32 id, bytes calldata reason) external nonReentrant {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
+        address maker_ = d.maker;
+        address taker_ = d.taker;
+        address token_ = d.token;
+        Side side = d.side;
         // maker can cancel only when Side.BUY; taker only when Side.SELL
-        if (msg.sender == d.maker) {
-            if (d.side != Side.BUY) revert WrongSide();
-        } else if (msg.sender == d.taker) {
-            if (d.side != Side.SELL) revert WrongSide();
+        if (msg.sender == maker_) {
+            if (side != Side.BUY) revert WrongSide();
+        } else if (msg.sender == taker_) {
+            if (side != Side.SELL) revert WrongSide();
         } else {
             // neither maker nor taker
             revert WrongCaller();
@@ -665,18 +677,18 @@ contract Swap2p is ReentrancyGuard {
         _sendChat(id, reason, DealState.CANCELED);
         d.state  = DealState.CANCELED;
         d.tsLast = uint40(block.timestamp);
-        _addRecent(d.maker, id);
-        _addRecent(d.taker, id);
-        if (d.side == Side.BUY) {
-            _push(d.token, d.taker, d.amount * 2);
-            _push(d.token, d.maker, d.amount);
+        _addRecent(maker_, id);
+        _addRecent(taker_, id);
+        if (side == Side.BUY) {
+            _push(token_, taker_, d.amount * 2);
+            _push(token_, maker_, d.amount);
         } else {
-            _push(d.token, d.taker, d.amount);
-            _push(d.token, d.maker, d.amount * 2);
+            _push(token_, taker_, d.amount);
+            _push(token_, maker_, d.amount * 2);
         }
-        _closeBoth(d.maker, d.taker, id);
+        _closeBoth(maker_, taker_, id);
         makerInfo[msg.sender].dealsCancelled += int32(1);
-        emit DealUpdated(id, DealState.CANCELED, d.maker, d.taker);
+        emit DealUpdated(id, DealState.CANCELED, maker_, taker_);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -687,11 +699,14 @@ contract Swap2p is ReentrancyGuard {
     function markFiatPaid(bytes32 id, bytes calldata msg_) external {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
-        if ((d.side == Side.BUY  && msg.sender != d.maker) ||
-            (d.side == Side.SELL && msg.sender != d.taker)) revert NotFiatPayer();
+        address maker_ = d.maker;
+        address taker_ = d.taker;
+        Side side = d.side;
+        if ((side == Side.BUY  && msg.sender != maker_) ||
+            (side == Side.SELL && msg.sender != taker_)) revert NotFiatPayer();
         d.state  = DealState.PAID;
         d.tsLast = uint40(block.timestamp);
-        emit DealUpdated(id, DealState.PAID, d.maker, d.taker);
+        emit DealUpdated(id, DealState.PAID, maker_, taker_);
         _sendChat(id, msg_, DealState.PAID);
     }
 
@@ -702,8 +717,12 @@ contract Swap2p is ReentrancyGuard {
     function release(bytes32 id, bytes calldata msg_) external nonReentrant {
         Deal storage d = deals[id];
         if (d.state != DealState.PAID) revert WrongState();
-        if ((d.side == Side.BUY  && msg.sender != d.taker
-        ) || (d.side == Side.SELL && msg.sender != d.maker)) {
+        address maker_ = d.maker;
+        address taker_ = d.taker;
+        address token_ = d.token;
+        Side side = d.side;
+        if ((side == Side.BUY  && msg.sender != taker_
+        ) || (side == Side.SELL && msg.sender != maker_)) {
             revert WrongCaller();
         }
 
@@ -711,21 +730,21 @@ contract Swap2p is ReentrancyGuard {
 
         d.state  = DealState.RELEASED;
         d.tsLast = uint40(block.timestamp);
-        _addRecent(d.maker, id);
-        _addRecent(d.taker, id);
-        _closeBoth(d.maker, d.taker, id);
-        makerInfo[d.maker].dealsCompleted += int32(1);
-        makerInfo[d.taker].dealsCompleted += int32(1);
+        _addRecent(maker_, id);
+        _addRecent(taker_, id);
+        _closeBoth(maker_, taker_, id);
+        makerInfo[maker_].dealsCompleted += int32(1);
+        makerInfo[taker_].dealsCompleted += int32(1);
 
         // main payout (crypto recipient)
-        address payoutTo = (d.side == Side.BUY) ? d.maker : d.taker;
-        _payWithFee(d.token, d.taker, d.maker, payoutTo, d.amount);
+        address payoutTo = (side == Side.BUY) ? maker_ : taker_;
+        _payWithFee(token_, taker_, maker_, payoutTo, d.amount);
 
         // return both deposits
-        _push(d.token, d.taker, d.amount);
-        _push(d.token, d.maker, d.amount);
+        _push(token_, taker_, d.amount);
+        _push(token_, maker_, d.amount);
 
-        emit DealUpdated(id, DealState.RELEASED, d.maker, d.taker);
+        emit DealUpdated(id, DealState.RELEASED, maker_, taker_);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -806,14 +825,8 @@ contract Swap2p is ReentrancyGuard {
         if (off >= len || lim == 0) return out;
         uint end = off + lim;
         if (end < off || end > len) end = len;
-        uint valid;
-        for (uint i = off; i < end; i++) {
-            bytes32 id = ids[i];
-            Offer storage o = offers[id];
-            if (o.ts == 0) continue;
-            valid++;
-        }
-        out = new OfferInfo[](valid);
+        uint slice = end - off;
+        out = new OfferInfo[](slice);
         uint pos;
         for (uint i = off; i < end; i++) {
             bytes32 id = ids[i];
@@ -822,6 +835,9 @@ contract Swap2p is ReentrancyGuard {
             Offer memory copy = o;
             out[pos] = OfferInfo({id: id, maker: o.maker, offer: copy});
             pos++;
+        }
+        assembly {
+            mstore(out, pos)
         }
     }
 
@@ -834,13 +850,8 @@ contract Swap2p is ReentrancyGuard {
         if (off >= len || lim == 0) return out;
         uint end = off + lim;
         if (end < off || end > len) end = len;
-        uint valid;
-        for (uint i = off; i < end; i++) {
-            Deal storage d = deals[ids[i]];
-            if (d.state == DealState.NONE) continue;
-            valid++;
-        }
-        out = new DealInfo[](valid);
+        uint slice = end - off;
+        out = new DealInfo[](slice);
         uint pos;
         for (uint i = off; i < end; i++) {
             bytes32 id = ids[i];
@@ -849,6 +860,9 @@ contract Swap2p is ReentrancyGuard {
             Deal memory copy = d;
             out[pos] = DealInfo({id: id, deal: copy});
             pos++;
+        }
+        assembly {
+            mstore(out, pos)
         }
     }
 
@@ -897,13 +911,7 @@ contract Swap2p is ReentrancyGuard {
         uint256 slice = end - off;
         out = new ChatMessage[](slice);
         for (uint256 i; i < slice; i++) {
-            ChatMessage storage src = arr[off + i];
-            out[i] = ChatMessage({
-                ts: src.ts,
-                state: src.state,
-                toMaker: src.toMaker,
-                text: src.text
-            });
+            out[i] = arr[off + i];
         }
     }
 

@@ -74,7 +74,6 @@ export type Deal = {
 
 export type MakerProfile = {
   online: boolean;
-  lastActivity: number;
   nickname: string;
   dealsCancelled: number;
   dealsCompleted: number;
