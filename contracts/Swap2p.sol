@@ -113,9 +113,9 @@ contract Swap2p is ReentrancyGuard {
         uint40 lastActivity;          // last interaction timestamp
         int32  dealsCancelled;        // self-canceled deals count
         int32  dealsCompleted;        // completed deals count
-        bool   online;
-        string nickname;              // unique public nickname
-        string chatPublicKey;         // public key used for end-to-end chat
+        bool    online;
+        bytes32 nickname;              // unique public nickname (bytes32, padded/trimmed off-chain)
+        bytes32 chatPublicKey;         // public key used for end-to-end chat (bytes32)
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -172,21 +172,15 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Events
-    event OfferUpsert(bytes32 indexed id);
-    event OfferDeleted(bytes32 indexed id);
+    event OfferUpsert(bytes32 indexed id, address indexed maker);
+    event OfferDeleted(bytes32 indexed id, address indexed maker);
 
-    event DealRequested(bytes32 indexed id);
-    event DealCanceled(bytes32 indexed id);
-    event DealAccepted(bytes32 indexed id);
-    event DealPaid(bytes32 indexed id);
-    event DealReleased(bytes32 indexed id);
+    event DealUpdated(bytes32 indexed id, DealState state, address indexed maker, address indexed taker);
 
-    event Chat(bytes32 indexed id, uint32 index);
+    event Chat(bytes32 indexed id, address indexed from, address indexed to, uint32 index);
 
     /// @notice Emitted for each affiliate partner receiving a share of the fee (taker or maker).
     event MakerOnline(address indexed maker, bool online);
-    // removed working hours
-    event DealDeleted(bytes32 indexed id);
 
     // ────────────────────────────────────────────────────────────────────────
     /// @notice Initializes fee receiver (`author`).
@@ -393,43 +387,34 @@ contract Swap2p is ReentrancyGuard {
         emit MakerOnline(msg.sender, on);
     }
 
-    /// @notice Updates caller's public nickname. Empty string clears nickname.
-    /// @param nick Nickname to set (must be unique when non-empty).
-    function setNickname(string calldata nick) external touchActivity {
+    /// @notice Updates caller's public nickname. Zero clears nickname.
+    /// @param nick Nickname to set (must be unique when non-zero).
+    function setNickname(bytes32 nick) external touchActivity {
         MakerProfile storage profile = makerInfo[msg.sender];
-        bytes memory newBytes = bytes(nick);
-        bytes memory oldBytes = bytes(profile.nickname);
+        bytes32 old = profile.nickname;
 
-        if (newBytes.length == 0) {
-            if (oldBytes.length != 0) {
-                bytes32 oldHash = keccak256(oldBytes);
-                delete _nicknameTaken[oldHash];
-                profile.nickname = "";
+        if (nick == bytes32(0)) {
+            if (old != bytes32(0)) {
+                delete _nicknameTaken[old];
+                profile.nickname = bytes32(0);
             }
             return;
         }
 
-        bytes32 newHash = keccak256(newBytes);
-        if (oldBytes.length != 0) {
-            if (keccak256(oldBytes) == newHash) {
-                return;
-            }
-        }
+        if (old == nick) return;
+        if (_nicknameTaken[nick]) revert NicknameTaken();
 
-        if (_nicknameTaken[newHash]) revert NicknameTaken();
-
-        _nicknameTaken[newHash] = true;
+        _nicknameTaken[nick] = true;
         profile.nickname = nick;
 
-        if (oldBytes.length != 0) {
-            bytes32 oldHash = keccak256(oldBytes);
-            delete _nicknameTaken[oldHash];
+        if (old != bytes32(0)) {
+            delete _nicknameTaken[old];
         }
     }
 
-    /// @notice Sets caller's chat public key. Empty string clears the key.
-    /// @param key New chat public key (arbitrary UTF-8 string).
-    function setChatPublicKey(string calldata key) external touchActivity {
+    /// @notice Sets caller's chat public key. Zero clears the key.
+    /// @param key New chat public key (bytes32).
+    function setChatPublicKey(bytes32 key) external touchActivity {
         makerInfo[msg.sender].chatPublicKey = key;
     }
 
@@ -495,7 +480,7 @@ contract Swap2p is ReentrancyGuard {
             _addMakerOffer(msg.sender, oid);
         }
 
-        emit OfferUpsert(oid);
+        emit OfferUpsert(oid, msg.sender);
     }
 
     /// @notice Deletes caller's offer for (token, side, fiat).
@@ -511,7 +496,7 @@ contract Swap2p is ReentrancyGuard {
             }
             delete _offerId[token][msg.sender][s][f];
         }
-        emit OfferDeleted(oid);
+        emit OfferDeleted(oid, msg.sender);
     }
 
 
@@ -571,7 +556,7 @@ contract Swap2p is ReentrancyGuard {
     /// @param f Fiat code.
     /// @param expectedPrice Price guard (BUY: offer >= expected; SELL: offer <= expected).
     /// @param paymentMethod Negotiated fiat method chosen by taker.
-    /// @param paymentDetails Free-form details emitted in DealRequested.
+    /// @param paymentDetails Free-form details stored in chat alongside the DealUpdated event.
     /// @param partner Optional affiliate to bind (first non-zero value wins).
     function taker_requestOffer(
         address  token,
@@ -593,9 +578,10 @@ contract Swap2p is ReentrancyGuard {
 
         _setAffiliateIfNotSet(taker, partner);
 
+        Deal storage d = deals[id];
         _sendChat(id, paymentDetails, DealState.REQUESTED);
 
-        emit DealRequested(id);
+        emit DealUpdated(id, DealState.REQUESTED, d.maker, d.taker);
     }
 
 
@@ -618,7 +604,7 @@ contract Swap2p is ReentrancyGuard {
         _push(d.token, d.taker, back);
         _closeBoth(d.maker, d.taker, id);
         makerInfo[msg.sender].dealsCancelled += int32(1);
-        emit DealCanceled(id);
+        emit DealUpdated(id, DealState.CANCELED, d.maker, d.taker);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -634,7 +620,7 @@ contract Swap2p is ReentrancyGuard {
         _pull(d.token, msg.sender, need);
         d.state  = DealState.ACCEPTED;
         d.tsLast = uint40(block.timestamp);
-        emit DealAccepted(id);
+        emit DealUpdated(id, DealState.ACCEPTED, d.maker, d.taker);
         _sendChat(id, msg_, DealState.ACCEPTED);
     }
 
@@ -646,14 +632,17 @@ contract Swap2p is ReentrancyGuard {
         if (st != DealState.REQUESTED && st != DealState.ACCEPTED && st != DealState.PAID) revert WrongState();
         bool toMaker = msg.sender == d.taker;
         DealState chatState = context;
-        d.chat.push(ChatMessage({
-            ts: uint40(block.timestamp),
-            toMaker: toMaker,
-            state: chatState,
-            text: t
-        }));
+        d.chat.push(
+            ChatMessage({
+                ts: uint40(block.timestamp),
+                toMaker: toMaker,
+                state: chatState,
+                text: t
+            })
+        );
         uint32 idx = uint32(d.chat.length - 1);
-        emit Chat(id, idx);
+        address to = toMaker ? d.maker : d.taker;
+        emit Chat(id, msg.sender, to, idx);
     }
 
     /// @notice Sends a chat message in REQUESTED/ACCEPTED/PAID.
@@ -695,7 +684,7 @@ contract Swap2p is ReentrancyGuard {
         }
         _closeBoth(d.maker, d.taker, id);
         makerInfo[msg.sender].dealsCancelled += int32(1);
-        emit DealCanceled(id);
+        emit DealUpdated(id, DealState.CANCELED, d.maker, d.taker);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -710,12 +699,12 @@ contract Swap2p is ReentrancyGuard {
             (d.side == Side.SELL && msg.sender != d.taker)) revert NotFiatPayer();
         d.state  = DealState.PAID;
         d.tsLast = uint40(block.timestamp);
-        emit DealPaid(id);
+        emit DealUpdated(id, DealState.PAID, d.maker, d.taker);
         _sendChat(id, msg_, DealState.PAID);
     }
 
     /// @notice Releases the deal after PAID by the counterparty (BUY: taker; SELL: maker).
-    /// @dev Pays main amount minus fee and refunds deposits. Adds to recent lists and emits DealReleased.
+    /// @dev Pays main amount minus fee and refunds deposits. Adds to recent lists and emits DealUpdated(RELEASED).
     /// @param id Deal id.
     /// @param msg_ Optional message (sent via Chat before state change).
     function release(bytes32 id, bytes calldata msg_) external nonReentrant touchActivity {
@@ -744,7 +733,7 @@ contract Swap2p is ReentrancyGuard {
         _push(d.token, d.taker, d.amount);
         _push(d.token, d.maker, d.amount);
 
-        emit DealReleased(id);
+        emit DealUpdated(id, DealState.RELEASED, d.maker, d.taker);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -1049,7 +1038,7 @@ contract Swap2p is ReentrancyGuard {
             delete deals[id];
             _removeRecent(maker, id);
             _removeRecent(taker, id);
-            emit DealDeleted(id);
+            emit DealUpdated(id, DealState.NONE, maker, taker);
         }
     }
 

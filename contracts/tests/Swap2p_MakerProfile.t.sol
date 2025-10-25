@@ -68,38 +68,38 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
 
     function test_Nickname_Set_UniqueAndClear() public {
         vm.prank(maker);
-        swap.setNickname("alpha");
-        assertEq(_makerProfile(maker).nickname, "alpha");
+        swap.setNickname(bytes32("alpha"));
+        assertEq(_makerProfile(maker).nickname, bytes32("alpha"));
 
         vm.prank(taker);
         vm.expectRevert(Swap2p.NicknameTaken.selector);
-        swap.setNickname("alpha");
+        swap.setNickname(bytes32("alpha"));
 
         vm.prank(maker);
-        swap.setNickname("");
-        assertEq(_makerProfile(maker).nickname, "");
+        swap.setNickname(bytes32(0));
+        assertEq(_makerProfile(maker).nickname, bytes32(0));
 
         vm.prank(taker);
-        swap.setNickname("alpha");
-        assertEq(_makerProfile(taker).nickname, "alpha");
+        swap.setNickname(bytes32("alpha"));
+        assertEq(_makerProfile(taker).nickname, bytes32("alpha"));
     }
 
     function test_ChatPublicKey_SetAndClear() public {
         vm.prank(maker);
-        swap.setChatPublicKey("ssh-ed25519 AAAA");
-        assertEq(_makerProfile(maker).chatPublicKey, "ssh-ed25519 AAAA");
+        swap.setChatPublicKey(bytes32("ssh-ed25519 AAAA"));
+        assertEq(_makerProfile(maker).chatPublicKey, bytes32("ssh-ed25519 AAAA"));
 
         vm.prank(maker);
-        swap.setChatPublicKey("");
-        assertEq(_makerProfile(maker).chatPublicKey, "");
+        swap.setChatPublicKey(bytes32(0));
+        assertEq(_makerProfile(maker).chatPublicKey, bytes32(0));
     }
 
     function test_ChatPublicKey_IsPerUser() public {
         vm.prank(maker);
-        swap.setChatPublicKey("ssh-ed25519 AAAA");
+        swap.setChatPublicKey(bytes32("ssh-ed25519 AAAA"));
 
         // other users remain unchanged
-        assertEq(_makerProfile(taker).chatPublicKey, "");
+        assertEq(_makerProfile(taker).chatPublicKey, bytes32(0));
     }
 
     function test_DealCounters_OnCancelAndRelease() public {
@@ -190,22 +190,22 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
 
     function test_GetProfiles_Batch() public {
         vm.prank(maker);
-        swap.setNickname("alpha");
+        swap.setNickname(bytes32("alpha"));
         vm.prank(maker);
-        swap.setChatPublicKey("pk-maker");
+        swap.setChatPublicKey(bytes32("pk-maker"));
         vm.prank(taker);
         swap.setOnline(true);
         vm.prank(taker);
-        swap.setChatPublicKey("pk-taker");
+        swap.setChatPublicKey(bytes32("pk-taker"));
 
         address[] memory addrs = new address[](2);
         addrs[0] = maker;
         addrs[1] = taker;
         Swap2p.MakerProfile[] memory profiles = swap.getMakerProfiles(addrs);
         assertEq(profiles.length, 2);
-        assertEq(profiles[0].nickname, "alpha");
+        assertEq(profiles[0].nickname, bytes32("alpha"));
         assertTrue(profiles[1].online);
-        assertEq(profiles[0].chatPublicKey, "pk-maker");
-        assertEq(profiles[1].chatPublicKey, "pk-taker");
+        assertEq(profiles[0].chatPublicKey, bytes32("pk-maker"));
+        assertEq(profiles[1].chatPublicKey, bytes32("pk-taker"));
     }
 }

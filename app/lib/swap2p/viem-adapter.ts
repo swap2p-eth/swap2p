@@ -8,7 +8,9 @@ import {
   type Transport,
   type WalletClient,
   getAddress,
+  hexToString,
   isHex,
+  padHex,
   stringToHex,
 } from "viem";
 import { swap2pAbi } from "@/lib/swap2p/generated";
@@ -56,6 +58,35 @@ type ReadArgs<Fn extends string, Args extends readonly unknown[]> = {
 const ZERO = 0n;
 
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
+
+const clampHexToBytes32 = (value: Hex): Hex => {
+  if (value.length <= 66) return value;
+  return (`0x${value.slice(2, 66)}`) as Hex;
+};
+
+const encodeBytes32 = (value: string | Hex | null | undefined): Hex => {
+  if (!value) return ZERO_BYTES32;
+  if (typeof value === "string" && isHex(value, { strict: false })) {
+    const hexValue = clampHexToBytes32(value as Hex);
+    return padHex(hexValue, { size: 32, dir: "right" }) as Hex;
+  }
+  const encoded = stringToHex(String(value));
+  const trimmed = clampHexToBytes32(encoded as Hex);
+  return padHex(trimmed, { size: 32, dir: "right" }) as Hex;
+};
+
+const decodeBytes32 = (value: unknown): string => {
+  if (typeof value !== "string" || !isHex(value, { strict: false })) {
+    return "";
+  }
+  const hexValue = padHex(clampHexToBytes32(value as Hex), {
+    size: 32,
+    dir: "right",
+  }) as Hex;
+  if (hexValue === ZERO_BYTES32) return "";
+  const str = hexToString(hexValue);
+  return str.replace(/\u0000+$/gu, "");
+};
 
 const DEFAULT_LIMIT = 20;
 
@@ -295,16 +326,15 @@ const mapDealInfo = (entry: any): Deal | null => {
 
 const mapMakerProfile = (_address: Address, raw: any): MakerProfile | null => {
   if (!raw) return null;
-  const nickname = raw.nickname ?? raw[2];
-  const chatPublicKey = raw.chatPublicKey ?? raw[5];
+  const nicknameRaw = raw.nickname ?? raw[2];
+  const chatPublicKeyRaw = raw.chatPublicKey ?? raw[5];
   return {
     online: Boolean(raw[0] ?? raw.online ?? false),
     lastActivity: toNumber(raw[1] ?? raw.lastActivity ?? 0),
-    nickname: nickname !== undefined ? String(nickname) : "",
+    nickname: decodeBytes32(nicknameRaw),
     dealsCancelled: Number(raw[3] ?? raw.dealsCancelled ?? 0),
     dealsCompleted: Number(raw[4] ?? raw.dealsCompleted ?? 0),
-    chatPublicKey:
-      chatPublicKey !== undefined ? String(chatPublicKey) : "",
+    chatPublicKey: decodeBytes32(chatPublicKeyRaw),
   };
 };
 
@@ -598,12 +628,13 @@ const readDealStruct = async (id: Hex) => {
           "Swap2pViemAdapter: account is required for setNickname",
         );
       }
+      const encoded = encodeBytes32(nickname);
       return simulateAndWrite(
         signer,
         publicClient,
         address,
         "setNickname",
-        [nickname] as const,
+        [encoded] as const,
         sender,
       );
     },
@@ -616,12 +647,13 @@ const readDealStruct = async (id: Hex) => {
           "Swap2pViemAdapter: account is required for setChatPublicKey",
         );
       }
+      const encoded = encodeBytes32(chatPublicKey);
       return simulateAndWrite(
         signer,
         publicClient,
         address,
         "setChatPublicKey",
-        [chatPublicKey] as const,
+        [encoded] as const,
         sender,
       );
     },

@@ -6,6 +6,7 @@ import {
   maxUint256,
   parseEther,
   parseUnits,
+  padHex,
   stringToHex,
   zeroAddress,
   type Address,
@@ -29,6 +30,21 @@ export function toCountryCode(code: string): number {
 
 const US = toCountryCode("US");
 const TH = toCountryCode("TH");
+
+const ZERO_BYTES32 =
+  "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
+
+const clampHexToBytes32 = (value: Hex): Hex => {
+  if (value.length <= 66) return value;
+  return (`0x${value.slice(2, 66)}`) as Hex;
+};
+
+const encodeBytes32 = (value: string): Hex => {
+  if (!value) return ZERO_BYTES32;
+  const encoded = stringToHex(value);
+  const trimmed = clampHexToBytes32(encoded as Hex);
+  return padHex(trimmed, { size: 32, dir: "right" }) as Hex;
+};
 
 const makerProfiles = [
   {
@@ -289,7 +305,7 @@ for (const maker of makerContexts) {
     address: swap.address as Address,
     abi: swapArtifact.abi,
     functionName: "setNickname",
-    args: [maker.profile.nickname],
+    args: [encodeBytes32(maker.profile.nickname)],
   }, `set nickname ${maker.profile.nickname}`);
 
   await writeWith(maker.client, {
