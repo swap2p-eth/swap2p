@@ -10,9 +10,9 @@ contract Swap2p_ViewsAvailabilityTest is Swap2p_TestBase {
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1e18, 500e18, "wire", "", address(0));
         uint count = swap.getOfferCount(address(token), Swap2p.Side.SELL, _fiat("US"));
         assertEq(count, 1);
-        address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
-        assertEq(keys.length, 1);
-        assertEq(keys[0], maker);
+        Swap2p.OfferInfo[] memory offers = swap.getMarketOffers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
+        assertEq(offers.length, 1);
+        assertEq(offers[0].maker, maker);
     }
 
     function test_Availability_Online() public {

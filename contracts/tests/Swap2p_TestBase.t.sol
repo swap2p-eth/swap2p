@@ -54,14 +54,9 @@ contract Swap2p_TestBase is Test {
         address[] memory addrs = new address[](1);
         addrs[0] = addr;
         Swap2p.MakerProfile[] memory profiles = swap.getMakerProfiles(addrs);
-        return profiles.length != 0 ? profiles[0] : Swap2p.MakerProfile({
-            lastActivity: 0,
-            dealsCancelled: 0,
-            dealsCompleted: 0,
-            online: false,
-            nickname: bytes32(0),
-            chatPublicKey: bytes32(0)
-        });
+        if (profiles.length != 0) return profiles[0];
+        Swap2p.MakerProfile memory empty;
+        return empty;
     }
 
     function _offerId(
@@ -71,6 +66,59 @@ contract Swap2p_TestBase is Test {
         Swap2p.FiatCode fiat_
     ) internal view returns (bytes32) {
         return swap.getOfferId(token_, maker_, side_, fiat_);
+    }
+
+    function _offer(bytes32 id) internal view returns (Swap2p.Offer memory o) {
+        (
+            uint128 minAmt,
+            uint128 maxAmt,
+            uint96 price,
+            uint40 ts,
+            Swap2p.FiatCode fiat,
+            Swap2p.Side side,
+            address token_,
+            address maker_,
+            string memory paymentMethods,
+            string memory requirements
+        ) = swap.offers(id);
+        o.minAmt = minAmt;
+        o.maxAmt = maxAmt;
+        o.priceFiatPerToken = price;
+        o.ts = ts;
+        o.fiat = fiat;
+        o.side = side;
+        o.token = token_;
+        o.maker = maker_;
+        o.paymentMethods = paymentMethods;
+        o.requirements = requirements;
+    }
+
+    function _deal(bytes32 id) internal view returns (Swap2p.Deal memory d) {
+        (
+            uint128 amount,
+            uint96 price,
+            Swap2p.FiatCode fiat,
+            Swap2p.DealState state,
+            Swap2p.Side side,
+            uint40 tsRequest,
+            uint40 tsLast,
+            address maker_,
+            address taker_,
+            address token_,
+            string memory paymentMethod
+        ) = swap.deals(id);
+        d.amount = amount;
+        d.price = price;
+        d.fiat = fiat;
+        d.state = state;
+        d.side = side;
+        d.tsRequest = tsRequest;
+        d.tsLast = tsLast;
+        d.maker = maker_;
+        d.taker = taker_;
+        d.token = token_;
+        d.paymentMethod = paymentMethod;
+        d.chat = new Swap2p.ChatMessage[](0);
     }
 
     /// @dev helper to pack ISO 3166-1 alpha-2 country codes into FiatCode

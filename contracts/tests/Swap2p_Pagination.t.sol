@@ -16,10 +16,10 @@ contract Swap2p_PaginationTest is Swap2p_TestBase {
         vm.prank(maker);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1, 500e18, "wire", "", address(0));
         assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, _fiat("US")), 1);
-        address[] memory k0 = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1);
-        assertEq(k0.length, 1);
-        address[] memory k1 = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 1, 1);
-        assertEq(k1.length, 0);
+        Swap2p.OfferInfo[] memory page0 = swap.getMarketOffers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1);
+        assertEq(page0.length, 1);
+        Swap2p.OfferInfo[] memory page1 = swap.getMarketOffers(address(token), Swap2p.Side.SELL, _fiat("US"), 1, 1);
+        assertEq(page1.length, 0);
     }
 
     function test_OpenDeals_Pagination() public {

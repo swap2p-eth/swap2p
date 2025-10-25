@@ -21,24 +21,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
     mapping(bytes32 => bool) private _dealSeen;
 
     function _getDeal(bytes32 id) private view returns (Swap2p.Deal memory d) {
-        try swap.getDeal(id) returns (Swap2p.DealInfo memory info) {
-            return info.deal;
-        } catch {
-            return Swap2p.Deal({
-                amount: 0,
-                price: 0,
-                state: Swap2p.DealState.NONE,
-                side: Swap2p.Side.BUY,
-                maker: address(0),
-                taker: address(0),
-                fiat: Swap2p.FiatCode.wrap(0),
-                tsRequest: 0,
-                tsLast: 0,
-                token: address(0),
-                paymentMethod: "",
-                chat: new Swap2p.ChatMessage[](0)
-            });
-        }
+        return _deal(id);
     }
 
     function _setupMaker(address account) private {
@@ -78,24 +61,53 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         return false;
     }
 
+    function _marketOfferIds(
+        address tokenAddr,
+        Swap2p.Side side,
+        Swap2p.FiatCode fiat,
+        uint256 off,
+        uint256 lim
+    ) private view returns (bytes32[] memory ids) {
+        Swap2p.OfferInfo[] memory infos = swap.getMarketOffers(tokenAddr, side, fiat, off, lim);
+        ids = new bytes32[](infos.length);
+        for (uint256 i; i < infos.length; i++) {
+            ids[i] = infos[i].id;
+        }
+    }
+
+    function _marketOfferMakers(
+        address tokenAddr,
+        Swap2p.Side side,
+        Swap2p.FiatCode fiat,
+        uint256 off,
+        uint256 lim
+    ) private view returns (address[] memory makers) {
+        Swap2p.OfferInfo[] memory infos = swap.getMarketOffers(tokenAddr, side, fiat, off, lim);
+        makers = new address[](infos.length);
+        for (uint256 i; i < infos.length; i++) {
+            makers[i] = infos[i].maker;
+        }
+    }
+
+    function _recentDealIds(address user, uint256 off, uint256 lim) private view returns (bytes32[] memory ids) {
+        Swap2p.DealInfo[] memory infos = swap.getRecentDealsDetailed(user, off, lim);
+        ids = new bytes32[](infos.length);
+        for (uint256 i; i < infos.length; i++) {
+            ids[i] = infos[i].id;
+        }
+    }
+
     function _assertMarketInvariant(
         Market memory market,
         address[] memory makerAccounts
     ) private view {
         uint256 count = swap.getOfferCount(market.token, market.side, market.fiat);
-        bytes32[] memory ids = swap.getMarketOfferIds(market.token, market.side, market.fiat, 0, count + 1);
+        bytes32[] memory ids = _marketOfferIds(market.token, market.side, market.fiat, 0, count + 1);
         Swap2p.OfferInfo[] memory infos = swap.getMarketOffers(market.token, market.side, market.fiat, 0, count + 1);
         assertEq(ids.length, count);
         assertEq(infos.length, count);
         for (uint256 i; i < infos.length; i++) {
-            bool idMatches = false;
-            for (uint256 j; j < ids.length; j++) {
-                if (ids[j] == infos[i].id) {
-                    idMatches = true;
-                    break;
-                }
-            }
-            assertTrue(idMatches);
+            assertEq(ids[i], infos[i].id);
             assertEq(uint8(infos[i].offer.side), uint8(market.side));
             assertEq(Swap2p.FiatCode.unwrap(infos[i].offer.fiat), Swap2p.FiatCode.unwrap(market.fiat));
             // timestamp non-zero indicates active offer
@@ -103,7 +115,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         }
 
         // ensure getOfferKeys matches maker lists
-        address[] memory keys = swap.getOfferKeys(market.token, market.side, market.fiat, 0, count + 1);
+        address[] memory keys = _marketOfferMakers(market.token, market.side, market.fiat, 0, count + 1);
         assertEq(keys.length, count);
         for (uint256 i; i < keys.length; i++) {
             bool isKnownMaker;
@@ -151,7 +163,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         }
 
         uint256 recentCount = swap.getRecentDealCount(user);
-        bytes32[] memory recentIds = swap.getRecentDeals(user, 0, recentCount + 5);
+        bytes32[] memory recentIds = _recentDealIds(user, 0, recentCount + 5);
         Swap2p.DealInfo[] memory recentDetailed = swap.getRecentDealsDetailed(user, 0, recentCount + 5);
         assertEq(recentIds.length, recentCount);
         assertEq(recentDetailed.length, recentCount);
@@ -169,9 +181,9 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             return;
         }
         bytes32[] memory makerOpen = swap.getOpenDeals(d.maker, 0, 20);
-        bytes32[] memory makerRecent = swap.getRecentDeals(d.maker, 0, 20);
+        bytes32[] memory makerRecent = _recentDealIds(d.maker, 0, 20);
         bytes32[] memory takerOpen = swap.getOpenDeals(d.taker, 0, 20);
-        bytes32[] memory takerRecent = swap.getRecentDeals(d.taker, 0, 20);
+        bytes32[] memory takerRecent = _recentDealIds(d.taker, 0, 20);
 
         bool makerHasOpen = _contains(makerOpen, id);
         bool makerHasRecent = _contains(makerRecent, id);
@@ -237,14 +249,14 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         vm.prank(maker3);
         swap.maker_makeOffer(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 1, 500e18, "wire", "", address(0));
 
-        address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
+        address[] memory keys = _marketOfferMakers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(keys.length, 3);
 
         // delete middle maker2
         vm.prank(maker2);
         swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, _fiat("US"));
 
-        keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
+        keys = _marketOfferMakers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(keys.length, 2);
         // remaining are maker and maker3 (order may have maker3 swapped into middle)
         assertTrue((keys[0] == maker && keys[1] == maker3) || (keys[0] == maker3 && keys[1] == maker));
@@ -289,19 +301,19 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         bytes32 storedId = _offerId(address(token), maker, Swap2p.Side.BUY, _fiat("DE"));
         assertEq(storedId, predicted, "offer id should match preview");
 
-        Swap2p.OfferInfo[] memory items = swap.listOffers(address(token), Swap2p.Side.BUY, _fiat("DE"));
+        Swap2p.OfferInfo[] memory items = swap.getMarketOffers(address(token), Swap2p.Side.BUY, _fiat("DE"), 0, 10);
         assertEq(items.length, 1);
         assertEq(items[0].id, storedId);
         assertEq(items[0].maker, maker);
         assertEq(items[0].offer.maxAmt, 600e18);
         assertEq(items[0].offer.minAmt, 5e18);
 
-        Swap2p.OfferInfo memory fetched = swap.getOfferById(storedId);
+        Swap2p.Offer memory fetched = _offer(storedId);
         assertEq(fetched.maker, maker);
-        assertEq(fetched.offer.priceFiatPerToken, 200e18);
-        assertEq(fetched.offer.ts, items[0].offer.ts);
+        assertEq(fetched.priceFiatPerToken, 200e18);
+        assertEq(fetched.ts, items[0].offer.ts);
         // payment methods should match string
-        assertEq(keccak256(bytes(fetched.offer.paymentMethods)), keccak256(bytes("sepa")));
+        assertEq(keccak256(bytes(fetched.paymentMethods)), keccak256(bytes("sepa")));
     }
 
     function test_IndexConsistency_AcrossMarketsAndDeals() public {
@@ -352,7 +364,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
 
         // verify market indexes
         assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, _fiat("US")), 2);
-        address[] memory usdMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
+        address[] memory usdMakers = _marketOfferMakers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdMakers.length, 2);
         bool seenMakerA;
         bool seenMakerB;
@@ -361,7 +373,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             if (usdMakers[i] == makerB) seenMakerB = true;
         }
         assertTrue(seenMakerA && seenMakerB);
-        bytes32[] memory usdIds = swap.getMarketOfferIds(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
+        bytes32[] memory usdIds = _marketOfferIds(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdIds.length, 2);
         Swap2p.OfferInfo[] memory usdInfos = swap.getMarketOffers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdInfos.length, 2);
@@ -372,7 +384,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         }
 
         assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, _fiat("DE")), 1);
-        address[] memory eurMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("DE"), 0, 10);
+        address[] memory eurMakers = _marketOfferMakers(address(token), Swap2p.Side.SELL, _fiat("DE"), 0, 10);
         assertEq(eurMakers.length, 1);
         assertEq(eurMakers[0], makerC);
 
@@ -389,10 +401,10 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
 
         // USD market should retain only maker
         assertEq(swap.getOfferCount(address(token), Swap2p.Side.SELL, _fiat("US")), 1);
-        usdMakers = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
+        usdMakers = _marketOfferMakers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdMakers.length, 1);
         assertEq(usdMakers[0], maker);
-        usdIds = swap.getMarketOfferIds(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
+        usdIds = _marketOfferIds(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
         assertEq(usdIds.length, 1);
         assertEq(swap.getMarketOffers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10)[0].maker, maker);
 
@@ -504,7 +516,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         assertEq(openDetailedTaker.length, 1);
         assertEq(openDetailedTaker[0].id, deal3);
 
-        bytes32[] memory recentMakerDeals = swap.getRecentDeals(maker, 0, 10);
+        bytes32[] memory recentMakerDeals = _recentDealIds(maker, 0, 10);
         assertEq(recentMakerDeals.length, 2);
         bool seenDeal1;
         bool seenDeal2;
@@ -528,9 +540,9 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
         assertEq(recentDetailedTaker2[0].id, deal2);
 
         // ensure active offer parameters remain intact after deal churn
-        Swap2p.OfferInfo memory active = swap.getOfferById(activeOffer);
-        assertEq(active.offer.minAmt, 50e18);
-        assertEq(active.offer.maxAmt, 2_000e18);
+        Swap2p.Offer memory active = _offer(activeOffer);
+        assertEq(active.minAmt, 50e18);
+        assertEq(active.maxAmt, 2_000e18);
     }
 
     function test_Churn_Invariants() public {
@@ -601,10 +613,13 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
             } else if (scenario == 1) {
                 bytes32 offerId = swap.getOfferId(market.token, currentMaker, market.side, market.fiat);
                 if (offerId != bytes32(0)) {
-                    Swap2p.OfferInfo memory info = swap.getOfferById(offerId);
+                    Swap2p.Offer memory offer = _offer(offerId);
+                    if (offer.ts == 0) {
+                        continue;
+                    }
                     uint128 amt = uint128(amount);
-                    if (amt < info.offer.minAmt || amt > info.offer.maxAmt) {
-                        amt = info.offer.minAmt;
+                    if (amt < offer.minAmt || amt > offer.maxAmt) {
+                        amt = offer.minAmt;
                     }
                     bytes32 dealId = _requestDealAs(
                         currentTaker,
@@ -613,7 +628,7 @@ contract Swap2p_OfferIndexingTest is Swap2p_TestBase {
                         currentMaker,
                         amt,
                         market.fiat,
-                        uint96(info.offer.priceFiatPerToken),
+                        uint96(offer.priceFiatPerToken),
                         "",
                         "",
                         address(0)

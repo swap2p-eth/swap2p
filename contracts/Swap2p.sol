@@ -41,7 +41,6 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 ///
 /// Notes
 /// - Pagination helpers copy slices from storage into memory (gas‑aware, intended for off‑chain calls).
-/// - Timestamps are compact; `lastActivity` is updated via `touchActivity` on user interactions.
 contract Swap2p is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -110,7 +109,6 @@ contract Swap2p is ReentrancyGuard {
 
     /// @notice Maker's online status and working hours (UTC).
     struct MakerProfile {
-        uint40 lastActivity;          // last interaction timestamp
         int32  dealsCancelled;        // self-canceled deals count
         int32  dealsCompleted;        // completed deals count
         bool    online;
@@ -123,7 +121,7 @@ contract Swap2p is ReentrancyGuard {
     address private immutable author; // protocol fee receiver
 
     // offers by id
-    mapping(bytes32 => Offer) private _offers;
+    mapping(bytes32 => Offer) public offers;
     mapping(bytes32 => Deal) public deals;
 
     // offer ids and indexes
@@ -138,7 +136,7 @@ contract Swap2p is ReentrancyGuard {
 
     // maker profiles
     mapping(address => MakerProfile) public makerInfo;
-    mapping(bytes32 => bool) private _nicknameTaken;
+    mapping(bytes32 => bool) public nicknameTaken;
 
     // offer indexes
     mapping(bytes32 => bytes32[]) private _marketOffers;
@@ -192,12 +190,6 @@ contract Swap2p is ReentrancyGuard {
 
     // ────────────────────────────────────────────────────────────────────────
     // Modifiers
-
-    modifier touchActivity() {
-        // update last activity for caller
-        makerInfo[msg.sender].lastActivity = uint40(block.timestamp);
-        _;
-    }
 
     // Non-reentrancy is provided by OpenZeppelin ReentrancyGuard
 
@@ -382,39 +374,39 @@ contract Swap2p is ReentrancyGuard {
     // Maker profile
     /// @notice Sets caller's online status for availability checks.
     /// @param on New online flag.
-    function setOnline(bool on) external touchActivity {
+    function setOnline(bool on) external {
         makerInfo[msg.sender].online = on;
         emit MakerOnline(msg.sender, on);
     }
 
     /// @notice Updates caller's public nickname. Zero clears nickname.
     /// @param nick Nickname to set (must be unique when non-zero).
-    function setNickname(bytes32 nick) external touchActivity {
+    function setNickname(bytes32 nick) external {
         MakerProfile storage profile = makerInfo[msg.sender];
         bytes32 old = profile.nickname;
 
         if (nick == bytes32(0)) {
             if (old != bytes32(0)) {
-                delete _nicknameTaken[old];
+                delete nicknameTaken[old];
                 profile.nickname = bytes32(0);
             }
             return;
         }
 
         if (old == nick) return;
-        if (_nicknameTaken[nick]) revert NicknameTaken();
+        if (nicknameTaken[nick]) revert NicknameTaken();
 
-        _nicknameTaken[nick] = true;
+        nicknameTaken[nick] = true;
         profile.nickname = nick;
 
         if (old != bytes32(0)) {
-            delete _nicknameTaken[old];
+            delete nicknameTaken[old];
         }
     }
 
     /// @notice Sets caller's chat public key. Zero clears the key.
     /// @param key New chat public key (bytes32).
-    function setChatPublicKey(bytes32 key) external touchActivity {
+    function setChatPublicKey(bytes32 key) external {
         makerInfo[msg.sender].chatPublicKey = key;
     }
 
@@ -456,7 +448,7 @@ contract Swap2p is ReentrancyGuard {
     ) private {
         bytes32 oid = _getOrCreateOfferId(token, msg.sender, s, f);
 
-        Offer storage o = _offers[oid];
+        Offer storage o = offers[oid];
         bool isNew = o.ts == 0;
 
         if (isNew) {
@@ -487,12 +479,12 @@ contract Swap2p is ReentrancyGuard {
     function maker_deleteOffer(address token, Side s, FiatCode f) external {
         bytes32 oid = _offerId[token][msg.sender][s][f];
         if (oid != bytes32(0)) {
-            Offer storage off = _offers[oid];
+            Offer storage off = offers[oid];
             if (off.ts != 0) {
                 bytes32 marketKey = _marketKey(token, s, f);
                 _removeMarketOffer(marketKey, oid);
                 _removeMakerOffer(msg.sender, oid);
-                delete _offers[oid];
+                delete offers[oid];
             }
             delete _offerId[token][msg.sender][s][f];
         }
@@ -515,7 +507,7 @@ contract Swap2p is ReentrancyGuard {
         string calldata paymentMethod
     ) private returns (bytes32 id) {
         bytes32 oid = _offerId[token][maker][s][f];
-        Offer storage off = _offers[oid];
+        Offer storage off = offers[oid];
         if (off.maker != maker) revert OfferNotFound();
 
         if (!makerInfo[maker].online) revert MakerOffline();
@@ -568,7 +560,7 @@ contract Swap2p is ReentrancyGuard {
         string calldata paymentMethod,
         bytes calldata paymentDetails,
         address  partner
-    ) external nonReentrant touchActivity {
+    ) external nonReentrant {
         address taker = msg.sender;
         if (taker == maker) revert WrongCaller();
         bytes32 id = _allocateDeal(token, s, maker, taker, amount, f, expectedPrice, paymentMethod);
@@ -590,7 +582,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Cancels a REQUESTED deal by maker or taker and refunds taker.
     /// @param id Deal id.
     /// @param reason Optional message (sent via Chat before state change).
-    function cancelRequest(bytes32 id, bytes calldata reason) external nonReentrant touchActivity {
+    function cancelRequest(bytes32 id, bytes calldata reason) external nonReentrant {
         Deal storage d = deals[id];
         if (msg.sender != d.maker && msg.sender != d.taker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
@@ -612,7 +604,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Accepts a REQUESTED deal, escrows maker deposit (BUY:1×, SELL:2×).
     /// @param id Deal id.
     /// @param msg_ Optional message (sent via Chat after state change).
-    function maker_acceptRequest(bytes32 id, bytes calldata msg_) external nonReentrant touchActivity {
+    function maker_acceptRequest(bytes32 id, bytes calldata msg_) external nonReentrant {
         Deal storage d = deals[id];
         if (msg.sender != d.maker) revert WrongCaller();
         if (d.state != DealState.REQUESTED) revert WrongState();
@@ -648,7 +640,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Sends a chat message in REQUESTED/ACCEPTED/PAID.
     /// @param id Deal id.
     /// @param t Message text.
-    function sendMessage(bytes32 id, bytes calldata t) external touchActivity {
+    function sendMessage(bytes32 id, bytes calldata t) external {
         _sendChat(id, t, DealState.NONE);
     }
 
@@ -657,7 +649,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Cancels an ACCEPTED deal (SELL: taker; BUY: maker) and refunds deposits.
     /// @param id Deal id.
     /// @param reason Optional message (sent via Chat before state change).
-    function cancelDeal(bytes32 id, bytes calldata reason) external nonReentrant touchActivity {
+    function cancelDeal(bytes32 id, bytes calldata reason) external nonReentrant {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
         // maker can cancel only when Side.BUY; taker only when Side.SELL
@@ -692,7 +684,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Marks fiat as paid by the payer (BUY: maker; SELL: taker). Moves to PAID.
     /// @param id Deal id.
     /// @param msg_ Optional message (sent via Chat after state change).
-    function markFiatPaid(bytes32 id, bytes calldata msg_) external touchActivity {
+    function markFiatPaid(bytes32 id, bytes calldata msg_) external {
         Deal storage d = deals[id];
         if (d.state != DealState.ACCEPTED) revert WrongState();
         if ((d.side == Side.BUY  && msg.sender != d.maker) ||
@@ -707,7 +699,7 @@ contract Swap2p is ReentrancyGuard {
     /// @dev Pays main amount minus fee and refunds deposits. Adds to recent lists and emits DealUpdated(RELEASED).
     /// @param id Deal id.
     /// @param msg_ Optional message (sent via Chat before state change).
-    function release(bytes32 id, bytes calldata msg_) external nonReentrant touchActivity {
+    function release(bytes32 id, bytes calldata msg_) external nonReentrant {
         Deal storage d = deals[id];
         if (d.state != DealState.PAID) revert WrongState();
         if ((d.side == Side.BUY  && msg.sender != d.taker
@@ -743,45 +735,6 @@ contract Swap2p is ReentrancyGuard {
         return _marketOffers[_marketKey(token, s, f)].length;
     }
 
-    /// @notice Returns subset of offer maker addresses for pagination.
-    /// @param off Offset in the index.
-    /// @param lim Max number of items to return.
-    function getOfferKeys(address token, Side s, FiatCode f, uint off, uint lim)
-        external
-        view
-        returns (address[] memory out)
-    {
-        bytes32[] storage arr = _marketOffers[_marketKey(token, s, f)];
-        uint len = arr.length;
-        if (off >= len || lim == 0) return out;
-        uint end = off + lim;
-        if (end < off || end > len) end = len;
-        uint slice = end - off;
-        out = new address[](slice);
-        for (uint i; i < slice; i++) {
-            Offer storage offer_ = _offers[arr[off + i]];
-            out[i] = offer_.maker;
-        }
-    }
-
-    /// @notice Returns paginated slice of offer IDs for a market (token/side/fiat).
-    function getMarketOfferIds(address token, Side s, FiatCode f, uint off, uint lim)
-        external
-        view
-        returns (bytes32[] memory out)
-    {
-        bytes32[] storage arr = _marketOffers[_marketKey(token, s, f)];
-        uint len = arr.length;
-        if (off >= len || lim == 0) return out;
-        uint end = off + lim;
-        if (end < off || end > len) end = len;
-        uint slice = end - off;
-        out = new bytes32[](slice);
-        for (uint i; i < slice; i++) {
-            out[i] = arr[off + i];
-        }
-    }
-
     /// @notice Returns paginated slice of offers for a market (token/side/fiat).
     function getMarketOffers(address token, Side s, FiatCode f, uint off, uint lim)
         external
@@ -808,23 +761,6 @@ contract Swap2p is ReentrancyGuard {
     function previewNextDealId(address taker) external view returns (bytes32 id, uint64 nonce) {
         nonce = _takerDealNonce[taker] + 1;
         id = keccak256(abi.encodePacked(taker, nonce));
-    }
-
-    /// @notice Returns offer details by its ID.
-    function getOfferById(bytes32 id) external view returns (OfferInfo memory info) {
-        Offer storage o = _offers[id];
-        if (o.ts == 0) revert OfferNotFound();
-        info.id = id;
-        info.maker = o.maker;
-        info.offer = o;
-    }
-
-    /// @notice Returns all offers for specified token/side/fiat triple.
-    function listOffers(address token, Side s, FiatCode f) external view returns (OfferInfo[] memory out) {
-        bytes32[] storage ids = _marketOffers[_marketKey(token, s, f)];
-        uint len = ids.length;
-        if (len == 0) return out;
-        out = _collectOfferInfos(ids, 0, len);
     }
 
     /// @notice Returns the number of offers created by `maker`.
@@ -873,7 +809,7 @@ contract Swap2p is ReentrancyGuard {
         uint valid;
         for (uint i = off; i < end; i++) {
             bytes32 id = ids[i];
-            Offer storage o = _offers[id];
+            Offer storage o = offers[id];
             if (o.ts == 0) continue;
             valid++;
         }
@@ -881,7 +817,7 @@ contract Swap2p is ReentrancyGuard {
         uint pos;
         for (uint i = off; i < end; i++) {
             bytes32 id = ids[i];
-            Offer storage o = _offers[id];
+            Offer storage o = offers[id];
             if (o.ts == 0) continue;
             Offer memory copy = o;
             out[pos] = OfferInfo({id: id, maker: o.maker, offer: copy});
@@ -937,19 +873,6 @@ contract Swap2p is ReentrancyGuard {
         for (uint i = off; i < end; i++) {
             out[i - off] = arr[i];
         }
-    }
-
-    /// @notice Returns deal details by id.
-    function getDeal(bytes32 id) external view returns (DealInfo memory info) {
-        Deal storage d = deals[id];
-        if (d.state == DealState.NONE) revert DealNotFound();
-        info.id = id;
-        info.deal = d;
-    }
-
-    /// @notice Returns the full chat history for a deal.
-    function getDealChat(bytes32 id) external view returns (ChatMessage[] memory out) {
-        out = deals[id].chat;
     }
 
     /// @notice Returns the number of chat messages for a deal.
@@ -1011,23 +934,6 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Returns the count of recent (closed) deals for a user.
     function getRecentDealCount(address u) external view returns (uint) {
         return _recentDeals[u].length;
-    }
-
-    /// @notice Returns paginated list of recent (closed) deal IDs for a user.
-    /// @notice Returns a paginated slice of recent (closed) deal IDs for a user.
-    /// @param off Offset.
-    /// @param lim Limit.
-    function getRecentDeals(address u, uint off, uint lim)
-    external view returns (bytes32[] memory out) {
-        bytes32[] storage arr = _recentDeals[u];
-        uint len = arr.length;
-        if (off >= len) return out;
-        uint end = off + lim;
-        if (end < off || end > len) end = len;
-        out = new bytes32[](end - off);
-        for (uint i = off; i < end; i++) {
-            out[i - off] = arr[i];
-        }
     }
 
     /// @notice Returns paginated slice of recent (closed) deals with details.

@@ -51,18 +51,19 @@ contract Swap2p_DealChatTest is Swap2p_TestBase {
     }
 
     function test_PaymentMethodStoredOnRequest() public view {
-        Swap2p.DealInfo memory info = swap.getDeal(dealId);
-        assertEq(info.deal.paymentMethod, "wire");
-        assertEq(info.deal.chat.length, 1);
-        assertTrue(info.deal.chat[0].toMaker);
-        assertEq(uint256(info.deal.chat[0].state), uint256(Swap2p.DealState.REQUESTED));
-        assertEq(string(info.deal.chat[0].text), "");
+        Swap2p.Deal memory info = _deal(dealId);
+        assertEq(info.paymentMethod, "wire");
+        Swap2p.ChatMessage[] memory first = swap.getDealChatSlice(dealId, 0, 1);
+        assertEq(first.length, 1);
+        assertTrue(first[0].toMaker);
+        assertEq(uint256(first[0].state), uint256(Swap2p.DealState.REQUESTED));
+        assertEq(string(first[0].text), "");
     }
 
     function test_ChatLogRecordsMessagesAndStates() public {
         _completeDealWithMessages();
 
-        Swap2p.ChatMessage[] memory chat = swap.getDealChat(dealId);
+        Swap2p.ChatMessage[] memory chat = swap.getDealChatSlice(dealId, 0, 10);
         assertEq(chat.length, 6);
 
         assertTrue(chat[0].toMaker);

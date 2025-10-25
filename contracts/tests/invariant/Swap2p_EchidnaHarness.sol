@@ -153,25 +153,93 @@ contract Swap2pEchidnaHarness {
         }
     }
 
-    function _getDeal(bytes32 id) internal view returns (Swap2p.Deal memory d) {
-        try swap.getDeal(id) returns (Swap2p.DealInfo memory info) {
-            return info.deal;
-        } catch {
-            return Swap2p.Deal({
-                amount: 0,
-                price: 0,
-                state: Swap2p.DealState.NONE,
-                side: Swap2p.Side.BUY,
-                maker: address(0),
-                taker: address(0),
-                fiat: Swap2p.FiatCode.wrap(0),
-                tsRequest: 0,
-                tsLast: 0,
-                token: address(0),
-                paymentMethod: "",
-                chat: new Swap2p.ChatMessage[](0)
-            });
+    function _marketOfferIds(
+        address tokenAddr,
+        Swap2p.Side side,
+        Swap2p.FiatCode fiat,
+        uint256 off,
+        uint256 lim
+    ) internal view returns (bytes32[] memory ids) {
+        Swap2p.OfferInfo[] memory infos = swap.getMarketOffers(tokenAddr, side, fiat, off, lim);
+        ids = new bytes32[](infos.length);
+        for (uint256 i; i < infos.length; i++) {
+            ids[i] = infos[i].id;
         }
+    }
+
+    function _marketOfferMakers(
+        address tokenAddr,
+        Swap2p.Side side,
+        Swap2p.FiatCode fiat,
+        uint256 off,
+        uint256 lim
+    ) internal view returns (address[] memory makers) {
+        Swap2p.OfferInfo[] memory infos = swap.getMarketOffers(tokenAddr, side, fiat, off, lim);
+        makers = new address[](infos.length);
+        for (uint256 i; i < infos.length; i++) {
+            makers[i] = infos[i].maker;
+        }
+    }
+
+    function _recentDealIds(address user, uint256 off, uint256 lim) internal view returns (bytes32[] memory ids) {
+        Swap2p.DealInfo[] memory infos = swap.getRecentDealsDetailed(user, off, lim);
+        ids = new bytes32[](infos.length);
+        for (uint256 i; i < infos.length; i++) {
+            ids[i] = infos[i].id;
+        }
+    }
+
+    function _getDeal(bytes32 id) internal view returns (Swap2p.Deal memory d) {
+        (
+            uint128 amount,
+            uint96 price,
+            Swap2p.FiatCode fiat,
+            Swap2p.DealState state,
+            Swap2p.Side side,
+            uint40 tsRequest,
+            uint40 tsLast,
+            address maker_,
+            address taker_,
+            address token_,
+            string memory paymentMethod
+        ) = swap.deals(id);
+        d.amount = amount;
+        d.price = price;
+        d.fiat = fiat;
+        d.state = state;
+        d.side = side;
+        d.tsRequest = tsRequest;
+        d.tsLast = tsLast;
+        d.maker = maker_;
+        d.taker = taker_;
+        d.token = token_;
+        d.paymentMethod = paymentMethod;
+        d.chat = new Swap2p.ChatMessage[](0);
+    }
+
+    function _getOffer(bytes32 id) internal view returns (Swap2p.Offer memory o) {
+        (
+            uint128 minAmt,
+            uint128 maxAmt,
+            uint96 price,
+            uint40 ts,
+            Swap2p.FiatCode fiat,
+            Swap2p.Side side,
+            address token_,
+            address maker_,
+            string memory paymentMethods,
+            string memory requirements
+        ) = swap.offers(id);
+        o.minAmt = minAmt;
+        o.maxAmt = maxAmt;
+        o.priceFiatPerToken = price;
+        o.ts = ts;
+        o.fiat = fiat;
+        o.side = side;
+        o.token = token_;
+        o.maker = maker_;
+        o.paymentMethods = paymentMethods;
+        o.requirements = requirements;
     }
 
     // ─────────────────────────── stateful entry points ───────────────────────────
@@ -217,16 +285,17 @@ contract Swap2pEchidnaHarness {
 
         bytes32 offerId = swap.getOfferId(m.tokenAddr, address(maker), m.side, m.fiat);
         if (offerId == bytes32(0)) return;
-        Swap2p.OfferInfo memory info = swap.getOfferById(offerId);
-            uint128 amt = amount;
-            if (amt < info.offer.minAmt || amt > info.offer.maxAmt) {
-                amt = info.offer.minAmt;
-            }
-            _topUp(taker, uint256(amt) * 5);
-            (bytes32 predicted,) = swap.previewNextDealId(address(taker));
-            taker.takerRequestOffer(m.tokenAddr, info.offer.side, address(maker), amt, m.fiat, info.offer.priceFiatPerToken);
-            _trackDeal(predicted);
+        Swap2p.Offer memory info = _getOffer(offerId);
+        if (info.ts == 0) return;
+        uint128 amt = amount;
+        if (amt < info.minAmt || amt > info.maxAmt) {
+            amt = info.minAmt;
         }
+        _topUp(taker, uint256(amt) * 5);
+        (bytes32 predicted,) = swap.previewNextDealId(address(taker));
+        taker.takerRequestOffer(m.tokenAddr, info.side, address(maker), amt, m.fiat, info.priceFiatPerToken);
+        _trackDeal(predicted);
+    }
 
     function actionAccept(uint8 makerIdx) external {
         ActorProxy maker = _actor(makerIdx);
@@ -293,7 +362,7 @@ contract Swap2pEchidnaHarness {
         for (uint256 i; i < markets.length; i++) {
             Market storage m = markets[i];
             uint256 count = swap.getOfferCount(m.tokenAddr, m.side, m.fiat);
-            bytes32[] memory ids = swap.getMarketOfferIds(m.tokenAddr, m.side, m.fiat, 0, count + 1);
+            bytes32[] memory ids = _marketOfferIds(m.tokenAddr, m.side, m.fiat, 0, count + 1);
             if (ids.length != count) return false;
             Swap2p.OfferInfo[] memory infos = swap.getMarketOffers(m.tokenAddr, m.side, m.fiat, 0, count + 1);
             if (infos.length != count) return false;
@@ -307,7 +376,7 @@ contract Swap2pEchidnaHarness {
                 }
                 if (!seenId) return false;
             }
-            address[] memory makers = swap.getOfferKeys(m.tokenAddr, m.side, m.fiat, 0, count + 1);
+            address[] memory makers = _marketOfferMakers(m.tokenAddr, m.side, m.fiat, 0, count + 1);
             if (makers.length != count) return false;
             for (uint256 j; j < makers.length; j++) {
                 bool knownMaker = false;
@@ -365,7 +434,7 @@ contract Swap2pEchidnaHarness {
             }
 
             uint256 recentCount = swap.getRecentDealCount(user);
-            bytes32[] memory recentIds = swap.getRecentDeals(user, 0, recentCount + 5);
+            bytes32[] memory recentIds = _recentDealIds(user, 0, recentCount + 5);
             if (recentIds.length != recentCount) return false;
             Swap2p.DealInfo[] memory recentDetailed = swap.getRecentDealsDetailed(user, 0, recentCount + 5);
             if (recentDetailed.length != recentCount) return false;
@@ -382,9 +451,9 @@ contract Swap2pEchidnaHarness {
             Swap2p.Deal memory d = _getDeal(id);
             if (d.state == Swap2p.DealState.NONE) continue;
             bool makerOpen = _contains(swap.getOpenDeals(d.maker, 0, 10), id);
-            bool makerRecent = _contains(swap.getRecentDeals(d.maker, 0, 10), id);
+            bool makerRecent = _contains(_recentDealIds(d.maker, 0, 10), id);
             bool takerOpen = _contains(swap.getOpenDeals(d.taker, 0, 10), id);
-            bool takerRecent = _contains(swap.getRecentDeals(d.taker, 0, 10), id);
+            bool takerRecent = _contains(_recentDealIds(d.taker, 0, 10), id);
             if (
                 d.state == Swap2p.DealState.REQUESTED ||
                 d.state == Swap2p.DealState.ACCEPTED ||

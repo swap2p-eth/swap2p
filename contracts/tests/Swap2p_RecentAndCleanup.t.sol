@@ -11,8 +11,8 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         swap.setOnline(true);
     }
 
-    function _hasId(bytes32[] memory arr, bytes32 id) internal pure returns (bool) {
-        for (uint i = 0; i < arr.length; i++) if (arr[i] == id) return true;
+    function _hasDealId(Swap2p.DealInfo[] memory arr, bytes32 id) internal pure returns (bool) {
+        for (uint i = 0; i < arr.length; i++) if (arr[i].id == id) return true;
         return false;
     }
 
@@ -34,10 +34,10 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         swap.cancelRequest(dealId, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 1);
         assertEq(swap.getRecentDealCount(taker), 1);
-        bytes32[] memory rm = swap.getRecentDeals(maker, 0, 10);
-        bytes32[] memory rt = swap.getRecentDeals(taker, 0, 10);
-        assertTrue(_hasId(rm, dealId));
-        assertTrue(_hasId(rt, dealId));
+        Swap2p.DealInfo[] memory rm = swap.getRecentDealsDetailed(maker, 0, 10);
+        Swap2p.DealInfo[] memory rt = swap.getRecentDealsDetailed(taker, 0, 10);
+        assertTrue(_hasDealId(rm, dealId));
+        assertTrue(_hasDealId(rt, dealId));
     }
 
     function test_Recent_OnCancelDeal_SellAndBuy() public {
@@ -106,10 +106,10 @@ contract Swap2p_RecentAndCleanupTest is Swap2p_TestBase {
         swap.release(dealId, bytes(""));
         assertEq(swap.getRecentDealCount(maker), 1);
         assertEq(swap.getRecentDealCount(taker), 1);
-        bytes32[] memory rm = swap.getRecentDeals(maker, 0, 10);
-        bytes32[] memory rt = swap.getRecentDeals(taker, 0, 10);
-        assertTrue(_hasId(rm, dealId));
-        assertTrue(_hasId(rt, dealId));
+        Swap2p.DealInfo[] memory rm = swap.getRecentDealsDetailed(maker, 0, 10);
+        Swap2p.DealInfo[] memory rt = swap.getRecentDealsDetailed(taker, 0, 10);
+        assertTrue(_hasDealId(rm, dealId));
+        assertTrue(_hasDealId(rt, dealId));
     }
 
 }

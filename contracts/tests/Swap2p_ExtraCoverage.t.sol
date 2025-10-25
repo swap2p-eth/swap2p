@@ -104,9 +104,9 @@ contract Swap2p_ExtraCoverageTest is Swap2p_TestBase {
         vm.prank(maker2);
         swap.maker_deleteOffer(address(token), Swap2p.Side.SELL, _fiat("US"));
 
-        address[] memory keys = swap.getOfferKeys(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
-        assertEq(keys.length, 1);
-        assertEq(keys[0], maker);
+        Swap2p.OfferInfo[] memory offers = swap.getMarketOffers(address(token), Swap2p.Side.SELL, _fiat("US"), 0, 10);
+        assertEq(offers.length, 1);
+        assertEq(offers[0].maker, maker);
     }
 
     function test_PreviewNextDealId_MatchesActual() public {

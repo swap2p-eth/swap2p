@@ -27,8 +27,8 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             _fiat("US")
         );
-        Swap2p.OfferInfo memory usdInfo = swap.getOfferById(usdOffer);
-        assertEq(usdInfo.offer.requirements, "KYC + selfie");
+        Swap2p.Offer memory usdInfo = _offer(usdOffer);
+        assertEq(usdInfo.requirements, "KYC + selfie");
 
         // updating with empty requirements clears the field for this offer
         vm.prank(maker);
@@ -40,8 +40,8 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             1e18,
             500e18,
             "wire", "", address(0));
-        usdInfo = swap.getOfferById(usdOffer);
-        assertEq(usdInfo.offer.requirements, "");
+        usdInfo = _offer(usdOffer);
+        assertEq(usdInfo.requirements, "");
 
         // another market keeps its own requirements string
         vm.prank(maker);
@@ -59,11 +59,11 @@ contract Swap2p_MakerProfileTest is Swap2p_TestBase {
             Swap2p.Side.SELL,
             _fiat("DE")
         );
-        Swap2p.OfferInfo memory eurInfo = swap.getOfferById(eurOffer);
-        assertEq(eurInfo.offer.requirements, "passport only");
+        Swap2p.Offer memory eurInfo = _offer(eurOffer);
+        assertEq(eurInfo.requirements, "passport only");
         // original offer remains cleared
-        usdInfo = swap.getOfferById(usdOffer);
-        assertEq(usdInfo.offer.requirements, "");
+        usdInfo = _offer(usdOffer);
+        assertEq(usdInfo.requirements, "");
     }
 
     function test_Nickname_Set_UniqueAndClear() public {
