@@ -1000,16 +1000,10 @@ contract Swap2p is ReentrancyGuard {
         view
         returns (MakerProfile[] memory profiles)
     {
-        uint len = accounts.length;
+        uint256 len = accounts.length;
         profiles = new MakerProfile[](len);
-        for (uint i; i < len; i++) {
-            MakerProfile storage src = makerInfo[accounts[i]];
-            profiles[i].online = src.online;
-            profiles[i].lastActivity = src.lastActivity;
-            profiles[i].nickname = src.nickname;
-            profiles[i].dealsCancelled = src.dealsCancelled;
-            profiles[i].dealsCompleted = src.dealsCompleted;
-            profiles[i].chatPublicKey = src.chatPublicKey;
+        for (uint256 i; i < len; i++) {
+            profiles[i] = makerInfo[accounts[i]];
         }
     }
 
