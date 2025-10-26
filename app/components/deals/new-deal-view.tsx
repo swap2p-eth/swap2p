@@ -428,6 +428,110 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
 
   const backLabel = returnHash === "dashboard" ? "Back to dashboard" : "Back to offers";
 
+  const requestDetails = (
+    <form
+      onSubmit={handleFormSubmit}
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <span className={amountHeadingClass}>Amount</span>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <SegmentedControl
+              value={amountKind}
+              onChange={value => setAmountKind(value as AmountKind)}
+              options={[
+                {
+                  label: (
+                    <span className="flex items-center gap-2">
+                      <TokenIcon symbol={offer.token} size={16} className="rounded-full bg-white" />
+                      {offer.token}
+                    </span>
+                  ),
+                  value: "crypto"
+                },
+                {
+                  label: (
+                    <span className="flex items-center gap-2">
+                      <FiatFlag fiat={offer.countryCode} size={16} />
+                      {offer.fiat}
+                    </span>
+                  ),
+                  value: "fiat"
+                }
+              ]}
+              className="w-fit"
+            />
+            <div className="flex flex-col items-end gap-1 text-right">
+              <span className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground/70">Limits</span>
+              <span className="text-sm font-medium text-foreground">{limitsRange}</span>
+            </div>
+          </div>
+          <div className="relative mt-2">
+            <Input
+              type="number"
+              step="any"
+              min={0}
+              required
+              aria-invalid={!amountValid}
+              value={amount}
+              onChange={event => setAmount(event.target.value)}
+              ref={amountInputRef}
+              className="h-14 rounded-2xl bg-background/70 pl-4 pr-32 text-lg font-semibold"
+              placeholder="Enter amount"
+            />
+            <span className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-medium uppercase text-muted-foreground">
+              {amountLabel}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">{conversionDisplay}</p>
+          {amountError ? <p className="text-xs text-orange-500">{amountError}</p> : null}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className={paymentMethodHeadingClass}>Payment method</span>
+          <Select
+            value={paymentMethod}
+            onValueChange={setPaymentMethod}
+            disabled={!hasPaymentOptions}
+          >
+            <SelectTrigger
+              ref={paymentMethodTriggerRef}
+              className="h-14 rounded-2xl bg-background/70 text-left font-medium"
+              aria-invalid={!paymentMethodValid && hasPaymentOptions}
+            >
+              <SelectValue placeholder="Select payment method" />
+            </SelectTrigger>
+            <SelectContent className="max-h-64 overflow-y-auto">
+              {paymentOptions.map(method => (
+                <SelectItem key={method} value={method}>
+                  {method}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {!hasPaymentOptions ? (
+            <p className="text-xs text-muted-foreground">
+              Maker has not published payment methods for this offer yet.
+            </p>
+          ) : null}
+          {paymentMethodError ? <p className="text-xs text-orange-500">{paymentMethodError}</p> : null}
+        </div>
+      </div>
+      {!isFormValid ? (
+        <div className="rounded-2xl bg-orange-400/10 p-4 text-sm text-orange-600">
+          <p className="font-medium">Finish the following before requesting a deal:</p>
+          <ol className="mt-2 list-decimal space-y-1 pl-4">
+            {validationIssues.map(issue => (
+              <li key={issue.field} onClick={() => focusField(issue.field)} className="cursor-pointer">
+                {issue.message}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+    </form>
+  );
+
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
       <DealHeader
@@ -461,6 +565,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         state="NEW"
         side={offer.side}
         role="TAKER"
+        detailsContent={requestDetails}
         comment={paymentDetails}
         commentName="new-deal-comment"
         commentError={paymentDetailsValid ? undefined : paymentDetailsError ?? "Payment details must be at least 5 characters."}
@@ -483,109 +588,6 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
           {actionError}
         </div>
       ) : null}
-
-      <form
-        onSubmit={handleFormSubmit}
-        className="space-y-6 rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur"
-      >
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <span className={amountHeadingClass}>Amount</span>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <SegmentedControl
-                value={amountKind}
-                onChange={value => setAmountKind(value as AmountKind)}
-                options={[
-                  {
-                    label: (
-                      <span className="flex items-center gap-2">
-                        <TokenIcon symbol={offer.token} size={16} className="rounded-full bg-white" />
-                        {offer.token}
-                      </span>
-                    ),
-                    value: "crypto"
-                  },
-                  {
-                    label: (
-                      <span className="flex items-center gap-2">
-                        <FiatFlag fiat={offer.countryCode} size={16} />
-                        {offer.fiat}
-                      </span>
-                    ),
-                    value: "fiat"
-                  }
-                ]}
-                className="w-fit"
-              />
-              <div className="flex flex-col items-end gap-1 text-right">
-                <span className="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground/70">Limits</span>
-                <span className="text-sm font-medium text-foreground">{limitsRange}</span>
-              </div>
-            </div>
-            <div className="relative mt-2">
-              <Input
-                type="number"
-                step="any"
-                min={0}
-                required
-                aria-invalid={!amountValid}
-                value={amount}
-                onChange={event => setAmount(event.target.value)}
-                ref={amountInputRef}
-                className="h-14 rounded-2xl bg-background/70 pl-4 pr-32 text-lg font-semibold"
-                placeholder="Enter amount"
-              />
-              <span className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2 rounded-full bg-muted px-3 py-1 text-xs font-medium uppercase text-muted-foreground">
-                {amountLabel}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">{conversionDisplay}</p>
-            {amountError ? <p className="text-xs text-orange-500">{amountError}</p> : null}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <span className={paymentMethodHeadingClass}>Payment method</span>
-            <Select
-              value={paymentMethod}
-              onValueChange={setPaymentMethod}
-              disabled={!hasPaymentOptions}
-            >
-              <SelectTrigger
-                ref={paymentMethodTriggerRef}
-                className="h-14 rounded-2xl bg-background/70 text-left font-medium"
-                aria-invalid={!paymentMethodValid && hasPaymentOptions}
-              >
-                <SelectValue placeholder="Select payment method" />
-              </SelectTrigger>
-              <SelectContent className="max-h-64 overflow-y-auto">
-                {paymentOptions.map(method => (
-                  <SelectItem key={method} value={method}>
-                    {method}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!hasPaymentOptions ? (
-              <p className="text-xs text-muted-foreground">
-                Maker has not published payment methods for this offer yet.
-              </p>
-            ) : null}
-            {paymentMethodError ? <p className="text-xs text-orange-500">{paymentMethodError}</p> : null}
-          </div>
-        </div>
-        {!isFormValid ? (
-          <div className="rounded-2xl bg-orange-400/10 p-4 text-sm text-orange-600">
-            <p className="font-medium">Finish the following before requesting a deal:</p>
-            <ol className="mt-2 space-y-1 list-decimal pl-4">
-              {validationIssues.map(issue => (
-                <li key={issue.field} onClick={() => focusField(issue.field)} className="cursor-pointer">
-                  {issue.message}
-                </li>
-              ))}
-            </ol>
-          </div>
-        ) : null}
-      </form>
     </div>
   );
 }

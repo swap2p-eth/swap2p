@@ -20,6 +20,7 @@ interface DealStatusPanelProps {
   state: DealProgressState;
   side: DealSideValue;
   role: DealUserRole;
+  detailsContent?: React.ReactNode;
   disabled?: boolean;
   busy?: boolean;
   comment?: string;
@@ -93,6 +94,7 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
     state,
     side,
     role,
+    detailsContent,
     disabled,
     busy,
     comment,
@@ -251,6 +253,7 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
                 instructions={scenario.instructions}
                 highlight={Boolean(scenario.primaryAction)}
               />
+              {detailsContent ? <div className="flex flex-col gap-4">{detailsContent}</div> : null}
               {scenario.comment ? (
                 <div className="flex flex-col gap-2">
                   {scenario.comment.label ? (
