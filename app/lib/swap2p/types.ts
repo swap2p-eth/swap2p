@@ -54,6 +54,7 @@ export type OfferWithKey = {
   id: Hex;
   key: OfferKey;
   offer: Offer;
+  online?: boolean;
 };
 
 export type Deal = {

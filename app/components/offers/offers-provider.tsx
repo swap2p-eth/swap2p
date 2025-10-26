@@ -116,6 +116,7 @@ const mapOffer = (
     contract: offer,
     contractFiatCode: offer.fiat,
     contractId: entry.id,
+    online: entry.online,
   };
 };
 
@@ -452,36 +453,29 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       fiat: activeMarket.fiat,
       force: true,
     });
-  }, [activeMarket, ensureMarket]);
+  }, [activeMarket.side, activeMarket.fiat, ensureMarket]);
 
   const refreshMakerOffers = React.useCallback(async () => {
     await loadMakerOffers(true);
   }, [loadMakerOffers]);
 
-  const bootstrappedRef = React.useRef(false);
-
-  React.useEffect(() => {
+  const ensureMarketOnBoot = React.useCallback(() => {
     if (!adapter || !isSupported) {
-      bootstrappedRef.current = false;
       setIsLoading(false);
       return;
     }
-    if (bootstrappedRef.current) {
-      return;
-    }
-    // Kick off the first fetch with persisted filters so OffersView lands on the expected market.
-    bootstrappedRef.current = true;
     const stored = readStoredFilters();
-    const storedSide = stored?.side === "BUY" || stored?.side === "SELL" ? stored.side : activeMarket.side;
+    const storedSide =
+      stored?.side === "BUY" || stored?.side === "SELL" ? stored.side : activeMarket.side;
     const rawFiat = typeof stored?.fiat === "string" ? stored.fiat : activeMarket.fiat;
     const normalizedFiat =
       rawFiat === ANY_FILTER_OPTION ? defaultFiat : rawFiat.toUpperCase();
     void ensureMarket({ side: storedSide, fiat: normalizedFiat });
-  }, [adapter, ensureMarket, activeMarket.side, activeMarket.fiat, defaultFiat, isSupported]);
+  }, [adapter, isSupported, ensureMarket, activeMarket.side, activeMarket.fiat, defaultFiat]);
 
   React.useEffect(() => {
-    bootstrappedRef.current = false;
-  }, [adapter, isSupported]);
+    ensureMarketOnBoot();
+  }, [ensureMarketOnBoot]);
 
   React.useEffect(() => {
     setDraftOffers([]);
@@ -514,7 +508,11 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       const key = makeCacheKey(token.address, makerSide, fiatEntry.value);
       const bucket = cacheRef.current.get(key);
       if (!bucket) continue;
+      const supportsOnlineFlag = bucket.items.some(item => item.online !== undefined);
       for (const offer of bucket.items) {
+        if (supportsOnlineFlag && offer.online === false) {
+          continue;
+        }
         merged.set(offer.id, offer);
       }
     }
@@ -599,6 +597,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         requirements: requirements ?? "",
         updatedAt: new Date().toISOString(),
         contractFiatCode,
+        online: makerProfile?.online,
       };
 
       const makerAccount = getAddress(address);
@@ -643,7 +642,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       return created ?? fallbackEntry;
     },
-    [adapter, address, isSupported, loadMakerOffers, publicClient, refresh, tokenConfigs],
+    [adapter, address, isSupported, loadMakerOffers, publicClient, refresh, tokenConfigs, makerProfile],
   );
 
   const updateOffer = React.useCallback(

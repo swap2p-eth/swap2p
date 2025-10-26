@@ -21,6 +21,7 @@ export interface OfferRow {
   contract?: import("@/lib/swap2p/types").Offer;
   contractFiatCode?: number;
   contractId?: string;
+  online?: boolean;
 }
 
 export interface DealRow {

@@ -141,6 +141,17 @@ const mapOfferInfo = (raw: any): OfferWithKey | null => {
   const idValue = raw.id ?? raw[0];
   const idHex = toBytes32(idValue);
   if (!idHex) return null;
+  let onlineValue: boolean | undefined;
+  if (typeof raw === "object" && raw !== null) {
+    if ("online" in raw && typeof raw.online === "boolean") {
+      onlineValue = raw.online;
+    } else if (Array.isArray(raw) && raw.length > 3) {
+      const candidate = raw[3];
+      if (typeof candidate === "boolean") {
+        onlineValue = candidate;
+      }
+    }
+  }
   return {
     id: idHex,
     key: {
@@ -153,6 +164,7 @@ const mapOfferInfo = (raw: any): OfferWithKey | null => {
       ...offer,
       maker: getAddress(maker),
     },
+    online: onlineValue,
   };
 };
 
