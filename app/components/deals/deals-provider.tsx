@@ -193,7 +193,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
   const { adapter } = useSwap2pAdapter();
-  const { network, isSupported } = useNetworkConfig(chainId);
+  const { network } = useNetworkConfig(chainId);
 
   const [chainDeals, setChainDeals] = React.useState<DealRow[]>([]);
   const [draftDeals, setDraftDeals] = React.useState<DealRow[]>([]);

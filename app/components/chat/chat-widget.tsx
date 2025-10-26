@@ -97,21 +97,25 @@ export function ChatWidget({
                 className={message.role === "assistant" ? "text-muted-foreground" : "text-foreground"}
               >
                 <div className="flex flex-col gap-2 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
-                  {message.state ? (
-                    <span
-                      className={cn(
-                        "inline-flex items-center self-start rounded-full px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em]",
-                        stateClass
-                      )}
-                    >
-                      {message.state}
-                    </span>
+                  {message.content ? (
+                    <p className="text-sm leading-relaxed">{message.content}</p>
                   ) : null}
-                  <p className="text-sm leading-relaxed">{message.content}</p>
-                  <RelativeTime
-                    value={message.timestamp}
-                    className="text-[0.65rem] text-muted-foreground/70"
-                  />
+                  <div className="mt-1 flex items-center gap-2 text-[0.65rem] text-muted-foreground/70">
+                    {message.state ? (
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full px-2 py-1 font-semibold uppercase tracking-[0.2em]",
+                          stateClass
+                        )}
+                      >
+                        {message.state}
+                      </span>
+                    ) : null}
+                    <RelativeTime
+                      value={message.timestamp}
+                      className="ml-auto text-[0.65rem] text-muted-foreground/70"
+                    />
+                  </div>
                 </div>
               </ChatMessage>
             );
