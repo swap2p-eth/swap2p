@@ -3,13 +3,12 @@
 import * as React from "react";
 import { useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { erc20Abi, getAddress, maxUint256, parseUnits, type Address } from "viem";
-import { ChatWidget } from "@/components/chat/chat-widget";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { DealStatusPanel } from "./deal-status-panel";
+import { DealChatCard } from "./deal-chat-card";
 import { useDeals } from "./deals-provider";
 import { RelativeTime } from "@/components/relative-time";
 import { ParticipantPill } from "@/components/deals/participant-pill";
@@ -20,7 +19,7 @@ import { useUser } from "@/context/user-context";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import { getDealSideCopy } from "@/lib/deal-copy";
 import type { ApprovalMode } from "./token-approval-button";
-import { getNetworkConfigForChain } from "@/config";
+import { useNetworkConfig } from "@/hooks/use-network-config";
 
 export interface DealDetailViewProps {
   dealId: string;
@@ -40,7 +39,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient({ chainId });
-  const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
+  const network = useNetworkConfig(chainId);
   const ownerAddress = React.useMemo(() => {
     const account = walletClient?.account;
     if (!account) return null;
@@ -352,23 +351,14 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
         </div>
       ) : null}
 
-      <div className="rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">Chat</h2>
-{/*          <p className="text-sm text-muted-foreground">
-            Secure coordination channel. Messages will be encrypted and stored as bytes on-chain.
-          </p>*/}
-        </div>
-        <ChatWidget
-          className={cn("min-h-[360px]", "bg-transparent shadow-none")}
-          dealState={deal.state}
-          chat={deal.contract?.chat}
-          currentAccount={address}
-          maker={deal.maker}
-          taker={deal.taker}
-          onSendMessage={handleSendMessage}
-        />
-      </div>
+      <DealChatCard
+        dealState={deal.state}
+        chat={deal.contract?.chat}
+        currentAccount={address}
+        maker={deal.maker}
+        taker={deal.taker}
+        onSendMessage={handleSendMessage}
+      />
     </div>
   );
 }

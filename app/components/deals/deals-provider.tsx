@@ -5,7 +5,7 @@ import { useChainId, usePublicClient } from "wagmi";
 import { formatUnits, getAddress, parseUnits, type Hash } from "viem";
 
 import { useUser } from "@/context/user-context";
-import { getNetworkConfigForChain } from "@/config";
+import { useNetworkConfig } from "@/hooks/use-network-config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import { normalizeAddress } from "@/lib/deal-utils";
@@ -186,7 +186,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
   const { adapter } = useSwap2pAdapter();
-  const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
+  const network = useNetworkConfig(chainId);
 
   const [chainDeals, setChainDeals] = React.useState<DealRow[]>([]);
   const [draftDeals, setDraftDeals] = React.useState<DealRow[]>([]);

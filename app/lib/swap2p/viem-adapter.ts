@@ -8,10 +8,6 @@ import {
   type Transport,
   type WalletClient,
   getAddress,
-  hexToString,
-  isHex,
-  padHex,
-  stringToHex,
 } from "viem";
 import { swap2pAbi } from "@/lib/swap2p/generated";
 import type {
@@ -39,6 +35,18 @@ import type {
   DealsQuery,
 } from "./types";
 import { SwapDealState, SwapSide } from "./types";
+import {
+  ZERO,
+  ZERO_BYTES32,
+  asHex,
+  debugLog,
+  decodeBytes32,
+  encodeBytes32,
+  requireDealId,
+  toBigInt,
+  toBytes32,
+  toNumber,
+} from "./utils";
 
 type AnyPublicClient = PublicClient<Transport, Chain | undefined>;
 type AnyWalletClient = WalletClient<Transport, Chain | undefined, Account>;
@@ -54,76 +62,12 @@ type ReadArgs<Fn extends string, Args extends readonly unknown[]> = {
   args: Args;
 };
 
-const ZERO = 0n;
-
-const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
-
-const clampHexToBytes32 = (value: Hex): Hex => {
-  if (value.length <= 66) return value;
-  return (`0x${value.slice(2, 66)}`) as Hex;
-};
-
-const encodeBytes32 = (value: string | Hex | null | undefined): Hex => {
-  if (!value) return ZERO_BYTES32;
-  if (typeof value === "string" && isHex(value, { strict: false })) {
-    const hexValue = clampHexToBytes32(value as Hex);
-    return padHex(hexValue, { size: 32, dir: "right" }) as Hex;
-  }
-  const encoded = stringToHex(String(value));
-  const trimmed = clampHexToBytes32(encoded as Hex);
-  return padHex(trimmed, { size: 32, dir: "right" }) as Hex;
-};
-
-const decodeBytes32 = (value: unknown): string => {
-  if (typeof value !== "string" || !isHex(value, { strict: false })) {
-    return "";
-  }
-  const hexValue = padHex(clampHexToBytes32(value as Hex), {
-    size: 32,
-    dir: "right",
-  }) as Hex;
-  if (hexValue === ZERO_BYTES32) return "";
-  const str = hexToString(hexValue);
-  return str.replace(/\u0000+$/gu, "");
-};
-
 const DEFAULT_LIMIT = 100;
 
 type Swap2pWriteFunctionName = Extract<
   (typeof swap2pAbi)[number],
   { type: "function"; stateMutability: "nonpayable" | "payable" }
 >["name"];
-
-const LOG_MAX_DEPTH = 4;
-
-const sanitizeForLog = (value: unknown, depth = LOG_MAX_DEPTH): unknown => {
-  if (depth <= 0) {
-    if (typeof value === "object" && value !== null) {
-      return "[Object]";
-    }
-    return value;
-  }
-  if (typeof value === "bigint") {
-    return `${value}n`;
-  }
-  if (Array.isArray(value)) {
-    return value.map((entry) => sanitizeForLog(entry, depth - 1));
-  }
-  if (value && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>);
-    const plain: Record<string, unknown> = {};
-    for (const [key, entry] of entries) {
-      if (key === "__proto__") continue;
-      plain[key] = sanitizeForLog(entry, depth - 1);
-    }
-    return plain;
-  }
-  return value;
-};
-
-const debugLog = (scope: string, payload: unknown) => {
-  console.debug(scope, sanitizeForLog(payload));
-};
 
 const normalizeAccount = (
   walletClient: AnyWalletClient | undefined,
@@ -137,56 +81,6 @@ const normalizeAccount = (
     return getAddress(configured.address);
   }
   return undefined;
-};
-
-const toNumber = (value: bigint | number) =>
-  typeof value === "bigint" ? Number(value) : value;
-
-const toBigInt = (
-  value: bigint | number | string | undefined | null,
-): bigint => {
-  if (typeof value === "bigint") return value;
-  if (typeof value === "number") return BigInt(value);
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (trimmed === "") return ZERO;
-    return BigInt(trimmed);
-  }
-  return ZERO;
-};
-
-const toBytes32 = (value: unknown): Hex | null => {
-  if (typeof value === "string") {
-    if (value.length === 0) return null;
-    if (value.startsWith("0x")) {
-      const normalized = value.slice(2).padStart(64, "0");
-      return (`0x${normalized}`) as Hex;
-    }
-    try {
-      const fromDecimal = BigInt(value);
-      return toBytes32(fromDecimal);
-    } catch {
-      return null;
-    }
-  }
-  if (typeof value === "bigint") {
-    return (`0x${value.toString(16).padStart(64, "0")}`) as Hex;
-  }
-  if (typeof value === "number") {
-    return toBytes32(BigInt(value));
-  }
-  if (value && typeof value === "object" && "id" in (value as Record<string, unknown>)) {
-    return toBytes32((value as { id?: unknown }).id);
-  }
-  return null;
-};
-
-const requireDealId = (value: unknown, caller: string): Hex => {
-  const id = toBytes32(value);
-  if (!id) {
-    throw new Error(`Swap2pViemAdapter: invalid deal id for ${caller}`);
-  }
-  return id;
 };
 
 const toSide = (value: bigint | number): SwapSide => {
@@ -206,14 +100,6 @@ const toDealState = (value: bigint | number): SwapDealState => {
     return numeric;
   }
   return SwapDealState.NONE;
-};
-
-const asHex = (value?: string | Hex | null) => {
-  if (!value) return undefined;
-  if (isHex(value, { strict: false })) {
-    return value as Hex;
-  }
-  return stringToHex(value);
 };
 
 // contract fiat fields carry ISO country codes (see encodeCountryCode)

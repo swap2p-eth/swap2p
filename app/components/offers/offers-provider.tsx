@@ -5,8 +5,9 @@ import { useChainId, usePublicClient } from "wagmi";
 import { formatUnits, getAddress, parseUnits, type Hash } from "viem";
 
 import { useUser } from "@/context/user-context";
-import { getNetworkConfigForChain, FIAT_INFOS, type FiatInfo, type TokenConfig } from "@/config";
+import { FIAT_INFOS, type FiatInfo, type TokenConfig } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
+import { useNetworkConfig } from "@/hooks/use-network-config";
 import { decodeCountryCode, encodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import type { OfferRow } from "@/lib/types/market";
 import { SwapSide, type OfferWithKey } from "@/lib/swap2p/types";
@@ -77,7 +78,7 @@ const mapOffer = (
 ): OfferRow => {
   const { offer, key } = entry;
   const timestampMs = (offer.updatedAt ?? 0) * 1000;
-  const encoded = typeof offer.fiat === "number" ? offer.fiat : 0;
+  const encoded = true ? offer.fiat : 0;
   const decoded = decodeCountryCode(encoded);
   const countryCode = decoded ? decoded.toUpperCase() : "";
   const fiatInfo = getFiatInfoByCountry(countryCode);
@@ -113,7 +114,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
   const { adapter } = useSwap2pAdapter();
-  const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
+  const network = useNetworkConfig(chainId);
 
   const tokenConfigs = React.useMemo(
     () =>
