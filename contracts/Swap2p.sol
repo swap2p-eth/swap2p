@@ -77,6 +77,7 @@ contract Swap2p is ReentrancyGuard {
         bytes32 id;
         address maker;
         Offer   offer;
+        bool    online;
     }
 
     struct ChatMessage {
@@ -762,7 +763,7 @@ contract Swap2p is ReentrancyGuard {
     {
         bytes32[] storage ids = _marketOffers[_marketKey(token, s, f)];
         if (lim == 0) return out;
-        out = _collectOfferInfos(ids, off, lim);
+        out = _collectOfferInfos(ids, off, lim, true);
     }
 
     /// @notice Returns the ID of maker offer for provided coordinates.
@@ -813,10 +814,10 @@ contract Swap2p is ReentrancyGuard {
     {
         bytes32[] storage ids = _makerOffers[maker];
         if (lim == 0) return out;
-        out = _collectOfferInfos(ids, off, lim);
+        out = _collectOfferInfos(ids, off, lim, false);
     }
 
-    function _collectOfferInfos(bytes32[] storage ids, uint off, uint lim)
+    function _collectOfferInfos(bytes32[] storage ids, uint off, uint lim, bool includeOnline)
         private
         view
         returns (OfferInfo[] memory out)
@@ -833,7 +834,8 @@ contract Swap2p is ReentrancyGuard {
             Offer storage o = offers[id];
             if (o.ts == 0) continue;
             Offer memory copy = o;
-            out[pos] = OfferInfo({id: id, maker: o.maker, offer: copy});
+            bool isOnline = includeOnline ? makerInfo[o.maker].online : false;
+            out[pos] = OfferInfo({id: id, maker: o.maker, offer: copy, online: isOnline});
             pos++;
         }
         assembly {
