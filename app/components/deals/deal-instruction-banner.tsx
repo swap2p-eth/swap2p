@@ -1,18 +1,21 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import type { DealProgressState } from "@/lib/deal-scenarios";
 import { DealInstructionIcon } from "@/components/deals/deal-instruction-icon";
 
 interface DealInstructionBannerProps {
   instructions: string;
   highlight?: boolean;
   className?: string;
+  state?: DealProgressState;
 }
 
 export function DealInstructionBanner({
   instructions,
   highlight = false,
-  className
+  className,
+  state
 }: DealInstructionBannerProps) {
   return (
     <div
@@ -23,7 +26,7 @@ export function DealInstructionBanner({
       )}
     >
       <div className="flex h-12 w-12 flex-none items-center justify-center">
-        <DealInstructionIcon highlight={highlight} size="lg" />
+        <DealInstructionIcon highlight={highlight} size="lg" state={state} />
       </div>
       <p className="font-medium leading-relaxed">{instructions}</p>
     </div>

@@ -252,6 +252,7 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
               <DealInstructionBanner
                 instructions={scenario.instructions}
                 highlight={Boolean(scenario.primaryAction)}
+                state={state}
               />
               {detailsContent ? <div className="flex flex-col gap-4">{detailsContent}</div> : null}
               {scenario.comment ? (
