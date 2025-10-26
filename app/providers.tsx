@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RainbowKitProvider, lightTheme, midnightTheme } from "@rainbow-me/rainbowkit";
@@ -33,12 +33,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   const wagmiConfig = useMemo(() => {
     const walletConnectProjectId =
       process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ??
@@ -52,16 +46,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
       [CHAIN_ID.testnet]: http(RPC_BY_NETWORK.testnet.http),
       [CHAIN_ID.mainnet]: http(RPC_BY_NETWORK.mainnet.http),
     };
+    const bitcoinWallets = typeof window === "undefined" ? [] : undefined;
     return createMezoConfig({
       appName: "Swap2p Console",
       walletConnectProjectId,
       mezoNetwork,
       autoConnect: true,
-      bitcoinWallets: isClient ? undefined : [],
+      bitcoinWallets,
       chains: [...chains] as Parameters<typeof getConfig>[0]["chains"],
       transports: transports as NonNullable<Parameters<typeof getConfig>[0]["transports"]>,
     });
-  }, [isClient]);
+  }, []);
 
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
