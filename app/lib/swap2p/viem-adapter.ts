@@ -133,11 +133,8 @@ const normalizeAccount = (
     return fallback;
   }
   const configured = walletClient?.account;
-  if (configured && "address" in configured) {
-    return configured.address as Address;
-  }
-  if (typeof configured === "string") {
-    return getAddress(configured);
+  if (configured?.address) {
+    return getAddress(configured.address);
   }
   return undefined;
 };
@@ -820,12 +817,16 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for maker_acceptRequest",
         );
       }
+      const id = toBytes32(args.id);
+      if (!id) {
+        throw new Error("Swap2pViemAdapter: invalid deal id for maker_acceptRequest");
+      }
       return simulateAndWrite(
         signer,
         publicClient,
         address,
         "maker_acceptRequest",
-        [args.id, asHex(args.message) ?? "0x"] as const,
+        [id, asHex(args.message) ?? "0x"] as const,
         sender,
       );
     },
@@ -838,12 +839,16 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for cancelRequest",
         );
       }
+      const id = toBytes32(args.id);
+      if (!id) {
+        throw new Error("Swap2pViemAdapter: invalid deal id for cancelRequest");
+      }
       return simulateAndWrite(
         signer,
         publicClient,
         address,
         "cancelRequest",
-        [args.id, asHex(args.reason) ?? "0x"] as const,
+        [id, asHex(args.reason) ?? "0x"] as const,
         sender,
       );
     },
@@ -856,12 +861,16 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for cancelDeal",
         );
       }
+      const id = toBytes32(args.id);
+      if (!id) {
+        throw new Error("Swap2pViemAdapter: invalid deal id for cancelDeal");
+      }
       return simulateAndWrite(
         signer,
         publicClient,
         address,
         "cancelDeal",
-        [args.id, asHex(args.reason) ?? "0x"] as const,
+        [id, asHex(args.reason) ?? "0x"] as const,
         sender,
       );
     },
@@ -874,12 +883,16 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for markFiatPaid",
         );
       }
+      const id = toBytes32(args.id);
+      if (!id) {
+        throw new Error("Swap2pViemAdapter: invalid deal id for markFiatPaid");
+      }
       return simulateAndWrite(
         signer,
         publicClient,
         address,
         "markFiatPaid",
-        [args.id, asHex(args.message) ?? "0x"] as const,
+        [id, asHex(args.message) ?? "0x"] as const,
         sender,
       );
     },
@@ -890,12 +903,16 @@ export const createSwap2pViemAdapter = (
       if (!sender) {
         throw new Error("Swap2pViemAdapter: account is required for release");
       }
+      const id = toBytes32(args.id);
+      if (!id) {
+        throw new Error("Swap2pViemAdapter: invalid deal id for release");
+      }
       return simulateAndWrite(
         signer,
         publicClient,
         address,
         "release",
-        [args.id, asHex(args.message) ?? "0x"] as const,
+        [id, asHex(args.message) ?? "0x"] as const,
         sender,
       );
     },
@@ -908,12 +925,16 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for sendMessage",
         );
       }
+      const id = toBytes32(args.id);
+      if (!id) {
+        throw new Error("Swap2pViemAdapter: invalid deal id for sendMessage");
+      }
       return simulateAndWrite(
         signer,
         publicClient,
         address,
         "sendMessage",
-        [args.id, asHex(args.message) ?? "0x"] as const,
+        [id, asHex(args.message) ?? "0x"] as const,
         sender,
       );
     },
