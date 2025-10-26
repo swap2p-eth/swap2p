@@ -268,6 +268,7 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
                     placeholder={scenario.comment.placeholder}
                     name={commentName}
                     disabled={disabled || busy}
+                    maxLength={128}
                     aria-invalid={showCommentError || Boolean(commentError)}
                   />
                   {scenario.comment.helperText ? (

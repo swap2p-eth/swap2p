@@ -133,6 +133,7 @@ export function ChatWidget({
               placeholder="Enter your message here…"
               value={draft}
               onChange={event => handleInputChange(event.target.value)}
+              maxLength={maxLength}
               className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
             />
             <Button

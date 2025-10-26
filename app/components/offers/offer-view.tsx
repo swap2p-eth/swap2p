@@ -464,9 +464,12 @@ export function OfferView({
                 Quoted price ({selectedFiatInfo?.currencyCode ?? (fiat || "—")})
               </label>
               <Input
+                type="number"
                 value={price}
                 onChange={event => setPrice(event.target.value)}
                 inputMode="decimal"
+                min={0}
+                step="any"
                 placeholder="e.g. 1.01"
                 className="rounded-full"
               />
@@ -481,9 +484,12 @@ export function OfferView({
                   Minimum amount ({tokenLabel})
                 </label>
                 <Input
+                  type="number"
                   value={minAmount}
                   onChange={event => setMinAmount(event.target.value)}
                   inputMode="decimal"
+                  min={0}
+                  step="any"
                   placeholder="e.g. 200"
                   className="rounded-full"
                 />
@@ -493,9 +499,12 @@ export function OfferView({
                   Maximum amount ({tokenLabel})
                 </label>
                 <Input
+                  type="number"
                   value={maxAmount}
                   onChange={event => setMaxAmount(event.target.value)}
                   inputMode="decimal"
+                  min={0}
+                  step="any"
                   placeholder="e.g. 2500"
                   className="rounded-full"
                 />
@@ -543,6 +552,7 @@ export function OfferView({
                           addCustomMethod();
                         }
                       }}
+                      maxLength={32}
                       placeholder="Add custom method"
                       className="rounded-full"
                     />
@@ -584,6 +594,7 @@ export function OfferView({
                   value={requirements}
                   onChange={event => setRequirements(event.target.value)}
                   placeholder="Write requirements and, if you sell crypto, include payment details for each rail."
+                  maxLength={256}
                   className="min-h-[200px]"
                   readOnly={isEdit}
                 />
