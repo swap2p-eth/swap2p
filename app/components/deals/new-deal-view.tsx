@@ -115,7 +115,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       try {
         const value = await publicClient.readContract({
           abi: erc20Abi,
-          address: offer.contractKey.token as Address,
+          address: offer.contractKey?.token as Address,
           functionName: "allowance",
           args: [ownerAddress, network.swap2pAddress as Address]
         });
