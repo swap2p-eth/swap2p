@@ -66,7 +66,7 @@ export function FiatFlag({ fiat, size = 20, className }: FiatFlagProps) {
     return (
       <span
         className={cn(
-          "flex items-center justify-center rounded-full bg-muted text-[0.65rem] uppercase text-muted-foreground",
+          "flex shrink-0 items-center justify-center rounded-full bg-muted text-[0.65rem] uppercase text-muted-foreground",
           className
         )}
         style={style}
@@ -79,7 +79,7 @@ export function FiatFlag({ fiat, size = 20, className }: FiatFlagProps) {
   return (
     <span
       className={cn(
-        "relative flex items-center justify-center overflow-hidden rounded-full border border-border/50",
+        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/50",
         className
       )}
       style={style}
