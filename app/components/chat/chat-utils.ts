@@ -1,3 +1,5 @@
+import type { DealState } from "@/lib/types/market";
+
 export type ChatbotRole = "user" | "assistant" | "system";
 
 export interface ChatbotMessage {
@@ -5,6 +7,7 @@ export interface ChatbotMessage {
   role: ChatbotRole;
   content: string;
   timestamp: string;
+  state?: DealState;
 }
 
 export const MAX_MESSAGE_LENGTH = 128;

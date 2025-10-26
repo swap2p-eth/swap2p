@@ -20,6 +20,13 @@ interface ChatWidgetProps {
 }
 
 const chatEnabledStates: DealState[] = ["ACCEPTED", "PAID"];
+const chatMessageStateClasses: Record<DealState, string> = {
+  REQUESTED: "bg-orange-500/10 text-orange-500",
+  ACCEPTED: "bg-sky-500/10 text-sky-500",
+  PAID: "bg-purple-500/10 text-purple-500",
+  RELEASED: "bg-emerald-500/10 text-emerald-500",
+  CANCELED: "bg-red-500/10 text-red-500"
+};
 
 export function ChatWidget({
   className,
@@ -86,18 +93,31 @@ export function ChatWidget({
       />*/}
       <div ref={containerRef} className="flex-1 overflow-y-auto px-6 pb-6">
         <ChatList className="space-y-4 py-4">
-          {messages.map(message => (
-            <ChatMessage
-              key={message.id}
-              role={message.role}
-              className={message.role === "assistant" ? "text-muted-foreground" : "text-foreground"}
-            >
-              <div className="rounded-2xl bg-background/70 px-4 py-3 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
-                <p className="text-sm leading-relaxed">{message.content}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{message.timestamp}</p>
-              </div>
-            </ChatMessage>
-          ))}
+          {messages.map(message => {
+            const stateClass = message.state ? chatMessageStateClasses[message.state] : undefined;
+            return (
+              <ChatMessage
+                key={message.id}
+                role={message.role}
+                className={message.role === "assistant" ? "text-muted-foreground" : "text-foreground"}
+              >
+                <div className="flex flex-col gap-2 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
+                  {message.state ? (
+                    <span
+                      className={cn(
+                        "inline-flex items-center self-start rounded-full px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em]",
+                        stateClass
+                      )}
+                    >
+                      {message.state}
+                    </span>
+                  ) : null}
+                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  <p className="text-[0.65rem] text-muted-foreground/70">{message.timestamp}</p>
+                </div>
+              </ChatMessage>
+            );
+          })}
         </ChatList>
       </div>
       {isChatEnabled ? (
