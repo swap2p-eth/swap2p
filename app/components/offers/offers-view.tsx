@@ -117,9 +117,13 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     if (!filtersReady) {
       return;
     }
+    const currentFiat = activeMarket.fiat.toUpperCase();
+    if (side === activeMarket.side && normalizedFiat === currentFiat) {
+      return;
+    }
     console.debug("[OffersView] ensureMarket", JSON.stringify({ side, fiat: normalizedFiat }));
     void ensureMarket({ side, fiat: normalizedFiat });
-  }, [filtersReady, side, normalizedFiat, ensureMarket]);
+  }, [filtersReady, side, normalizedFiat, ensureMarket, activeMarket.side, activeMarket.fiat]);
 
   const tokenOptions = React.useMemo(() => {
     const symbols = tokens.map(item => item.symbol);
