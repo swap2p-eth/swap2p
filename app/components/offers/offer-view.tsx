@@ -413,7 +413,7 @@ export function OfferView({
         <CardContent>
           <form className="space-y-8" onSubmit={handleSubmit}>
             <section className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-3 rounded-3xl border border-border/60 bg-background/60 p-6">
+              <div className="space-y-3">
                 <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Token</span>
                 <Select
                   disabled={disableImmutable}
@@ -435,7 +435,7 @@ export function OfferView({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-3 rounded-3xl border border-border/60 bg-background/60 p-6">
+              <div className="space-y-3">
                 <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Fiat currency</span>
                 <Select
                   disabled={disableImmutable}
@@ -572,23 +572,23 @@ export function OfferView({
                   ) : null}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Choose the rails you can settle against. Activate defaults or add your own labels.
+                  Choose the rails you can settle against. Activate defaults or add own labels.
                 </p>
               </div>
 
               <div className="space-y-3">
                 <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
-                  Maker requirements
+                  Requirements
                 </label>
                 <TextArea
                   value={requirements}
                   onChange={event => setRequirements(event.target.value)}
-                  placeholder="Write taker requirements and, if you sell crypto, include payment details for each rail."
+                  placeholder="Write requirements and, if you sell crypto, include payment details for each rail."
                   className="min-h-[200px]"
                   readOnly={isEdit}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Write taker requirements and, if you sell crypto, include payment details for each rail.
+                  Write requirements and, if you sell, include payment details for each rail.
                 </p>
               </div>
             </section>
