@@ -159,10 +159,8 @@ export function ChatWidget({
           ) : null}
         </ChatInput>
       ) : (
-        <div className="px-6 pb-6 pt-2">
-          <div className="flex min-h-[68px] items-center justify-center rounded-2xl bg-background/50 px-4 py-3 text-center text-sm text-muted-foreground">
-            Sending messages is only available when the deal is Accepted or Paid.
-          </div>
+        <div className="flex items-center justify-center px-4 py-3 text-center text-sm text-muted">
+          Sending messages is only available when the deal is Accepted or Paid.
         </div>
       )}
     </ChatContainer>
