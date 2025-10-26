@@ -6,11 +6,13 @@ export interface ChatbotMessage {
   id: string;
   role: ChatbotRole;
   content: string;
-  timestamp: string;
+  timestamp: Date;
   state?: DealState;
 }
 
 export const MAX_MESSAGE_LENGTH = 128;
+
+const now = Date.now();
 
 export const seedMessages: ChatbotMessage[] = [
   {
@@ -18,38 +20,44 @@ export const seedMessages: ChatbotMessage[] = [
     role: "assistant",
     content:
       "Parties only see each other after a deal is created. Messages will live on-chain as encrypted bytes.",
-    timestamp: "10:00"
+    timestamp: new Date(now - 15 * 60_000)
   },
   {
     id: "seed-2",
     role: "user",
     content: "Great, surface the fresh deals and hook them into chat.",
-    timestamp: "10:02"
+    timestamp: new Date(now - 14 * 60_000)
   },
   {
     id: "seed-3",
     role: "assistant",
     content: "Wiring the contract API — messages are already stored as bytes.",
-    timestamp: "10:03"
+    timestamp: new Date(now - 13 * 60_000)
   }
 ];
 
 export function createChatMessage(
   content: string,
   role: ChatbotRole = "user",
-  timestamp?: string
+  timestamp?: Date | number | string
 ): ChatbotMessage {
-  const label =
-    timestamp ??
-    new Intl.DateTimeFormat("en-US", {
-      hour: "2-digit",
-      minute: "2-digit"
-    }).format(new Date());
+  let value: Date;
+  if (timestamp instanceof Date) {
+    value = timestamp;
+  } else if (typeof timestamp === "number") {
+    const ms = timestamp < 1_000_000_000_000 ? timestamp * 1_000 : timestamp;
+    value = new Date(ms);
+  } else if (typeof timestamp === "string") {
+    const parsed = new Date(timestamp);
+    value = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  } else {
+    value = new Date();
+  }
 
   return {
     id: `${role}-${Date.now()}`,
     role,
     content,
-    timestamp: label
+    timestamp: value
   };
 }

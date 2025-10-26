@@ -9,6 +9,7 @@ import type { DealState } from "@/lib/types/market";
 import type { DealChatMessage } from "@/lib/swap2p/types";
 import { useChatMessages } from "@/hooks/use-chat-messages";
 import { CHAT_MESSAGE_STATE_CLASSES } from "@/lib/chat/chat-state";
+import { RelativeTime } from "@/components/relative-time";
 
 interface ChatWidgetProps {
   className?: string;
@@ -107,7 +108,10 @@ export function ChatWidget({
                     </span>
                   ) : null}
                   <p className="text-sm leading-relaxed">{message.content}</p>
-                  <p className="text-[0.65rem] text-muted-foreground/70">{message.timestamp}</p>
+                  <RelativeTime
+                    value={message.timestamp}
+                    className="text-[0.65rem] text-muted-foreground/70"
+                  />
                 </div>
               </ChatMessage>
             );

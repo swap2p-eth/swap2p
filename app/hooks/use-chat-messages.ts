@@ -18,20 +18,24 @@ interface UseChatMessagesOptions {
   onSend?: (message: string) => Promise<void>;
 }
 
-const formatTimestamp = (value: number) => {
-  const date = value > 0 ? new Date(value * 1000) : new Date();
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-};
-
 const safeDecode = (payload: string): string => {
   try {
     return hexToString(payload).trim();
   } catch {
     return payload;
   }
+};
+
+const toTimestampDate = (value: number): Date => {
+  if (typeof value !== "number") {
+    return new Date();
+  }
+  const ms = value < 1_000_000_000_000 ? value * 1_000 : value;
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) {
+    return new Date();
+  }
+  return date;
 };
 
 export function useChatMessages({
@@ -61,7 +65,7 @@ export function useChatMessages({
         id: `${entry.timestamp}-${index}`,
         role,
         content,
-        timestamp: formatTimestamp(entry.timestamp),
+        timestamp: toTimestampDate(entry.timestamp),
         state
       };
     });
