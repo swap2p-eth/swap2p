@@ -82,6 +82,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   }, [needsAllowanceCheck, deal, tokenDecimals]);
   const makerDepositMultiplier = deal?.side === "BUY" ? 1n : 2n;
   const requiredAllowance = needsAllowanceCheck && baseTokenUnits !== null ? baseTokenUnits * makerDepositMultiplier : null;
+  const contractToken = deal?.contract?.token;
 
   const withAction = React.useCallback(async (task: () => Promise<void>) => {
     setActionBusy(true);
@@ -103,7 +104,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
       setAllowanceLoading(false);
       return;
     }
-    if (!deal?.contract?.token || !ownerAddress || !publicClient) {
+    if (!contractToken || !ownerAddress || !publicClient) {
       setTokenAllowance(null);
       setAllowanceLoading(false);
       return;
@@ -114,7 +115,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
       try {
         const value = await publicClient.readContract({
           abi: erc20Abi,
-          address: deal.contract.token as Address,
+          address: contractToken as Address,
           functionName: "allowance",
           args: [ownerAddress, network.swap2pAddress as Address]
         });
@@ -136,7 +137,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [needsAllowanceCheck, deal, ownerAddress, publicClient, network.swap2pAddress, allowanceNonce]);
+  }, [needsAllowanceCheck, contractToken, ownerAddress, publicClient, network.swap2pAddress, allowanceNonce]);
 
   const hasSufficientAllowance =
     requiredAllowance !== null && tokenAllowance !== null && tokenAllowance >= requiredAllowance;

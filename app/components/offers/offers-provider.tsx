@@ -660,6 +660,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       const txHash: Hash = await adapter.makerDeleteOffer({
         account: getAddress(address),
+        maker: getAddress(address),
         token: key.token,
         side: key.side,
         fiat: key.fiat,

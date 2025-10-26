@@ -6,7 +6,7 @@ import {
 } from "@/components/chat/chat-utils";
 import { CHAT_MESSAGE_STATE_LABELS } from "@/lib/chat/chat-state";
 import type { DealChatMessage } from "@/lib/swap2p/types";
-import { hexToString } from "viem";
+import { hexToString, type Hex } from "viem";
 
 interface UseChatMessagesOptions {
   chat?: DealChatMessage[];
@@ -15,12 +15,15 @@ interface UseChatMessagesOptions {
   taker?: string;
   containerRef?: React.RefObject<HTMLDivElement>;
   maxLength?: number;
-  onSend?: (message: string) => Promise<void>;
+  onSend?: (message: string) => Promise<void> | void;
 }
 
 const safeDecode = (payload: string): string => {
   try {
-    return hexToString(payload).trim();
+    if (typeof payload !== "string" || !payload.startsWith("0x")) {
+      return payload;
+    }
+    return hexToString(payload as Hex).trim();
   } catch {
     return payload;
   }

@@ -7,7 +7,7 @@ import { formatUnits, getAddress, parseUnits, type Hash } from "viem";
 import { useUser } from "@/context/user-context";
 import { useNetworkConfig } from "@/hooks/use-network-config";
 import { debug } from "@/lib/logger";
-import { ZERO_ADDRESS } from "@/config";
+import { ZERO_ADDRESS, type NetworkConfig } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import { normalizeAddress } from "@/lib/deal-utils";
@@ -126,7 +126,7 @@ const toDealRow = (
 
 async function fetchChainDeals(
   adapter: ReturnType<typeof useSwap2pAdapter>["adapter"],
-  network: ReturnType<typeof getNetworkConfigForChain>,
+  network: NetworkConfig,
   userAddress: string,
 ): Promise<DealRow[]> {
   if (!adapter || !userAddress) return [];
@@ -326,9 +326,10 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       }
 
       const fallbackId = expectedDealId ?? generateDraftId();
-      return {
+      const fallback: DealRow = {
         id: fallbackId,
         contractId: expectedDealId ? BigInt(expectedDealId) : undefined,
+        contract: undefined,
         side: offer.side,
         amount,
         fiat: offer.fiat,
@@ -345,6 +346,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         fiatAmount: offer.price * amount,
         paymentMethod,
       };
+      return fallback;
     },
     [adapter, chainDeals, currentUserAddress, fetchAndSetDeals, network.swap2pAddress, publicClient],
   );
@@ -358,12 +360,12 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const requireContractDeal = React.useCallback(
-    (dealId: string) => {
+    (dealId: string): DealRow & { contractId: bigint } => {
       const deal = findDeal(dealId);
       if (!deal || deal.contractId === undefined) {
         throw new Error("Deal is not synced on-chain yet. Refresh and try again.");
       }
-      return deal;
+      return { ...deal, contractId: deal.contractId };
     },
     [findDeal],
   );

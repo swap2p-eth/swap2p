@@ -25,3 +25,4 @@
 /.idea
 /.env
 /slither_results.json
+/app/tsconfig.tsbuildinfo

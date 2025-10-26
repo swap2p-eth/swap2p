@@ -18,7 +18,7 @@ interface ChatWidgetProps {
   currentAccount?: string;
   maker?: string;
   taker?: string;
-  onSendMessage?: (message: string) => Promise<void>;
+  onSendMessage?: (message: string) => Promise<void> | void;
 }
 
 const chatEnabledStates: DealState[] = ["ACCEPTED", "PAID"];
