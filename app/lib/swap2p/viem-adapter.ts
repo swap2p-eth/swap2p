@@ -87,7 +87,7 @@ const decodeBytes32 = (value: unknown): string => {
   return str.replace(/\u0000+$/gu, "");
 };
 
-const DEFAULT_LIMIT = 20;
+const DEFAULT_LIMIT = 100;
 
 type Swap2pWriteFunctionName = Extract<
   (typeof swap2pAbi)[number],
@@ -451,6 +451,71 @@ export const createSwap2pViemAdapter = (
     return mapDeal(id, structured);
   };
 
+  const fetchMarketOffers = async (
+    filter: OfferFilter & PaginationArgs,
+  ): Promise<OfferWithKey[]> => {
+    const pageSize = Math.max(filter.limit ?? DEFAULT_LIMIT, DEFAULT_LIMIT);
+    let offset = filter.offset ?? 0;
+    const items: OfferWithKey[] = [];
+    for (;;) {
+      const rawPage = (await read({
+        functionName: "getMarketOffers",
+        args: [filter.token, filter.side, filter.fiat, offset, pageSize] as const,
+      })) as readonly unknown[] | null;
+      if (!rawPage || rawPage.length === 0) break;
+      const page = rawPage
+        .map((entry) => mapOfferInfo(entry))
+        .filter((entry): entry is OfferWithKey => entry !== null);
+      items.push(...page);
+      if (rawPage.length < pageSize) break;
+      offset += pageSize;
+    }
+    return items;
+  };
+
+  const fetchMakerOffers = async (maker: Address): Promise<OfferWithKey[]> => {
+    const pageSize = DEFAULT_LIMIT;
+    let offset = 0;
+    const items: OfferWithKey[] = [];
+    for (;;) {
+      const rawPage = (await read({
+        functionName: "getMakerOffers",
+        args: [getAddress(maker), offset, pageSize] as const,
+      })) as readonly unknown[] | null;
+      if (!rawPage || rawPage.length === 0) break;
+      const page = rawPage
+        .map((entry) => mapOfferInfo(entry))
+        .filter((entry): entry is OfferWithKey => entry !== null);
+      items.push(...page);
+      if (rawPage.length < pageSize) break;
+      offset += pageSize;
+    }
+    return items;
+  };
+
+  const fetchDealsDetailed = async (
+    fnName: "getOpenDealsDetailed" | "getRecentDealsDetailed",
+    user: Address,
+  ): Promise<Deal[]> => {
+    const pageSize = DEFAULT_LIMIT;
+    let offset = 0;
+    const items: Deal[] = [];
+    for (;;) {
+      const rawPage = (await read({
+        functionName: fnName,
+        args: [user, offset, pageSize] as const,
+      })) as readonly unknown[] | null;
+      if (!rawPage || rawPage.length === 0) break;
+      const page = rawPage
+        .map((entry) => mapDealInfo(entry))
+        .filter((entry): entry is Deal => entry !== null);
+      items.push(...page);
+      if (rawPage.length < pageSize) break;
+      offset += pageSize;
+    }
+    return items;
+  };
+
   const withAccount = (account?: Address) =>
     normalizeAccount(walletClient, account);
 
@@ -467,7 +532,7 @@ export const createSwap2pViemAdapter = (
     },
 
     async getOfferKeys(filter: OfferFilter & PaginationArgs) {
-      const offers = await this.getOffers(filter);
+      const offers = await fetchMarketOffers(filter);
       return offers.map(({ key }) => key);
     },
 
@@ -517,27 +582,13 @@ export const createSwap2pViemAdapter = (
     },
 
     async getOffers(filter: OfferFilter & PaginationArgs) {
-      const limit = filter.limit ?? DEFAULT_LIMIT;
-      const offset = filter.offset ?? 0;
-      const raw = (await read({
-        functionName: "getMarketOffers",
-        args: [filter.token, filter.side, filter.fiat, offset, limit] as const,
-      })) as readonly unknown[] | null;
-      if (!raw) return [];
-      return raw
-        .map((entry) => mapOfferInfo(entry))
-        .filter((item): item is OfferWithKey => item !== null);
+      return fetchMarketOffers(filter);
     },
 
     async getMakerOffers({ maker, offset = 0, limit = DEFAULT_LIMIT }) {
-      const raw = (await read({
-        functionName: "getMakerOffers",
-        args: [getAddress(maker), offset, limit] as const,
-      })) as readonly unknown[] | null;
-      if (!raw) return [];
-      return raw
-        .map((entry) => mapOfferInfo(entry))
-        .filter((item): item is OfferWithKey => item !== null);
+      void offset;
+      void limit;
+      return fetchMakerOffers(maker);
     },
 
     async getDeal(id: bigint) {
@@ -548,24 +599,10 @@ export const createSwap2pViemAdapter = (
     },
 
     async getOpenDeals(query: DealsQuery) {
-      const limit = query.limit ?? DEFAULT_LIMIT;
-      const offset = query.offset ?? 0;
       debugLog("[mydeals] getOpenDeals:request", {
         user: query.user,
-        offset,
-        limit,
       });
-      const detailed = (await read({
-        functionName: "getOpenDealsDetailed",
-        args: [query.user, offset, limit] as const,
-      })) as readonly unknown[] | null;
-      debugLog("[mydeals] getOpenDeals:detailed", {
-        count: detailed?.length ?? 0,
-      });
-      if (!detailed || detailed.length === 0) return [];
-      const deals = detailed
-        .map((value) => mapDealInfo(value))
-        .filter((deal): deal is Deal => deal !== null);
+      const deals = await fetchDealsDetailed("getOpenDealsDetailed", query.user);
       debugLog("[mydeals] getOpenDeals:deals", {
         count: deals.length,
       });
@@ -573,24 +610,10 @@ export const createSwap2pViemAdapter = (
     },
 
     async getRecentDeals(query: DealsQuery) {
-      const limit = query.limit ?? DEFAULT_LIMIT;
-      const offset = query.offset ?? 0;
       debugLog("[mydeals] getRecentDeals:request", {
         user: query.user,
-        offset,
-        limit,
       });
-      const detailed = (await read({
-        functionName: "getRecentDealsDetailed",
-        args: [query.user, offset, limit] as const,
-      })) as readonly unknown[] | null;
-      debugLog("[mydeals] getRecentDeals:detailed", {
-        count: detailed?.length ?? 0,
-      });
-      if (!detailed || detailed.length === 0) return [];
-      const deals = detailed
-        .map((value) => mapDealInfo(value))
-        .filter((deal): deal is Deal => deal !== null);
+      const deals = await fetchDealsDetailed("getRecentDealsDetailed", query.user);
       debugLog("[mydeals] getRecentDeals:deals", {
         count: deals.length,
       });
