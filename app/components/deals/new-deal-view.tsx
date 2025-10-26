@@ -5,7 +5,7 @@ import { useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { erc20Abi, getAddress, maxUint256, parseUnits, type Address } from "viem";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { FiatFlag } from "@/components/fiat-flag";
@@ -467,10 +467,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
             </div>
           </div>
           <div className="relative mt-2">
-            <Input
-              type="number"
-              step="any"
-              min={0}
+            <NumericInput
               required
               aria-invalid={!amountValid}
               value={amount}

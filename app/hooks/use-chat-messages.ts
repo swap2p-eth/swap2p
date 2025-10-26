@@ -4,8 +4,8 @@ import {
   MAX_MESSAGE_LENGTH,
   type ChatbotMessage
 } from "@/components/chat/chat-utils";
-import type { DealState } from "@/lib/types/market";
-import { SwapDealState, type DealChatMessage } from "@/lib/swap2p/types";
+import { CHAT_MESSAGE_STATE_LABELS } from "@/lib/chat/chat-state";
+import type { DealChatMessage } from "@/lib/swap2p/types";
 import { hexToString } from "viem";
 
 interface UseChatMessagesOptions {
@@ -34,14 +34,6 @@ const safeDecode = (payload: string): string => {
   }
 };
 
-const messageStateLabels: Partial<Record<SwapDealState, DealState>> = {
-  [SwapDealState.REQUESTED]: "REQUESTED",
-  [SwapDealState.ACCEPTED]: "ACCEPTED",
-  [SwapDealState.PAID]: "PAID",
-  [SwapDealState.RELEASED]: "RELEASED",
-  [SwapDealState.CANCELED]: "CANCELED"
-};
-
 export function useChatMessages({
   chat = [],
   currentAccount,
@@ -64,7 +56,7 @@ export function useChatMessages({
       const sender = entry.toMaker ? normalizedTaker : normalizedMaker;
       const role = sender && sender === normalizedCurrent ? "user" : "assistant";
       const content = safeDecode(entry.payload);
-      const state = messageStateLabels[entry.state];
+      const state = CHAT_MESSAGE_STATE_LABELS[entry.state];
       return {
         id: `${entry.timestamp}-${index}`,
         role,

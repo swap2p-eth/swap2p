@@ -8,6 +8,7 @@ import { isHex } from "viem";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { FIAT_BY_COUNTRY, FIAT_INFOS, getNetworkConfigForChain } from "@/config";
@@ -463,13 +464,9 @@ export function OfferView({
               <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
                 Quoted price ({selectedFiatInfo?.currencyCode ?? (fiat || "—")})
               </label>
-              <Input
-                type="number"
+              <NumericInput
                 value={price}
                 onChange={event => setPrice(event.target.value)}
-                inputMode="decimal"
-                min={0}
-                step="any"
                 placeholder="e.g. 1.01"
                 className="rounded-full"
               />
@@ -483,13 +480,9 @@ export function OfferView({
                 <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
                   Minimum amount ({tokenLabel})
                 </label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={minAmount}
                   onChange={event => setMinAmount(event.target.value)}
-                  inputMode="decimal"
-                  min={0}
-                  step="any"
                   placeholder="e.g. 200"
                   className="rounded-full"
                 />
@@ -498,13 +491,9 @@ export function OfferView({
                 <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
                   Maximum amount ({tokenLabel})
                 </label>
-                <Input
-                  type="number"
+                <NumericInput
                   value={maxAmount}
                   onChange={event => setMaxAmount(event.target.value)}
-                  inputMode="decimal"
-                  min={0}
-                  step="any"
                   placeholder="e.g. 2500"
                   className="rounded-full"
                 />

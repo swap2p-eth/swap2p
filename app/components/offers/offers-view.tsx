@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 import { createOfferColumns } from "@/lib/offer-columns";
@@ -21,7 +21,6 @@ import {
 import { RefreshCw } from "lucide-react";
 import { useUser } from "@/context/user-context";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { type FiatInfo } from "@/config";
 
 const DEFAULT_COUNTRY = "US";
 
@@ -335,9 +334,7 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Amount</span>
-              <Input
-                type="number"
-                min={0}
+              <NumericInput
                 placeholder=""
                 value={amount}
                 onChange={event => setAmount(event.target.value)}

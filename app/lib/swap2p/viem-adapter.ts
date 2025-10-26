@@ -181,6 +181,14 @@ const toBytes32 = (value: unknown): Hex | null => {
   return null;
 };
 
+const requireDealId = (value: unknown, caller: string): Hex => {
+  const id = toBytes32(value);
+  if (!id) {
+    throw new Error(`Swap2pViemAdapter: invalid deal id for ${caller}`);
+  }
+  return id;
+};
+
 const toSide = (value: bigint | number): SwapSide => {
   const numeric = toNumber(value);
   return numeric === SwapSide.SELL ? SwapSide.SELL : SwapSide.BUY;
@@ -817,10 +825,7 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for maker_acceptRequest",
         );
       }
-      const id = toBytes32(args.id);
-      if (!id) {
-        throw new Error("Swap2pViemAdapter: invalid deal id for maker_acceptRequest");
-      }
+      const id = requireDealId(args.id, "maker_acceptRequest");
       return simulateAndWrite(
         signer,
         publicClient,
@@ -839,10 +844,7 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for cancelRequest",
         );
       }
-      const id = toBytes32(args.id);
-      if (!id) {
-        throw new Error("Swap2pViemAdapter: invalid deal id for cancelRequest");
-      }
+      const id = requireDealId(args.id, "cancelRequest");
       return simulateAndWrite(
         signer,
         publicClient,
@@ -861,10 +863,7 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for cancelDeal",
         );
       }
-      const id = toBytes32(args.id);
-      if (!id) {
-        throw new Error("Swap2pViemAdapter: invalid deal id for cancelDeal");
-      }
+      const id = requireDealId(args.id, "cancelDeal");
       return simulateAndWrite(
         signer,
         publicClient,
@@ -883,10 +882,7 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for markFiatPaid",
         );
       }
-      const id = toBytes32(args.id);
-      if (!id) {
-        throw new Error("Swap2pViemAdapter: invalid deal id for markFiatPaid");
-      }
+      const id = requireDealId(args.id, "markFiatPaid");
       return simulateAndWrite(
         signer,
         publicClient,
@@ -903,10 +899,7 @@ export const createSwap2pViemAdapter = (
       if (!sender) {
         throw new Error("Swap2pViemAdapter: account is required for release");
       }
-      const id = toBytes32(args.id);
-      if (!id) {
-        throw new Error("Swap2pViemAdapter: invalid deal id for release");
-      }
+      const id = requireDealId(args.id, "release");
       return simulateAndWrite(
         signer,
         publicClient,
@@ -925,10 +918,7 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for sendMessage",
         );
       }
-      const id = toBytes32(args.id);
-      if (!id) {
-        throw new Error("Swap2pViemAdapter: invalid deal id for sendMessage");
-      }
+      const id = requireDealId(args.id, "sendMessage");
       return simulateAndWrite(
         signer,
         publicClient,

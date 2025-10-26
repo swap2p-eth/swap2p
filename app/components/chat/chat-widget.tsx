@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { DealState } from "@/lib/types/market";
 import type { DealChatMessage } from "@/lib/swap2p/types";
 import { useChatMessages } from "@/hooks/use-chat-messages";
+import { CHAT_MESSAGE_STATE_CLASSES } from "@/lib/chat/chat-state";
 
 interface ChatWidgetProps {
   className?: string;
@@ -20,13 +21,6 @@ interface ChatWidgetProps {
 }
 
 const chatEnabledStates: DealState[] = ["ACCEPTED", "PAID"];
-const chatMessageStateClasses: Record<DealState, string> = {
-  REQUESTED: "bg-orange-500/10 text-orange-500",
-  ACCEPTED: "bg-sky-500/10 text-sky-500",
-  PAID: "bg-purple-500/10 text-purple-500",
-  RELEASED: "bg-emerald-500/10 text-emerald-500",
-  CANCELED: "bg-red-500/10 text-red-500"
-};
 
 export function ChatWidget({
   className,
@@ -91,10 +85,10 @@ export function ChatWidget({
         description="Encrypted P2P coordination"
         className="border-0 px-6 py-5 text-sm font-medium text-muted-foreground/80"
       />*/}
-      <div ref={containerRef} className="flex-1 overflow-y-auto px-2 pb-2">
+      <div ref={containerRef} className="flex-1 overflow-y-auto px-6 pb-6">
         <ChatList className="space-y-4 py-4">
           {messages.map(message => {
-            const stateClass = message.state ? chatMessageStateClasses[message.state] : undefined;
+            const stateClass = message.state ? CHAT_MESSAGE_STATE_CLASSES[message.state] : undefined;
             return (
               <ChatMessage
                 key={message.id}
