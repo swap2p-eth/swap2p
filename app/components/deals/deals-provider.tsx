@@ -81,7 +81,7 @@ const toDealRow = (
   const amount = Number(formatUnits(deal.amount, options.tokenDecimals));
   const price = Number(deal.price) / PRICE_SCALE;
   // Fiat values arriving from the contract are ISO country codes (uint16)
-  const encoded = typeof deal.fiat === "number" ? deal.fiat : 0;
+  const encoded = Number(deal.fiat ?? 0);
   const decoded = decodeCountryCode(encoded);
   const countryCode = decoded ? decoded.toUpperCase() : "";
   const fiatInfo = getFiatInfoByCountry(countryCode);
@@ -197,10 +197,20 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       setChainDeals([]);
       return [] as DealRow[];
     }
-    const next = await fetchChainDeals(adapter, network, currentUserAddress);
-    setChainDeals(next);
-    return next;
-  }, [adapter, currentUserAddress, network]);
+    try {
+      const next = await fetchChainDeals(adapter, network, currentUserAddress);
+      setChainDeals(next);
+      return next;
+    } catch (error) {
+      console.error("[DealsProvider] failed to fetch deals", {
+        chainId,
+        user: currentUserAddress,
+        network: network.name,
+      }, error);
+      setChainDeals([]);
+      return [];
+    }
+  }, [adapter, chainId, currentUserAddress, network]);
 
   const refresh = React.useCallback(async () => {
     if (!adapter || !currentUserAddress) {
@@ -226,6 +236,11 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
     };
   }, [refresh]);
+
+  React.useEffect(() => {
+    setChainDeals([]);
+    setDraftDeals([]);
+  }, [chainId]);
 
   React.useEffect(() => {
     setDraftDeals([]);
@@ -269,9 +284,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
           args: [takerAccount],
         })) as readonly [string, bigint];
         const [previewId] = result;
-        if (typeof previewId === "string") {
-          expectedDealId = previewId;
-        }
+        expectedDealId = previewId;
       } catch (error) {
         console.debug("[swap2p] previewNextDealId failed", error);
       }

@@ -139,8 +139,8 @@ const rawFiats: Array<{
 
 const seenCountries = new Set<string>();
 
-for (const entry of currencyData as Array<{ code: string; currency: string; digits: number; countries: string[] }>) {
-  if (!entry || typeof entry.code !== "string" || !Array.isArray(entry.countries) || entry.countries.length === 0) {
+for (const entry of currencyData as Array<{ code?: string; currency?: string; digits?: number; countries?: string[] }>) {
+  if (!entry?.code || !Array.isArray(entry.countries) || entry.countries.length === 0) {
     continue;
   }
   const currencyCode = entry.code.toUpperCase();
@@ -158,7 +158,7 @@ for (const entry of currencyData as Array<{ code: string; currency: string; digi
       countryCode: lookup.code,
       countryName: lookup.name,
       currencyCode,
-      currencyName: entry.currency,
+      currencyName: entry.currency ?? entry.code,
       digits: typeof entry.digits === "number" ? entry.digits : 2,
     });
   }
@@ -302,5 +302,12 @@ export function getNetworkConfigForChain(chainId?: number): NetworkConfig {
     const match = Object.values(APP_CONFIG.networks).find(cfg => cfg.chainId === chainId);
     if (match) return match;
   }
-  return getNetworkConfig(APP_CONFIG.defaultNetwork);
+  const fallback = getNetworkConfig(APP_CONFIG.defaultNetwork);
+  return {
+    ...fallback,
+    chainId: typeof chainId === "number" ? chainId : fallback.chainId,
+    swap2pAddress: ZERO_ADDRESS,
+    tokens: [],
+    paymentMethods: {},
+  };
 }
