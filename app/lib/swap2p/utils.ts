@@ -1,4 +1,5 @@
 import { hexToString, isHex, padHex, stringToHex, type Hex } from "viem";
+import { debug } from "@/lib/logger";
 
 export const ZERO = 0n;
 
@@ -62,7 +63,7 @@ export const sanitizeForLog = (value: unknown, depth = LOG_MAX_DEPTH): unknown =
 };
 
 export const debugLog = (scope: string, payload: unknown) => {
-  console.debug(scope, sanitizeForLog(payload));
+  debug(scope, sanitizeForLog(payload));
 };
 
 export const toNumber = (value: bigint | number) =>

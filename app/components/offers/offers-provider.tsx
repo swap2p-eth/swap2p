@@ -12,6 +12,7 @@ import { decodeCountryCode, encodeCountryCode, getFiatInfoByCountry } from "@/li
 import type { OfferRow } from "@/lib/types/market";
 import { SwapSide, type OfferWithKey } from "@/lib/swap2p/types";
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
+import { debug } from "@/lib/logger";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -78,7 +79,7 @@ const mapOffer = (
 ): OfferRow => {
   const { offer, key } = entry;
   const timestampMs = (offer.updatedAt ?? 0) * 1000;
-  const encoded = true ? offer.fiat : 0;
+  const encoded = offer.fiat;
   const decoded = decodeCountryCode(encoded);
   const countryCode = decoded ? decoded.toUpperCase() : "";
   const fiatInfo = getFiatInfoByCountry(countryCode);
@@ -114,15 +115,15 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
   const { adapter } = useSwap2pAdapter();
-  const network = useNetworkConfig(chainId);
+  const { network: currentNetwork, isSupported } = useNetworkConfig(chainId);
 
   const tokenConfigs = React.useMemo(
     () =>
-      network.tokens.map(token => ({
+      currentNetwork.tokens.map(token => ({
         ...token,
         address: getAddress(token.address),
       })),
-    [network.tokens],
+    [currentNetwork.tokens],
   );
 
   // NOTE: fiat values hold ISO country codes; display labels come from FIAT_INFOS
@@ -171,7 +172,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     cacheRef.current.clear();
     setCacheVersion(version => version + 1);
-  }, [adapter, tokenConfigs]);
+  }, [adapter, isSupported, tokenConfigs]);
 
   React.useEffect(() => {
     setActiveMarket(prev => {
@@ -194,7 +195,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       fiat: { info: FiatInfo; value: number };
       force?: boolean;
     }) => {
-      if (!adapter) return;
+      if (!adapter || !isSupported || !tokenConfigs.length) return;
       let fetchedAny = false;
       await Promise.all(
         tokenConfigs.map(async token => {
@@ -220,12 +221,12 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
               }),
             );
             cacheRef.current.set(key, { items: mapped, fetchedAt: Date.now() });
-            console.debug("[OffersProvider] loadOffersFor", JSON.stringify({
+            debug("offers:loadOffersFor", {
               token: token.symbol,
               side: toSideLabel(makerSide),
               fiat: fiat.info.shortLabel,
               count: mapped.length,
-            }));
+            });
           } catch (error) {
             console.error(
               "[swap2p] failed to fetch offers",
@@ -244,12 +245,12 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         setCacheVersion(version => version + 1);
       }
     },
-    [adapter, tokenConfigs],
+    [adapter, isSupported, tokenConfigs],
   );
 
   const loadMakerOffers = React.useCallback(
     async (force = false): Promise<OfferRow[]> => {
-      if (!adapter || !address) {
+      if (!adapter || !address || !isSupported || !tokenConfigs.length) {
         makerCacheRef.current = null;
         setMakerChainOffers([]);
         return [];
@@ -291,18 +292,18 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         setIsMakerLoading(false);
       }
     },
-    [adapter, address, tokenConfigs],
+    [adapter, address, isSupported, tokenConfigs],
   );
 
   React.useEffect(() => {
     makerCacheRef.current = null;
     setMakerChainOffers([]);
-    if (!adapter || !address) {
+    if (!adapter || !address || !isSupported) {
       setIsMakerLoading(false);
       return;
     }
     void loadMakerOffers(true);
-  }, [adapter, address, loadMakerOffers]);
+  }, [adapter, address, isSupported, loadMakerOffers]);
 
   const ensureMarket = React.useCallback(
     async ({
@@ -314,17 +315,22 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       fiat: string;
       force?: boolean;
     }) => {
-      console.debug("[OffersProvider] ensureMarket request", JSON.stringify({ side, fiat, force }));
+      if (!isSupported) {
+        debug("offers:ensureMarket:skip", { reason: "unsupported-network", side, fiat });
+        setIsLoading(false);
+        return;
+      }
+      debug("offers:ensureMarket:request", { side, fiat, force });
       const normalizedFiat = fiat.toUpperCase();
       const fallback = fiatLookup.get(defaultFiat.toUpperCase());
       const fiatEntry = fiatLookup.get(normalizedFiat) ?? fallback;
       if (!fiatEntry) return;
       setActiveMarket(prev => {
         if (prev.side === side && prev.fiat === fiatEntry.info.countryCode) {
-          console.debug("[OffersProvider] activeMarket unchanged", JSON.stringify(prev));
+          debug("offers:ensureMarket:unchanged", prev);
           return prev;
         }
-        console.debug("[OffersProvider] activeMarket update", JSON.stringify({ side, fiat: fiatEntry.info.countryCode }));
+        debug("offers:ensureMarket:update", { side, fiat: fiatEntry.info.countryCode });
         return { side, fiat: fiatEntry.info.countryCode };
       });
       if (!adapter) {
@@ -340,10 +346,10 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           return !cached || Date.now() - cached.fetchedAt > OFFER_CACHE_TTL_MS;
         });
       if (!needsFetch) {
-        console.debug(
-          "[OffersProvider] cache hit",
-          JSON.stringify({ makerSide: toSideLabel(makerSide), fiat: fiatEntry.info.shortLabel }),
-        );
+        debug("offers:ensureMarket:cache-hit", {
+          makerSide: toSideLabel(makerSide),
+          fiat: fiatEntry.info.shortLabel,
+        });
         setIsLoading(false);
         return;
       }
@@ -354,7 +360,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     },
-    [adapter, defaultFiat, fiatLookup, loadOffersFor, tokenConfigs],
+    [adapter, defaultFiat, fiatLookup, isSupported, loadOffersFor, tokenConfigs],
   );
 
   const refresh = React.useCallback(async () => {
@@ -372,7 +378,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   const bootstrappedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!adapter) {
+    if (!adapter || !isSupported) {
       bootstrappedRef.current = false;
       setIsLoading(false);
       return;
@@ -388,15 +394,15 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     const normalizedFiat =
       rawFiat === ANY_FILTER_OPTION ? defaultFiat : rawFiat.toUpperCase();
     void ensureMarket({ side: storedSide, fiat: normalizedFiat });
-  }, [adapter, ensureMarket, activeMarket.side, activeMarket.fiat, defaultFiat]);
+  }, [adapter, ensureMarket, activeMarket.side, activeMarket.fiat, defaultFiat, isSupported]);
 
   React.useEffect(() => {
     bootstrappedRef.current = false;
-  }, [adapter]);
+  }, [adapter, isSupported]);
 
   React.useEffect(() => {
     setDraftOffers([]);
-  }, [address]);
+  }, [address, isSupported]);
 
   const makerOffers = React.useMemo(() => {
     const merged = new Map<string, OfferRow>();
@@ -437,7 +443,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     const result = Array.from(merged.values()).sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
     );
-    console.debug("[OffersProvider] offers computed", JSON.stringify({
+    debug("offers:compute", {
       market: {
         side: activeMarket.side,
         countryCode: activeMarket.fiat,
@@ -446,7 +452,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       makerSide: expectedSideLabel,
       count: result.length,
       cacheVersion,
-    }));
+    });
     return result;
   }, [activeMarket, cacheVersion, draftOffers, tokenConfigs, fiatLookup, defaultFiat]);
 
@@ -463,6 +469,9 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     }: CreateOfferInput) => {
       if (!adapter) {
         throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!isSupported) {
+        throw new Error("Swap2p is not available on this network.");
       }
       if (!address) {
         throw new Error("Connect your wallet to publish an offer.");
@@ -551,13 +560,16 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       return created ?? fallbackEntry;
     },
-    [adapter, address, loadMakerOffers, publicClient, refresh, tokenConfigs],
+    [adapter, address, isSupported, loadMakerOffers, publicClient, refresh, tokenConfigs],
   );
 
   const updateOffer = React.useCallback(
     async (offer: OfferRow, updates: OfferUpdateInput) => {
       if (!adapter) {
         throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!isSupported) {
+        throw new Error("Swap2p is not available on this network.");
       }
       if (!address) {
         throw new Error("Connect your wallet to update an offer.");
@@ -622,13 +634,16 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         updatedAt: new Date().toISOString(),
       };
     },
-    [adapter, address, loadMakerOffers, publicClient, refresh, tokenConfigs],
+    [adapter, address, isSupported, loadMakerOffers, publicClient, refresh, tokenConfigs],
   );
 
   const removeOffer = React.useCallback(
     async (offer: OfferRow) => {
       if (!adapter) {
         throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!isSupported) {
+        throw new Error("Swap2p is not available on this network.");
       }
       if (!address) {
         throw new Error("Connect your wallet to delete an offer.");
@@ -660,7 +675,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       await loadMakerOffers(true);
       await refresh();
     },
-    [adapter, address, loadMakerOffers, publicClient, refresh],
+    [adapter, address, isSupported, loadMakerOffers, publicClient, refresh],
   );
 
   const contextValue = React.useMemo<OffersContextValue>(

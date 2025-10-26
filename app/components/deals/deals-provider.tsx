@@ -6,6 +6,8 @@ import { formatUnits, getAddress, parseUnits, type Hash } from "viem";
 
 import { useUser } from "@/context/user-context";
 import { useNetworkConfig } from "@/hooks/use-network-config";
+import { debug } from "@/lib/logger";
+import { ZERO_ADDRESS } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import { normalizeAddress } from "@/lib/deal-utils";
@@ -129,7 +131,12 @@ async function fetchChainDeals(
 ): Promise<DealRow[]> {
   if (!adapter || !userAddress) return [];
 
-  console.debug("[mydeals] fetchChainDeals:start", {
+  if (!network.tokens.length || network.swap2pAddress === ZERO_ADDRESS) {
+    debug("mydeals:fetchChainDeals:skip", { reason: "unsupported-network" });
+    return [];
+  }
+
+  debug("mydeals:fetchChainDeals:start", {
     user: userAddress,
     network: network.name,
   });
@@ -149,7 +156,7 @@ async function fetchChainDeals(
     adapter.getRecentDeals({ user, limit: DEAL_FETCH_LIMIT, offset: 0 }),
   ]);
 
-  console.debug("[mydeals] fetchChainDeals:reads", {
+  debug("mydeals:fetchChainDeals:reads", {
     openCount: open.length,
     recentCount: recent.length,
   });
@@ -174,7 +181,7 @@ async function fetchChainDeals(
     })
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-  console.debug("[mydeals] fetchChainDeals:completed", {
+  debug("mydeals:fetchChainDeals:completed", {
     total: mapped.length,
   });
 
@@ -186,7 +193,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
   const { adapter } = useSwap2pAdapter();
-  const network = useNetworkConfig(chainId);
+  const { network, isSupported } = useNetworkConfig(chainId);
 
   const [chainDeals, setChainDeals] = React.useState<DealRow[]>([]);
   const [draftDeals, setDraftDeals] = React.useState<DealRow[]>([]);
@@ -286,7 +293,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         const [previewId] = result;
         expectedDealId = previewId;
       } catch (error) {
-        console.debug("[swap2p] previewNextDealId failed", error);
+        debug("deals:previewNextDealId:failed", { error });
       }
 
       const txHash: Hash = await adapter.takerRequestOffer({

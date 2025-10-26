@@ -5,13 +5,9 @@ import { useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { erc20Abi, getAddress, maxUint256, parseUnits, type Address } from "viem";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DealHeader } from "./deal-header";
-import { DealSummaryCard } from "./deal-summary-card";
-import { DealStatusPanel } from "./deal-status-panel";
-import { DealChatCard } from "./deal-chat-card";
+import { DealChatCard, DealHeader, DealStatusPanel, DealSummaryCard, ParticipantPill } from "@/components/deals";
 import { useDeals } from "./deals-provider";
 import { RelativeTime } from "@/components/relative-time";
-import { ParticipantPill } from "@/components/deals/participant-pill";
 import { buildDealMetaItems } from "@/hooks/use-deal-meta";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import { useDealPerspective } from "@/hooks/use-deal-perspective";
@@ -39,7 +35,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient({ chainId });
-  const network = useNetworkConfig(chainId);
+  const { network } = useNetworkConfig(chainId);
   const ownerAddress = React.useMemo(() => {
     const account = walletClient?.account;
     if (!account) return null;
