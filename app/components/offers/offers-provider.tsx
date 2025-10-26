@@ -10,7 +10,7 @@ import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { useNetworkConfig } from "@/hooks/use-network-config";
 import { decodeCountryCode, encodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import type { OfferRow } from "@/lib/types/market";
-import { SwapSide, type OfferWithKey } from "@/lib/swap2p/types";
+import { SwapSide, type OfferWithKey, type MakerProfile } from "@/lib/swap2p/types";
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
 import { debug } from "@/lib/logger";
 
@@ -31,6 +31,10 @@ interface OffersContextValue {
   createOffer: (input: CreateOfferInput) => Promise<OfferRow>;
   updateOffer: (offer: OfferRow, updates: OfferUpdateInput) => Promise<OfferRow>;
   removeOffer: (offer: OfferRow) => Promise<void>;
+  makerProfile: MakerProfile | null;
+  makerProfileLoading: boolean;
+  makerProfileUpdating: boolean;
+  setMakerOnline: (online: boolean) => Promise<void>;
 }
 
 interface CreateOfferInput {
@@ -58,6 +62,14 @@ const OFFER_FETCH_LIMIT = 100;
 const OFFER_CACHE_TTL_MS = 60_000;
 const toSideLabel = (side: SwapSide): OfferRow["side"] =>
   side === SwapSide.SELL ? "SELL" : "BUY";
+
+const EMPTY_PROFILE: MakerProfile = {
+  online: false,
+  nickname: "",
+  dealsCancelled: 0,
+  dealsCompleted: 0,
+  chatPublicKey: "",
+};
 
 const generateOfferId = (): string => {
   if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
@@ -168,6 +180,9 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
   const [makerChainOffers, setMakerChainOffers] = React.useState<OfferRow[]>([]);
   const [isMakerLoading, setIsMakerLoading] = React.useState(false);
   const makerCacheRef = React.useRef<{ items: OfferRow[]; fetchedAt: number } | null>(null);
+  const [makerProfile, setMakerProfile] = React.useState<MakerProfile | null>(null);
+  const [makerProfileLoading, setMakerProfileLoading] = React.useState(false);
+  const [makerProfileUpdating, setMakerProfileUpdating] = React.useState(false);
 
   React.useEffect(() => {
     cacheRef.current.clear();
@@ -184,6 +199,74 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       return { side: prev.side, fiat: nextFiat };
     });
   }, [defaultFiat, fiatCodes]);
+
+  React.useEffect(() => {
+    if (!adapter || !address || !isSupported) {
+      setMakerProfile(null);
+      setMakerProfileLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setMakerProfileLoading(true);
+    (async () => {
+      try {
+        const profile = await adapter.getMakerProfile(getAddress(address));
+        if (!cancelled) {
+          setMakerProfile(profile ?? EMPTY_PROFILE);
+        }
+      } catch (error) {
+        console.error("[offers] failed to load maker profile", error);
+        if (!cancelled) {
+          setMakerProfile(EMPTY_PROFILE);
+        }
+      } finally {
+        if (!cancelled) {
+          setMakerProfileLoading(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [adapter, address, isSupported]);
+
+  const setMakerOnline = React.useCallback(
+    async (online: boolean) => {
+      if (!adapter) {
+        throw new Error("Swap2p contract unavailable. Connect a wallet and try again.");
+      }
+      if (!isSupported) {
+        throw new Error("Swap2p is not available on this network.");
+      }
+      if (!address) {
+        throw new Error("Connect your wallet to change availability.");
+      }
+      if (!publicClient) {
+        throw new Error("Public client unavailable for the current network.");
+      }
+
+      setMakerProfileUpdating(true);
+      try {
+        const account = getAddress(address);
+        const txHash: Hash = await adapter.setOnline({
+          account,
+          online,
+        });
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
+        setMakerProfile(prev => {
+          const base = prev ?? EMPTY_PROFILE;
+          return { ...base, online };
+        });
+      } catch (error) {
+        console.error("[offers] failed to set maker availability", error);
+        const message = error instanceof Error ? error.message : "Failed to update availability.";
+        throw new Error(message);
+      } finally {
+        setMakerProfileUpdating(false);
+      }
+    },
+    [adapter, address, isSupported, publicClient],
+  );
 
   const loadOffersFor = React.useCallback(
     async ({
@@ -694,6 +777,10 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       createOffer,
       updateOffer,
       removeOffer,
+      makerProfile,
+      makerProfileLoading,
+      makerProfileUpdating,
+      setMakerOnline,
     }),
     [
       offers,
@@ -709,6 +796,10 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       createOffer,
       updateOffer,
       removeOffer,
+      makerProfile,
+      makerProfileLoading,
+      makerProfileUpdating,
+      setMakerOnline,
     ],
   );
 

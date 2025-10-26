@@ -13,6 +13,7 @@ import { useHashLocation } from "@/hooks/use-hash-location";
 import type { OfferRow } from "@/lib/types/market";
 import { useUser } from "@/context/user-context";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { cn } from "@/lib/utils";
 
 interface DealsViewProps {
   onSelectDeal?: (dealId: string) => void;
@@ -21,10 +22,40 @@ interface DealsViewProps {
 export function DealsView({ onSelectDeal }: DealsViewProps) {
   const [status, setStatus] = React.useState("active");
   const { activeDeals, closedDeals, isLoading: dealsLoading } = useCurrentUserDeals();
-  const { makerOffers, isMakerLoading } = useOffers();
+  const {
+    makerOffers,
+    isMakerLoading,
+    makerProfile,
+    makerProfileLoading,
+    makerProfileUpdating,
+    setMakerOnline
+  } = useOffers();
   const { setHash } = useHashLocation("offers");
   const { address } = useUser();
   const { openConnectModal } = useConnectModal();
+  const [availabilityError, setAvailabilityError] = React.useState<string | null>(null);
+
+  const onlineStatus = makerProfile?.online ?? false;
+  const toggleDisabled = makerProfileLoading || makerProfileUpdating;
+
+  const handleAvailabilityChange = React.useCallback(
+    async (next: boolean) => {
+      if (toggleDisabled) return;
+      if (onlineStatus === next) return;
+      setAvailabilityError(null);
+      try {
+        await setMakerOnline(next);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to update availability.";
+        setAvailabilityError(message);
+      }
+    },
+    [onlineStatus, setMakerOnline, toggleDisabled]
+  );
+
+  React.useEffect(() => {
+    setAvailabilityError(null);
+  }, [onlineStatus]);
 
   const normalizedAddress = React.useMemo(() => address.trim().toLowerCase(), [address]);
 
@@ -34,6 +65,18 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
   );
 
   const myOffers = React.useMemo(() => makerOffers, [makerOffers]);
+
+  const availabilityMessage = makerProfileLoading
+    ? "Checking availability…"
+    : onlineStatus
+      ? "Your offers are visible to clients. Switch to Offline when you are done."
+      : "Your offers are hidden. Switch to Online to start trading.";
+
+  const availabilityClass = makerProfileLoading
+    ? "text-muted-foreground"
+    : onlineStatus
+      ? "text-emerald-500"
+      : "text-red-500";
 
   if (!normalizedAddress) {
     return (
@@ -97,13 +140,44 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
 
       <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30 shadow-none">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
+          <div className="space-y-2">
             <CardTitle className="text-xl">My Offers</CardTitle>
-            <CardDescription>Review every offer you currently publish to takers.</CardDescription>
+            <p className={cn("text-sm", makerProfileLoading ? "animate-pulse text-muted-foreground" : availabilityClass)}>
+              {availabilityMessage}
+            </p>
           </div>
-          <Button type="button" className="rounded-full px-6" onClick={() => setHash("offer")}>
-            Create Offer
-          </Button>
+          <div className="flex flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
+            <SegmentedControl
+              value={onlineStatus ? "online" : "offline"}
+              onChange={value => handleAvailabilityChange(value === "online")}
+              disabled={toggleDisabled}
+              options={[
+                {
+                  label: "Offline",
+                  value: "offline",
+                  activeClassName: "bg-red-500 text-white shadow-[0_8px_20px_-12px_rgba(220,38,38,0.65)]",
+                  inactiveClassName: "text-red-500 hover:bg-red-500/10"
+                },
+                {
+                  label: "Online",
+                  value: "online",
+                  activeClassName: "bg-emerald-500 text-white shadow-[0_8px_20px_-12px_rgba(16,185,129,0.65)]",
+                  inactiveClassName: "text-emerald-500 hover:bg-emerald-500/10"
+                }
+              ]}
+            />
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-full px-5 py-2 text-sm font-semibold"
+              onClick={() => setHash("offer")}
+            >
+              Create Offer
+            </Button>
+            {availabilityError ? (
+              <p className="text-xs text-red-500 sm:ml-auto sm:basis-full sm:text-right">{availabilityError}</p>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent>
           <DataTable

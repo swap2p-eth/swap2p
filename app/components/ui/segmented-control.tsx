@@ -16,6 +16,7 @@ export interface SegmentedControlProps {
   options: SegmentedOption[];
   className?: string;
   emphasis?: "default" | "ghost";
+  disabled?: boolean;
 }
 
 export function SegmentedControl({
@@ -23,13 +24,15 @@ export function SegmentedControl({
   onChange,
   options,
   className,
-  emphasis = "default"
+  emphasis = "default",
+  disabled = false
 }: SegmentedControlProps) {
   return (
     <div
       className={cn(
         "inline-flex items-center rounded-full p-1 shadow-[0_8px_30px_-20px_rgba(15,23,42,0.45)] backdrop-blur transition",
         emphasis === "ghost" ? "bg-background/70" : "bg-card/80",
+        disabled ? "pointer-events-none opacity-60" : undefined,
         className
       )}
     >
@@ -39,7 +42,12 @@ export function SegmentedControl({
           <button
             key={option.value}
             type="button"
-            onClick={() => onChange(option.value)}
+            onClick={() => {
+              if (disabled) return;
+              onChange(option.value);
+            }}
+            disabled={disabled}
+            aria-pressed={active}
             className={cn(
               "px-4 py-1.5 text-sm font-medium rounded-full transition-colors",
               active
