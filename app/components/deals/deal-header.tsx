@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { DealStatusBadge } from "@/components/deals/deal-status-badge";
 
 interface DealHeaderProps {
   backLabel?: string;
@@ -19,24 +19,10 @@ export function DealHeader({
   subtitle,
   badge
 }: DealHeaderProps) {
-  const normalizedBadge = badge?.toLowerCase() ?? "";
-  const badgeVariant =
-    normalizedBadge === "requested"
-      ? "warning"
-      : normalizedBadge === "accepted"
-        ? "info"
-        : normalizedBadge === "paid"
-          ? "purple"
-          : normalizedBadge === "released"
-            ? "success"
-            : normalizedBadge === "canceled"
-              ? "muted"
-              : "outline";
-  const badgeLabel = badge?.toUpperCase();
   return (
     <div className="flex flex-col gap-3">
       <Link
-        href="#back"
+        href="/#back"
         onClick={event => {
           event.preventDefault();
           onBack?.();
@@ -51,14 +37,7 @@ export function DealHeader({
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
           {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
-        {badge ? (
-          <Badge
-            variant={badgeVariant as any}
-            className="rounded-full px-4 py-1.5 text-sm font-semibold uppercase tracking-[0.2em]"
-          >
-            {badgeLabel}
-          </Badge>
-        ) : null}
+        {badge ? <DealStatusBadge status={badge} size="lg" /> : null}
       </div>
     </div>
   );

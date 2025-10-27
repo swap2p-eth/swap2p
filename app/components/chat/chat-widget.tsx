@@ -8,8 +8,8 @@ import { cn } from "@/lib/utils";
 import type { DealState } from "@/lib/types/market";
 import type { DealChatMessage } from "@/lib/swap2p/types";
 import { useChatMessages } from "@/hooks/use-chat-messages";
-import { CHAT_MESSAGE_STATE_CLASSES } from "@/lib/chat/chat-state";
 import { RelativeTime } from "@/components/relative-time";
+import { DealStatusBadge } from "@/components/deals/deal-status-badge";
 
 interface ChatWidgetProps {
   className?: string;
@@ -98,7 +98,6 @@ export function ChatWidget({
       <div ref={containerRef} className="flex-1 overflow-y-auto px-0 pr-2 pb-2">
         <ChatList className="space-y-1 py-4 px-0">
           {messages.map(message => {
-            const stateClass = message.state ? CHAT_MESSAGE_STATE_CLASSES[message.state] : undefined;
             return (
               <ChatMessage
                 key={message.id}
@@ -110,16 +109,7 @@ export function ChatWidget({
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   ) : null}
                   <div className="mt-1 flex items-center gap-2 text-[0.65rem] text-muted-foreground/70">
-                    {message.state ? (
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded-full px-2 py-1 font-semibold uppercase tracking-[0.2em]",
-                          stateClass
-                        )}
-                      >
-                        {message.state}
-                      </span>
-                    ) : null}
+                    {message.state ? <DealStatusBadge status={message.state} size="sm" /> : null}
                     <RelativeTime
                       value={message.timestamp}
                       className="ml-auto text-[0.65rem] text-muted-foreground/70"

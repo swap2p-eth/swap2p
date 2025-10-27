@@ -275,7 +275,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
           return (
             <ChatToast
               title={fiatTitle ?? undefined}
-              message={decoded || "Deal status updated"}
+              message={decoded || ""}
               status={stateLabel}
               timestamp={message.timestamp}
               onOpen={() => {

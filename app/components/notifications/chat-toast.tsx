@@ -4,9 +4,9 @@ import * as React from "react";
 import { X } from "lucide-react";
 
 import { RelativeTime } from "@/components/relative-time";
-import { CHAT_MESSAGE_STATE_CLASSES } from "@/lib/chat/chat-state";
 import type { DealState } from "@/lib/types/market";
 import { cn } from "@/lib/utils";
+import { DealStatusBadge } from "@/components/deals/deal-status-badge";
 
 const STATUS_BACKGROUNDS: Record<DealState, string> = {
   REQUESTED: "bg-orange-500/10",
@@ -43,7 +43,6 @@ export function ChatToast({ title, message, status, timestamp, onOpen, onClose }
   );
 
   const background = status ? STATUS_BACKGROUNDS[status] ?? DEFAULT_BACKGROUND : DEFAULT_BACKGROUND;
-  const statusClass = status ? CHAT_MESSAGE_STATE_CLASSES[status] : undefined;
 
   return (
     <div
@@ -64,16 +63,7 @@ export function ChatToast({ title, message, status, timestamp, onOpen, onClose }
           <span className="text-sm text-foreground/90">{message}</span>
         ) : null}
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          {status && statusClass ? (
-            <span
-              className={cn(
-                "inline-flex items-center rounded-full px-2 py-1 font-semibold uppercase tracking-[0.2em]",
-                statusClass
-              )}
-            >
-              {status}
-            </span>
-          ) : null}
+          {status ? <DealStatusBadge status={status} size="sm" /> : null}
           <RelativeTime value={timestamp} className="ml-auto text-xs text-muted-foreground/70" />
         </span>
       </div>

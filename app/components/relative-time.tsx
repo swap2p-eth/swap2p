@@ -28,9 +28,9 @@ function formatRelative(source: Date, now: Date): string {
   const future = diffMs < 0;
   const absMs = Math.abs(diffMs);
 
-  if (absMs < 30_000) {
-    return "now";
-  }
+  // if (absMs < 30_000) {
+  //   return "now";
+  // }
 
   const segments: string[] = [];
   const seconds = Math.floor(absMs / 1_000);
