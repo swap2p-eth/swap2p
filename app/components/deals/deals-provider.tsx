@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useChainId, usePublicClient } from "wagmi";
-import { formatUnits, getAddress, parseUnits, type Address, type Hash } from "viem";
+import { formatUnits, getAddress, hexToString, parseUnits, type Address, type Hash, type Hex } from "viem";
 
 import { useUser } from "@/context/user-context";
 import { useNetworkConfig } from "@/hooks/use-network-config";
@@ -13,8 +13,11 @@ import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import { normalizeAddress } from "@/lib/deal-utils";
 import type { DealRow, DealState } from "@/lib/types/market";
 import type { OfferRow } from "@/lib/types/market";
-import { SwapDealState, SwapSide, type Deal as ContractDeal } from "@/lib/swap2p/types";
+import { SwapDealState, SwapSide, type Deal as ContractDeal, type DealChatMessage } from "@/lib/swap2p/types";
 import { swap2pAbi } from "@/lib/swap2p/generated";
+import { toast } from "sonner";
+import { CHAT_MESSAGE_STATE_LABELS } from "@/lib/chat/chat-state";
+import { ChatToast } from "@/components/notifications/chat-toast";
 
 type AmountKind = "crypto" | "fiat";
 export type DealParticipant = "MAKER" | "TAKER";
@@ -198,6 +201,83 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   const [chainDeals, setChainDeals] = React.useState<DealRow[]>([]);
   const [draftDeals, setDraftDeals] = React.useState<DealRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
+  const seenChatToastsRef = React.useRef<Set<string>>(new Set());
+
+  const decodeChatPayload = React.useCallback((payload: string | undefined): string => {
+    if (!payload) return "";
+    try {
+      if (payload.startsWith("0x")) {
+        return hexToString(payload as Hex).trim();
+      }
+    } catch (error) {
+      debug("chat:decode:failed", { error });
+    }
+    return payload;
+  }, []);
+
+  const showChatToast = React.useCallback(
+    (deal: DealRow, message: DealChatMessage, toastKey: string) => {
+      const decoded = decodeChatPayload(message.payload);
+      const stateLabel = CHAT_MESSAGE_STATE_LABELS[message.state];
+
+      toast.custom(
+        toastInstance => {
+          const handleNavigate = () => {
+            if (typeof window === "undefined") return;
+            const targetHash = `deal/${deal.id}`;
+            const scrollToChat = () => {
+              let attempts = 0;
+              const maxAttempts = 40;
+              const attemptScroll = () => {
+                const chatSection = document.getElementById("deal-chat");
+                if (chatSection) {
+                  chatSection.scrollIntoView({ behavior: "smooth", block: "start" });
+                  return;
+                }
+                attempts += 1;
+                if (attempts < maxAttempts) {
+                  window.setTimeout(attemptScroll, 100);
+                }
+              };
+              attemptScroll();
+            };
+
+            const handleHashChange = () => {
+              window.removeEventListener("hashchange", handleHashChange);
+              scrollToChat();
+            };
+
+            window.addEventListener("hashchange", handleHashChange);
+            if (window.location.hash === `#${targetHash}`) {
+              window.dispatchEvent(new Event("hashchange"));
+            } else {
+              window.location.hash = targetHash;
+            }
+            scrollToChat();
+          };
+
+          return (
+            <ChatToast
+              message={decoded || "New chat message."}
+              status={stateLabel}
+              timestamp={message.timestamp}
+              onOpen={() => {
+                handleNavigate();
+                toast.dismiss(toastKey);
+              }}
+              onClose={() => toast.dismiss(toastKey)}
+            />
+          );
+        },
+        {
+          id: toastKey,
+          duration: Infinity,
+          dismissible: true
+        }
+      );
+    },
+    [decodeChatPayload]
+  );
 
   const fetchAndSetDeals = React.useCallback(async () => {
     if (!adapter || !currentUserAddress) {
@@ -284,6 +364,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     };
 
     const registerChatWatcher = (args: { from?: Address; to?: Address }) => {
+      const shouldNotify = Boolean(args.to);
       try {
         const unwatch = publicClient.watchContractEvent({
           address: contractAddress,
@@ -298,7 +379,45 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
               count: logs.length,
               ids: logs.map(log => log.args?.id).filter(Boolean),
             });
-            void fetchAndSetDeals();
+            const relevantLogs = shouldNotify
+              ? logs.filter(log => {
+                  const toArg = log.args?.to as Address | undefined;
+                  return toArg && getAddress(toArg) === normalizedUser;
+                })
+              : [];
+            const update = fetchAndSetDeals();
+            if (shouldNotify && relevantLogs.length > 0) {
+              void update
+                .then(dealsList => {
+                  for (const log of relevantLogs) {
+                    const idValue = log.args?.id as Hex | undefined;
+                    const indexRaw = log.args?.index as bigint | number | undefined;
+                    if (!idValue) continue;
+                    const dealId = typeof idValue === "string" ? idValue.toLowerCase() : String(idValue).toLowerCase();
+                    const index =
+                      typeof indexRaw === "bigint" ? Number(indexRaw) : Number(indexRaw ?? 0);
+                    const deal = dealsList.find(entry => entry.id.toLowerCase() === dealId);
+                    const chatLog = deal?.contract?.chat;
+                    const message =
+                      chatLog && chatLog.length > 0
+                        ? chatLog[index] ?? chatLog[chatLog.length - 1]
+                        : undefined;
+                    if (!deal || !message) continue;
+                    const toastKey = `${dealId}:${index}:${message.timestamp}:${message.payload ?? ""}`;
+                    if (seenChatToastsRef.current.has(toastKey)) continue;
+
+                    seenChatToastsRef.current.add(toastKey);
+                    showChatToast(deal, message, toastKey);
+                  }
+                })
+                .catch(error => {
+                  console.error("[DealsProvider] failed to refresh deals after chat event", error);
+                });
+            } else {
+              void update.catch(error => {
+                console.error("[DealsProvider] failed to refresh deals after chat event", error);
+              });
+            }
           },
         });
         unwatchers.push(unwatch);
@@ -321,7 +440,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         }
       }
     };
-  }, [publicClient, currentUserAddress, network.swap2pAddress, fetchAndSetDeals]);
+  }, [publicClient, currentUserAddress, network.swap2pAddress, fetchAndSetDeals, showChatToast]);
 
   React.useEffect(() => {
     setChainDeals([]);
@@ -331,6 +450,10 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     setDraftDeals([]);
   }, [currentUserAddress]);
+
+  React.useEffect(() => {
+    seenChatToastsRef.current.clear();
+  }, [currentUserAddress, chainId]);
 
   const deals = React.useMemo(
     () => [...chainDeals, ...draftDeals],

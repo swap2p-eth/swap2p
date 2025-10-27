@@ -27,9 +27,10 @@ export function DealChatCard({
   return (
     <section
       className={cn(
-        "rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur",
+        "rounded-3xl bg-card/60 p-6 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.45)] backdrop-blur scroll-mt-32",
         className
       )}
+      id="deal-chat"
     >
       <header className="mb-4">
         <h2 className="text-lg font-semibold">Chat</h2>
