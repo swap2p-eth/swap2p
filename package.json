@@ -28,7 +28,7 @@
     "test-gas:update": "UPDATE_GAS_BASELINE=1 npx hardhat test nodejs test/gas.node.ts",
     "test-gas:sol": "npx hardhat test solidity contracts/tests/Swap2p_Gas.t.sol",
     "coverage": "rm -rf coverage && npx hardhat test --coverage",
-    "local:node": "HARDHAT_VERBOSE=true npx hardhat node",
+    "local:node": "HARDHAT_VERBOSE=true npx hardhat node --show-stack-traces",
     "local:seed": "npx hardhat run --network localhost scripts/seed-hardhat.ts",
     "deploy:hardhat": "npx hardhat run --network hardhat scripts/deploy-swap2p.ts",
     "deploy:sepolia": "npx hardhat run --network sepolia scripts/deploy-swap2p.ts"
