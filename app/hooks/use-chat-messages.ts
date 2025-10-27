@@ -86,8 +86,11 @@ export function useChatMessages({
       await onSend(text);
       setDraft("");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send message.";
-      setError(message);
+      console.error("[chat] send failed", err);
+      const fullMessage =
+        err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to send message.";
+      const shortMessage = fullMessage.split(".")[0] ?? "Failed to send message";
+      setError(shortMessage.trim());
     } finally {
       setSending(false);
     }

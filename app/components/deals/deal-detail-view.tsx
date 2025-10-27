@@ -90,9 +90,11 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     try {
       await task();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Operation failed.";
       console.error("[deal] action failed", error);
-      setActionError(message);
+      const fullMessage =
+        error instanceof Error ? error.message : typeof error === "string" ? error : "Operation failed.";
+      const shortMessage = fullMessage.split(".")[0] ?? "Operation failed";
+      setActionError(shortMessage.trim());
     } finally {
       setActionBusy(false);
     }

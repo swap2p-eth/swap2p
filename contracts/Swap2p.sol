@@ -178,7 +178,6 @@ contract Swap2p is ReentrancyGuard {
 
     event Chat(bytes32 indexed id, address indexed from, address indexed to, uint32 index);
 
-    /// @notice Emitted for each affiliate partner receiving a share of the fee (taker or maker).
     event MakerOnline(address indexed maker, bool online);
 
     // ────────────────────────────────────────────────────────────────────────

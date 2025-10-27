@@ -269,25 +269,38 @@ const simulateAndWrite = async (
     account,
     value,
   });
-  const { request } = await publicClient.simulateContract({
-    address,
-    abi: swap2pAbi,
-    functionName,
-    args: args as any,
-    account,
-    value,
-  } as any);
-  debugLog("[swap2p][write]", {
-    functionName,
-    account,
-    request,
-  });
-  const txHash = await walletClient.writeContract(request);
-  debugLog("[swap2p][write:submitted]", {
-    functionName,
-    hash: txHash,
-  });
-  return txHash;
+  try {
+    const { request } = await publicClient.simulateContract({
+      address,
+      abi: swap2pAbi,
+      functionName,
+      args: args as any,
+      account,
+      value,
+    } as any);
+    debugLog("[swap2p][write]", {
+      functionName,
+      account,
+      request,
+    });
+    const txHash = await walletClient.writeContract(request);
+    debugLog("[swap2p][write:submitted]", {
+      functionName,
+      hash: txHash,
+    });
+    return txHash;
+  } catch (error) {
+    const payload = {
+      functionName,
+      account,
+      args,
+      value,
+      error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+    };
+    console.error("[swap2p][simulate:error]", payload);
+    debugLog("[swap2p][simulate:error]", payload);
+    throw error;
+  }
 };
 
 export const createSwap2pViemAdapter = (
@@ -303,17 +316,28 @@ export const createSwap2pViemAdapter = (
         functionName: params.functionName,
         args: params.args,
       });
-      const result = await publicClient.readContract({
-        address,
-        abi: swap2pAbi,
-        functionName: params.functionName,
-        args: params.args,
-      } as any);
-      debugLog("[swap2p][read:result]", {
-        functionName: params.functionName,
-        result,
-      });
-      return result;
+      try {
+        const result = await publicClient.readContract({
+          address,
+          abi: swap2pAbi,
+          functionName: params.functionName,
+          args: params.args,
+        } as any);
+        debugLog("[swap2p][read:result]", {
+          functionName: params.functionName,
+          result,
+        });
+        return result;
+      } catch (error) {
+        const payload = {
+          functionName: params.functionName,
+          args: params.args,
+          error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
+        };
+        console.error("[swap2p][read:error]", payload);
+        debugLog("[swap2p][read:error]", payload);
+        throw error;
+      }
     })();
 
   const readDeal = async (id: Hex): Promise<Deal | null> => {

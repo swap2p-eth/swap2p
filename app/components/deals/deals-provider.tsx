@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useChainId, usePublicClient } from "wagmi";
-import { formatUnits, getAddress, parseUnits, type Hash } from "viem";
+import { formatUnits, getAddress, parseUnits, type Address, type Hash } from "viem";
 
 import { useUser } from "@/context/user-context";
 import { useNetworkConfig } from "@/hooks/use-network-config";
@@ -243,6 +243,85 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
     };
   }, [refresh]);
+
+  React.useEffect(() => {
+    if (!publicClient || !currentUserAddress) return undefined;
+    if (!network.swap2pAddress || network.swap2pAddress === ZERO_ADDRESS) return undefined;
+
+    let normalizedUser: Address;
+    let contractAddress: Address;
+    try {
+      normalizedUser = getAddress(currentUserAddress);
+      contractAddress = getAddress(network.swap2pAddress);
+    } catch (error) {
+      console.error("[DealsProvider] failed to normalize addresses for event subscriptions", error);
+      return undefined;
+    }
+
+    const unwatchers: Array<() => void> = [];
+    const registerDealWatcher = (args: { maker?: Address; taker?: Address }) => {
+      try {
+        const unwatch = publicClient.watchContractEvent({
+          address: contractAddress,
+          abi: swap2pAbi,
+          eventName: "DealUpdated",
+          args,
+          pollingInterval: 5_000,
+          onLogs: logs => {
+            if (!logs.length) return;
+            debug("deals:watch:DealUpdated", {
+              filters: args,
+              count: logs.length,
+              ids: logs.map(log => log.args?.id).filter(Boolean),
+            });
+            void fetchAndSetDeals();
+          },
+        });
+        unwatchers.push(unwatch);
+      } catch (error) {
+        console.error("[DealsProvider] failed to watch DealUpdated events", { args, error });
+      }
+    };
+
+    const registerChatWatcher = (args: { from?: Address; to?: Address }) => {
+      try {
+        const unwatch = publicClient.watchContractEvent({
+          address: contractAddress,
+          abi: swap2pAbi,
+          eventName: "Chat",
+          args,
+          pollingInterval: 5_000,
+          onLogs: logs => {
+            if (!logs.length) return;
+            debug("deals:watch:Chat", {
+              filters: args,
+              count: logs.length,
+              ids: logs.map(log => log.args?.id).filter(Boolean),
+            });
+            void fetchAndSetDeals();
+          },
+        });
+        unwatchers.push(unwatch);
+      } catch (error) {
+        console.error("[DealsProvider] failed to watch Chat events", { args, error });
+      }
+    };
+
+    registerDealWatcher({ maker: normalizedUser });
+    registerDealWatcher({ taker: normalizedUser });
+    registerChatWatcher({ from: normalizedUser });
+    registerChatWatcher({ to: normalizedUser });
+
+    return () => {
+      for (const unwatch of unwatchers) {
+        try {
+          unwatch();
+        } catch (error) {
+          console.error("[DealsProvider] failed to unwatch contract event", error);
+        }
+      }
+    };
+  }, [publicClient, currentUserAddress, network.swap2pAddress, fetchAndSetDeals]);
 
   React.useEffect(() => {
     setChainDeals([]);

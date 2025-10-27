@@ -40,6 +40,7 @@ const config: HardhatUserConfig = {
       type: "edr-simulated",
       chainType: "l1",
       allowUnlimitedContractSize: true,
+      loggingEnabled: true
     },
     hardhatOp: {
       type: "edr-simulated",

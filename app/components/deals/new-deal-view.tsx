@@ -318,9 +318,11 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       });
       onCreated?.(dealRow.id);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to create deal.";
       console.error("[new-deal] request failed", error);
-      setActionError(message);
+      const fullMessage =
+        error instanceof Error ? error.message : typeof error === "string" ? error : "Failed to create deal.";
+      const shortMessage = fullMessage.split(".")[0] ?? "Failed to create deal";
+      setActionError(shortMessage.trim());
     } finally {
       setActionBusy(false);
     }
@@ -373,9 +375,11 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       await publicClient.waitForTransactionReceipt({ hash: txHash });
       setAllowanceNonce(value => value + 1);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Token approval failed.";
       console.error("[deal] approval failed", error);
-      setActionError(message);
+      const fullMessage =
+        error instanceof Error ? error.message : typeof error === "string" ? error : "Token approval failed.";
+      const shortMessage = fullMessage.split(".")[0] ?? "Token approval failed";
+      setActionError(shortMessage.trim());
     } finally {
       setApprovalBusy(false);
     }
