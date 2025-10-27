@@ -24,6 +24,7 @@ import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-f
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import type { ApprovalMode } from "./token-approval-button";
 import { getNetworkConfigForChain } from "@/config";
+import { isUserRejectedError } from "@/lib/errors";
 
 type AmountKind = "crypto" | "fiat";
 type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
@@ -318,7 +319,8 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       });
       onCreated?.(dealRow.id);
     } catch (error) {
-      console.error("[new-deal] request failed", error);
+      const log = isUserRejectedError(error) ? console.warn : console.error;
+      log("[new-deal] request failed", error);
       const fullMessage =
         error instanceof Error ? error.message : typeof error === "string" ? error : "Failed to create deal.";
       const shortMessage = fullMessage.split(".")[0] ?? "Failed to create deal";
@@ -375,7 +377,8 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       await publicClient.waitForTransactionReceipt({ hash: txHash });
       setAllowanceNonce(value => value + 1);
     } catch (error) {
-      console.error("[deal] approval failed", error);
+      const log = isUserRejectedError(error) ? console.warn : console.error;
+      log("[deal] approval failed", error);
       const fullMessage =
         error instanceof Error ? error.message : typeof error === "string" ? error : "Token approval failed.";
       const shortMessage = fullMessage.split(".")[0] ?? "Token approval failed";

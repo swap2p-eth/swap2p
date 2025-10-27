@@ -35,7 +35,7 @@ export function DealChatCard({
         <h2 className="text-lg font-semibold">Chat</h2>
       </header>
       <ChatWidget
-        className="min-h-[360px] bg-transparent shadow-none"
+        className="h-[360px] sm:h-[420px] bg-transparent shadow-none"
         dealState={dealState}
         chat={chat}
         currentAccount={currentAccount}

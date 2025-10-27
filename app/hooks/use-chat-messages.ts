@@ -7,6 +7,7 @@ import {
 import { CHAT_MESSAGE_STATE_LABELS } from "@/lib/chat/chat-state";
 import type { DealChatMessage } from "@/lib/swap2p/types";
 import { hexToString, type Hex } from "viem";
+import { isUserRejectedError } from "@/lib/errors";
 
 interface UseChatMessagesOptions {
   chat?: DealChatMessage[];
@@ -86,7 +87,8 @@ export function useChatMessages({
       await onSend(text);
       setDraft("");
     } catch (err) {
-      console.error("[chat] send failed", err);
+      const log = isUserRejectedError(err) ? console.warn : console.error;
+      log("[chat] send failed", err);
       const fullMessage =
         err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to send message.";
       const shortMessage = fullMessage.split(".")[0] ?? "Failed to send message";
@@ -99,7 +101,10 @@ export function useChatMessages({
   React.useEffect(() => {
     if (!containerRef?.current) return;
     const element = containerRef.current;
-    element.scrollTop = element.scrollHeight;
+    const raf = requestAnimationFrame(() => {
+      element.scrollTop = element.scrollHeight;
+    });
+    return () => cancelAnimationFrame(raf);
   }, [messages, containerRef]);
 
   const clearError = React.useCallback(() => setError(null), []);

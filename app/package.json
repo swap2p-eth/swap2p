@@ -22,9 +22,9 @@
     "@tanstack/react-virtual": "^3.1.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "currency-codes": "^2.2.0",
     "date-fns": "^3.6.0",
     "flag-icons": "^7.5.0",
-    "currency-codes": "^2.2.0",
     "lucide-react": "^0.471.0",
     "next": "15.4.7",
     "next-themes": "^0.2.1",
@@ -46,6 +46,7 @@
     "cross-env": "^7.0.3",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.13",
+    "hardhat-tracer": "^3.4.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
     "typescript": "^5.6.3"

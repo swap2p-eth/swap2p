@@ -47,6 +47,7 @@ import {
   toBytes32,
   toNumber,
 } from "./utils";
+import { isUserRejectedError } from "@/lib/errors";
 
 type AnyPublicClient = PublicClient<Transport, Chain | undefined>;
 type AnyWalletClient = WalletClient<Transport, Chain | undefined, Account>;
@@ -297,7 +298,8 @@ const simulateAndWrite = async (
       value,
       error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
     };
-    console.error("[swap2p][simulate:error]", payload);
+    const log = isUserRejectedError(error) ? console.warn : console.error;
+    log("[swap2p][simulate:error]", payload);
     debugLog("[swap2p][simulate:error]", payload);
     throw error;
   }
@@ -334,7 +336,8 @@ export const createSwap2pViemAdapter = (
           args: params.args,
           error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
         };
-        console.error("[swap2p][read:error]", payload);
+        const log = isUserRejectedError(error) ? console.warn : console.error;
+        log("[swap2p][read:error]", payload);
         debugLog("[swap2p][read:error]", payload);
         throw error;
       }

@@ -16,6 +16,7 @@ import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-f
 import { getDealSideCopy } from "@/lib/deal-copy";
 import type { ApprovalMode } from "./token-approval-button";
 import { useNetworkConfig } from "@/hooks/use-network-config";
+import { isUserRejectedError } from "@/lib/errors";
 
 export interface DealDetailViewProps {
   dealId: string;
@@ -90,7 +91,8 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     try {
       await task();
     } catch (error) {
-      console.error("[deal] action failed", error);
+      const log = isUserRejectedError(error) ? console.warn : console.error;
+      log("[deal] action failed", error);
       const fullMessage =
         error instanceof Error ? error.message : typeof error === "string" ? error : "Operation failed.";
       const shortMessage = fullMessage.split(".")[0] ?? "Operation failed";

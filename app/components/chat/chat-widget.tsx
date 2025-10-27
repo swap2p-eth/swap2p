@@ -54,17 +54,26 @@ export function ChatWidget({
   });
   const isChatEnabled = chatEnabledStates.includes(dealState ?? "REQUESTED");
 
+  const scrollToBottom = React.useCallback(() => {
+    const element = containerRef.current;
+    if (!element) return;
+    requestAnimationFrame(() => {
+      element.scrollTop = element.scrollHeight;
+    });
+  }, []);
+
   const onSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       void (async () => {
         await submitMessage();
+        scrollToBottom();
         requestAnimationFrame(() => {
           inputRef.current?.focus();
         });
       })();
     },
-    [submitMessage]
+    [submitMessage, scrollToBottom]
   );
 
   const handleInputChange = (value: string) => {
@@ -77,7 +86,7 @@ export function ChatWidget({
   return (
     <ChatContainer
       className={cn(
-        "flex h-full flex-col rounded-3xl bg-card/60 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.65)] backdrop-blur",
+        "rounded-3xl bg-card/60 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.65)] backdrop-blur min-h-0",
         className
       )}
     >
