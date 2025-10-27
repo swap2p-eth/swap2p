@@ -51,7 +51,7 @@ export function ChatToast({ message, status, timestamp, onOpen, onClose }: ChatT
       onClick={handleOpen}
       onKeyDown={handleKeyDown}
       className={cn(
-        "group relative flex w-full items-start gap-3 rounded-2xl px-4 py-3 text-left shadow-lg backdrop-blur-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+        "group relative flex w-full items-start gap-3 rounded-2xl px-4 py-3 text-left shadow-2xl backdrop-blur-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
         "bg-background/95 text-foreground",
         background,
         "cursor-pointer"
