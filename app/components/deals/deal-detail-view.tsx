@@ -209,7 +209,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
 
   const tokenAmountValue = formatTokenAmount(deal.amount, displayTokenDecimals);
   const fiatAmountFormatted = fiatAmount ? formatFiatAmount(fiatAmount) : null;
-  const metaFiatLabel = fiatAmountFormatted ? `≈ ${fiatAmountFormatted} ${deal.currencyCode}` : "—";
+  const metaFiatLabel = fiatAmountFormatted ? `${fiatAmountFormatted}` : "—";
 
   const counterpartyLabel = isMaker ? "Client" : "Merchant";
   const counterpartyAddress = isMaker ? deal.taker : deal.maker;
