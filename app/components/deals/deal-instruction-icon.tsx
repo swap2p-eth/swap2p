@@ -1,6 +1,6 @@
 "use client";
 
-import { TriangleAlert, Hourglass, BadgeCheck } from "lucide-react";
+import { TriangleAlert, Watch, BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DealProgressState } from "@/lib/deal-scenarios";
 
@@ -23,11 +23,11 @@ export function DealInstructionIcon({
   state
 }: DealInstructionIconProps) {
   const isReleased = state === "RELEASED";
-  const Icon = isReleased ? BadgeCheck : highlight ? TriangleAlert : Hourglass;
+  const Icon = isReleased ? BadgeCheck : highlight ? TriangleAlert : Watch;
   const colorClass = isReleased
     ? "text-emerald-500"
     : highlight
       ? "text-orange-500"
-      : "text-muted-foreground/60";
+      : "text-muted-foreground";
   return <Icon className={cn(sizeClasses[size], colorClass, className)} aria-hidden="true" />;
 }
