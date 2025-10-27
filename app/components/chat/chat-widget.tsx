@@ -95,8 +95,8 @@ export function ChatWidget({
         description="Encrypted P2P coordination"
         className="border-0 px-6 py-5 text-sm font-medium text-muted-foreground/80"
       />*/}
-      <div ref={containerRef} className="flex-1 overflow-y-auto px-6 pb-6">
-        <ChatList className="space-y-4 py-4">
+      <div ref={containerRef} className="flex-1 overflow-y-auto px-0 pr-2 pb-2">
+        <ChatList className="space-y-1 py-4 px-0">
           {messages.map(message => {
             const stateClass = message.state ? CHAT_MESSAGE_STATE_CLASSES[message.state] : undefined;
             return (
@@ -105,7 +105,7 @@ export function ChatWidget({
                 role={message.role}
                 className={message.role === "assistant" ? "text-muted-foreground" : "text-foreground"}
               >
-                <div className="flex flex-col gap-2 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_12px_30px_-24px_rgba(15,23,42,0.5)]">
+                <div className="flex flex-col gap-0 rounded-3xl bg-background/70 px-3 py-3 ">
                   {message.content ? (
                     <p className="text-sm leading-relaxed">{message.content}</p>
                   ) : null}
@@ -134,7 +134,7 @@ export function ChatWidget({
       {isChatEnabled ? (
         <ChatInput
           onSubmit={onSubmit}
-          className="border-0 px-6 pb-6 pt-2"
+          className="border-0 px-0 pb-0 pt-2"
         >
           <div className="flex w-full items-center gap-3 rounded-2xl bg-background/70 px-3 py-2 shadow-[0_12px_30px_-28px_rgba(15,23,42,0.6)]">
             <input
