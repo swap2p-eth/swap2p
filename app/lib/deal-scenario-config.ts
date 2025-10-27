@@ -42,7 +42,7 @@ export const DEAL_SCENARIO_MAP: ScenarioMap = {
       },
       ACCEPTED: {
         instructions:
-          "Send the fiat transfer to the counterparty. After you send it, mark the deal as paid. If you cannot complete the transfer you may cancel the deal.",
+          "Send the fiat transfer to the client. After you send it, mark the deal as paid. If you cannot complete the transfer you may cancel the deal.",
         comment: {
           label: "Payment note (optional)",
           placeholder: "Confirm the transfer reference or share a note"
@@ -52,7 +52,7 @@ export const DEAL_SCENARIO_MAP: ScenarioMap = {
       },
       PAID: {
         instructions:
-          "Wait until the counterparty verifies the payment and releases the crypto. You will receive the trade amount and your deposit immediately after the release."
+          "Wait until the client verifies the payment and releases the crypto. You will receive the trade amount and your deposit immediately after the release."
       },
       RELEASED: {
         instructions: "Deal completed successfully. The trade amount and your deposit have been credited to your wallet."
