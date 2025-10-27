@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCurrentUserDeals } from "@/hooks/use-current-user-deals";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import { cn } from "@/lib/utils";
+import {Toaster} from "sonner";
 
 const NAV_ITEMS = [
   { hash: "offers", label: "Offers" }
@@ -78,6 +79,7 @@ export function SiteHeader() {
           <ConnectWalletPill />
         </div>
       </div>
+
     </header>
   );
 }

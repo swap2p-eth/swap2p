@@ -59,9 +59,9 @@ export function ChatToast({ title, message, status, timestamp, onOpen, onClose }
       )}
     >
       <div className="flex w-full flex-col gap-2 pr-8">
-        {title ? <span className="text-base font-semibold text-foreground">{title}</span> : null}
+        {title ? <span className="text-base text-foreground">{title}</span> : null}
         {message ? (
-          <span className="text-sm font-normal leading-relaxed text-foreground/90">{message}</span>
+          <span className="text-sm text-foreground/90">{message}</span>
         ) : null}
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
           {status && statusClass ? (

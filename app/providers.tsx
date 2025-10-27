@@ -133,12 +133,6 @@ function RainbowKitThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <RainbowKitProvider initialChain={hardhatChain} modalSize="compact" theme={theme}>
       {children}
-      <Toaster
-        position="top-right"
-        offset={{ top: "88px", right: "24px" }}
-        closeButton
-        richColors={false}
-      />
     </RainbowKitProvider>
   );
 }

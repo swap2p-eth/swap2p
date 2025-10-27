@@ -5,6 +5,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import { Providers } from "@/providers";
 import { SiteHeader } from "@/components/site-header";
 import { DealsProvider } from "@/components/deals/deals-provider";
+import {Toaster} from "sonner";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 
@@ -35,6 +36,12 @@ export default function RootLayout({
           <DealsProvider>
             <div className="flex min-h-screen flex-col">
               <SiteHeader />
+              <Toaster
+                  position="top-right"
+                  offset={{ top: "88px", right: "24px" }}
+                  closeButton
+                  richColors={false}
+              />
               <main className="flex-1 bg-transparent">
                 {children}
               </main>
