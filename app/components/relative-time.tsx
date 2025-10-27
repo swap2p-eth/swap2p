@@ -103,7 +103,7 @@ export function RelativeTime({ value, className }: RelativeTimeProps) {
     if (typeof window === "undefined") return;
     const id = window.setInterval(() => {
       setTick(prev => prev + 1);
-    }, 30_000);
+    }, 10_000);
     return () => {
       window.clearInterval(id);
     };

@@ -19,6 +19,7 @@ const STATUS_BACKGROUNDS: Record<DealState, string> = {
 const DEFAULT_BACKGROUND = "bg-muted/60";
 
 interface ChatToastProps {
+  title?: React.ReactNode;
   message: string;
   status?: DealState;
   timestamp: number | string | Date;
@@ -26,7 +27,7 @@ interface ChatToastProps {
   onClose?: () => void;
 }
 
-export function ChatToast({ message, status, timestamp, onOpen, onClose }: ChatToastProps) {
+export function ChatToast({ title, message, status, timestamp, onOpen, onClose }: ChatToastProps) {
   const handleOpen = React.useCallback(() => {
     onOpen?.();
   }, [onOpen]);
@@ -58,7 +59,10 @@ export function ChatToast({ message, status, timestamp, onOpen, onClose }: ChatT
       )}
     >
       <div className="flex w-full flex-col gap-2 pr-8">
-        <span className="text-sm leading-relaxed text-foreground">{message || ""}</span>
+        {title ? <span className="text-base font-semibold text-foreground">{title}</span> : null}
+        {message ? (
+          <span className="text-sm font-normal leading-relaxed text-foreground/90">{message}</span>
+        ) : null}
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
           {status && statusClass ? (
             <span

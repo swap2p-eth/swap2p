@@ -10,6 +10,7 @@ import { debug } from "@/lib/logger";
 import { ZERO_ADDRESS, type NetworkConfig } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
+import { formatFiatAmount } from "@/lib/number-format";
 import { normalizeAddress } from "@/lib/deal-utils";
 import type { DealRow, DealState } from "@/lib/types/market";
 import type { OfferRow } from "@/lib/types/market";
@@ -18,6 +19,7 @@ import { swap2pAbi } from "@/lib/swap2p/generated";
 import { toast } from "sonner";
 import { CHAT_MESSAGE_STATE_LABELS } from "@/lib/chat/chat-state";
 import { ChatToast } from "@/components/notifications/chat-toast";
+import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
 
 type AmountKind = "crypto" | "fiat";
 export type DealParticipant = "MAKER" | "TAKER";
@@ -219,6 +221,20 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     (deal: DealRow, message: DealChatMessage, toastKey: string) => {
       const decoded = decodeChatPayload(message.payload);
       const stateLabel = CHAT_MESSAGE_STATE_LABELS[message.state];
+      const fiatTitle = (() => {
+        const amount = typeof deal.fiatAmount === "number" && Number.isFinite(deal.fiatAmount) ? deal.fiatAmount : null;
+        if (!amount || amount <= 0) return null;
+        const formatted = formatFiatAmount(amount);
+        const symbol = deal.currencyCode?.trim();
+        const country = deal.countryCode ?? "";
+        return (
+          <FiatAmountCell
+            countryCode={country}
+            label={symbol ?? ""}
+            amountLabel={formatted}
+          />
+        );
+      })();
 
       toast.custom(
         toastInstance => {
@@ -258,7 +274,8 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
 
           return (
             <ChatToast
-              message={decoded || "Deal Updated"}
+              title={fiatTitle ?? undefined}
+              message={decoded || "New chat message."}
               status={stateLabel}
               timestamp={message.timestamp}
               onOpen={() => {
