@@ -205,7 +205,10 @@ type OfferDescriptor = {
   paymentMethods: string;
 };
 
-const [deployer, ...otherWallets] = walletClients as [WalletClientType, ...WalletClientType[]];
+if (walletClients.length === 0) {
+  throw new Error("Hardhat wallet clients are unavailable.");
+}
+const [deployer] = walletClients as [WalletClientType, ...WalletClientType[]];
 
 function parseAmount(value: string, decimals: number): bigint {
   return parseUnits(value, decimals);
@@ -251,12 +254,6 @@ for (const config of tokenConfigs) {
   console.log(`${config.symbol} deployed at ${token.address}`);
 }
 
-const takers = otherWallets.slice(0, 3);
-
-if (takers.length < 2) {
-  throw new Error("Need at least two taker accounts from Hardhat wallet clients.");
-}
-
 const makerContexts: MakerContext[] = [];
 
 for (const profile of makerProfiles) {
@@ -266,7 +263,16 @@ for (const profile of makerProfiles) {
   makerContexts.push({ profile, client, offers: [] });
 }
 
-const tokenApprovalTargets = [...makerContexts.map((m) => m.client), ...takers];
+if (makerContexts.length < 2) {
+  throw new Error("Need at least two maker profiles to seed deals.");
+}
+
+const uniqueClientMap = new Map<string, WalletClientType>();
+for (const context of makerContexts) {
+  uniqueClientMap.set(context.profile.address.toLowerCase(), context.client);
+}
+const tokenApprovalTargets = Array.from(uniqueClientMap.values());
+const takerClients = makerContexts.map(context => context.client);
 
 for (const { config, address: tokenAddress, decimals } of tokens.values()) {
   const makerAmount = parseAmount(config.makerMint, decimals);
@@ -281,7 +287,7 @@ for (const { config, address: tokenAddress, decimals } of tokens.values()) {
     }, `mint ${config.symbol} to maker ${maker.profile.nickname}`);
   }
 
-  for (const taker of takers) {
+  for (const taker of takerClients) {
     await writeWith(deployer, {
       address: tokenAddress,
       abi: mintableArtifact.abi,
@@ -449,10 +455,14 @@ for (const maker of makerContexts) {
   }
 }
 
-function nextTaker(index: { value: number }) {
-  const taker = takers[index.value % takers.length];
+function nextTaker(maker: MakerContext, index: { value: number }) {
+  const candidates = makerContexts.filter(ctx => ctx.profile.address !== maker.profile.address);
+  if (candidates.length === 0) {
+    throw new Error("No counterparty available for maker " + maker.profile.address);
+  }
+  const takerContext = candidates[index.value % candidates.length];
   index.value += 1;
-  return taker;
+  return takerContext.client;
 }
 
 async function requestDeal(params: {
@@ -552,7 +562,7 @@ for (const maker of makerContexts) {
 
   // SELL side scenarios
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     const dealId = await requestDeal({
       taker,
       offer: sellOffer,
@@ -567,7 +577,7 @@ for (const maker of makerContexts) {
   }
 
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     const dealId = await requestDeal({
       taker,
       offer: sellOffer,
@@ -583,7 +593,7 @@ for (const maker of makerContexts) {
   }
 
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     await requestDeal({
       taker,
       offer: sellOffer,
@@ -596,7 +606,7 @@ for (const maker of makerContexts) {
   }
 
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     const dealId = await requestDeal({
       taker,
       offer: sellOffer,
@@ -610,7 +620,7 @@ for (const maker of makerContexts) {
   }
 
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     const dealId = await requestDeal({
       taker,
       offer: sellOffer,
@@ -626,7 +636,7 @@ for (const maker of makerContexts) {
 
   // BUY side scenarios
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     const dealId = await requestDeal({
       taker,
       offer: buyOffer,
@@ -640,7 +650,7 @@ for (const maker of makerContexts) {
   }
 
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     const dealId = await requestDeal({
       taker,
       offer: buyOffer,
@@ -655,7 +665,7 @@ for (const maker of makerContexts) {
   }
 
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     await requestDeal({
       taker,
       offer: buyOffer,
@@ -668,7 +678,7 @@ for (const maker of makerContexts) {
   }
 
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     const dealId = await requestDeal({
       taker,
       offer: buyOffer,
@@ -682,7 +692,7 @@ for (const maker of makerContexts) {
   }
 
   {
-    const taker = nextTaker(takerCursor);
+    const taker = nextTaker(maker, takerCursor);
     const dealId = await requestDeal({
       taker,
       offer: buyOffer,
