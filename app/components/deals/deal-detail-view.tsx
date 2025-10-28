@@ -317,10 +317,11 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
         metaItems={metaItems}
         extraContent={
           <div className="flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Deal context</span>
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">Last update</span>
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span>
-                Last update: <RelativeTime value={deal.updatedAt} className="text-sm text-muted-foreground" />
+                {new Date(deal.updatedAt).toLocaleString()} (
+                <RelativeTime value={deal.updatedAt} className="text-sm text-muted-foreground" />)
               </span>
             </div>
           </div>
