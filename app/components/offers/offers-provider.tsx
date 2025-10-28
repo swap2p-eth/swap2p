@@ -14,6 +14,7 @@ import { SwapSide, type OfferWithKey, type MakerProfile, type Offer } from "@/li
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
 import { debug, error as logError, info as logInfo, warn as logWarn } from "@/lib/logger";
 import { resolvePartnerAddress } from "@/lib/partner";
+import { sanitizeUserText } from "@/lib/utils";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -141,6 +142,11 @@ const formatMethodList = (methods: string[]): string => {
   );
   return unique.join(METHODS_SEPARATOR);
 };
+
+const sanitizeMethods = (methods: string[]) =>
+  methods
+    .map(method => sanitizeUserText(method, { maxLength: 64, allowLineBreaks: false }))
+    .filter((method): method is string => method.length > 0);
 
 export function OffersProvider({ children }: { children: React.ReactNode }) {
   const { address } = useUser();
@@ -600,7 +606,8 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       const fiatLabel = fiatInfo?.shortLabel ?? normalizedCountry;
       const currencyCode = fiatInfo?.currencyCode ?? normalizedCountry;
-      const paymentMethodsValue = formatMethodList(paymentMethods);
+      const sanitizedMethods = sanitizeMethods(paymentMethods);
+      const paymentMethodsValue = formatMethodList(sanitizedMethods);
       const fallbackEntry: OfferRow = {
         id: generateOfferId(),
         side,
@@ -614,7 +621,10 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         minAmount,
         maxAmount,
         paymentMethods: paymentMethodsValue,
-        requirements: requirements ?? "",
+        requirements: sanitizeUserText(requirements ?? "", {
+          maxLength: 1024,
+          allowLineBreaks: true,
+        }),
         updatedAt: new Date().toISOString(),
         contractFiatCode,
         online: makerProfile?.online,
@@ -625,7 +635,10 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       const priceScaled = BigInt(Math.round(price * PRICE_SCALE));
       const minAmountScaled = parseUnits(String(minAmount), decimals);
       const maxAmountScaled = parseUnits(String(maxAmount), decimals);
-      const requirementsValue = requirements?.trim() ?? "";
+      const requirementsValue = sanitizeUserText(requirements ?? "", {
+        maxLength: 1024,
+        allowLineBreaks: true,
+      });
 
       const partnerAddress = resolvePartnerAddress();
 
@@ -725,18 +738,24 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           : existingMaxAmount;
       const maxArg = desiredMaxAmount === existingMaxAmount ? 0n : desiredMaxAmount;
 
-      const currentMethodsList = onchainOffer
-        ? parseMethodList(onchainOffer.paymentMethods)
-        : parseMethodList(offer.paymentMethods);
-      const nextMethodsList =
-        updates.paymentMethods !== undefined ? updates.paymentMethods : currentMethodsList;
+      const currentMethodsList = sanitizeMethods(
+        onchainOffer ? parseMethodList(onchainOffer.paymentMethods) : parseMethodList(offer.paymentMethods),
+      );
+      const nextMethodsList = sanitizeMethods(
+        updates.paymentMethods !== undefined ? updates.paymentMethods : currentMethodsList,
+      );
       const paymentMethodsValue = formatMethodList(nextMethodsList);
       const existingMethodsValue = formatMethodList(currentMethodsList);
       const paymentMethodsArg = paymentMethodsValue === existingMethodsValue ? "" : paymentMethodsValue;
 
-      const existingRequirementsValue = (onchainOffer?.requirements ?? offer.requirements ?? "").trim();
+      const existingRequirementsValue = sanitizeUserText(
+        onchainOffer?.requirements ?? offer.requirements ?? "",
+        { maxLength: 1024, allowLineBreaks: true },
+      );
       const desiredRequirementsValue =
-        updates.requirements !== undefined ? updates.requirements.trim() : existingRequirementsValue;
+        updates.requirements !== undefined
+          ? sanitizeUserText(updates.requirements, { maxLength: 1024, allowLineBreaks: true })
+          : existingRequirementsValue;
       const requirementsArg =
         desiredRequirementsValue === existingRequirementsValue ? "" : desiredRequirementsValue;
 

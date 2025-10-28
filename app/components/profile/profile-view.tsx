@@ -7,7 +7,7 @@ import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useUser } from "@/context/user-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { seedFromAddress } from "@/lib/utils";
+import { normalizeEvmAddress, seedFromAddress } from "@/lib/utils";
 import { ProfileCopyField } from "@/components/profile/profile-copy-field";
 
 interface ProfileViewProps {
@@ -16,8 +16,8 @@ interface ProfileViewProps {
 
 export function ProfileView({ address }: ProfileViewProps) {
   const { address: currentAddress } = useUser();
-  const explicitAddress = address?.trim() ?? "";
-  const normalizedCurrent = currentAddress?.trim() ?? "";
+  const explicitAddress = normalizeEvmAddress(address) ?? "";
+  const normalizedCurrent = normalizeEvmAddress(currentAddress) ?? "";
   const targetAddress = explicitAddress || normalizedCurrent;
   const { openConnectModal } = useConnectModal();
 

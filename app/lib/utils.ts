@@ -1,8 +1,52 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { getAddress, isAddress } from "viem";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+const CONTROL_CHARS_WITH_NEWLINE = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const CONTROL_CHARS_ALL = /[\u0000-\u001F\u007F]/g;
+
+type SanitizeOptions = {
+  maxLength?: number;
+  allowLineBreaks?: boolean;
+};
+
+export function sanitizeUserText(value: string, options: SanitizeOptions = {}) {
+  if (typeof value !== "string") return "";
+  const { maxLength = 512, allowLineBreaks = true } = options;
+  const controlPattern = allowLineBreaks ? CONTROL_CHARS_WITH_NEWLINE : CONTROL_CHARS_ALL;
+  let sanitized = value.replace(controlPattern, "");
+  if (allowLineBreaks) {
+    sanitized = sanitized.replace(/[ \t]+/g, " ");
+    sanitized = sanitized.replace(/\s*\n\s*/g, "\n");
+  } else {
+    sanitized = sanitized.replace(/\s+/g, " ");
+  }
+  sanitized = sanitized.trim();
+  if (sanitized.length > maxLength) {
+    sanitized = sanitized.slice(0, maxLength);
+  }
+  return sanitized;
+}
+
+export function sanitizeDisplayText(value: string, options: SanitizeOptions = {}) {
+  const { maxLength = 256, allowLineBreaks = false } = options;
+  return sanitizeUserText(value, { maxLength, allowLineBreaks });
+}
+
+export function normalizeEvmAddress(value?: string | null): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!isAddress(trimmed, { strict: false })) return null;
+  try {
+    return getAddress(trimmed);
+  } catch {
+    return null;
+  }
 }
 
 export function formatAddressShort(address?: string) {

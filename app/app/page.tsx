@@ -11,6 +11,7 @@ import { OffersProvider } from "@/components/offers/offers-provider";
 import { OfferView } from "@/components/offers/offer-view";
 import { ProfileView } from "@/components/profile/profile-view";
 import { usePartnerReferralCapture } from "@/hooks/use-partner-referral";
+import { normalizeEvmAddress } from "@/lib/utils";
 
 type ViewState =
   | { type: "offers" }
@@ -27,8 +28,8 @@ function parseHash(hash: string): ViewState {
   }
   if (normalized.startsWith("profile/")) {
     const [, target] = normalized.split("/");
-    const address = decodeURIComponent(target ?? "").trim();
-    if (address.length > 0) {
+    const address = normalizeEvmAddress(decodeURIComponent(target ?? ""));
+    if (address) {
       return { type: "profile", address };
     }
     return { type: "profile" };

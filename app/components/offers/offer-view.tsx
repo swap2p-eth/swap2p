@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, sanitizeUserText } from "@/lib/utils";
 import { FIAT_BY_COUNTRY, FIAT_INFOS, getNetworkConfigForChain, getPaymentMethodsForCountry } from "@/config";
 import { useOffers } from "./offers-provider";
 import { DealHeader } from "@/components/deals/deal-header";
@@ -159,7 +159,14 @@ export function OfferView({
   const [minAmount, setMinAmount] = React.useState(existingOffer ? String(existingOffer.minAmount) : "");
   const [maxAmount, setMaxAmount] = React.useState(existingOffer ? String(existingOffer.maxAmount) : "");
   const [requirements, setRequirements] = React.useState(existingOffer?.requirements ?? "");
-  const [selectedMethods, setSelectedMethods] = React.useState<string[]>(parseMethods(existingOffer?.paymentMethods));
+  const [selectedMethods, setSelectedMethods] = React.useState<string[]>(() =>
+    parseMethods(existingOffer?.paymentMethods).map(method =>
+      sanitizeUserText(method, {
+        maxLength: 64,
+        allowLineBreaks: false,
+      }),
+    ).filter((method): method is string => method.length > 0),
+  );
   const [customMethodInput, setCustomMethodInput] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -200,8 +207,22 @@ export function OfferView({
       setPrice(String(existingOffer.price));
       setMinAmount(String(existingOffer.minAmount));
       setMaxAmount(String(existingOffer.maxAmount));
-      setRequirements(existingOffer.requirements ?? "");
-      setSelectedMethods(parseMethods(existingOffer.paymentMethods));
+      setRequirements(
+        sanitizeUserText(existingOffer.requirements ?? "", {
+          maxLength: 1024,
+          allowLineBreaks: true,
+        }),
+      );
+      setSelectedMethods(
+        parseMethods(existingOffer.paymentMethods)
+          .map(method =>
+            sanitizeUserText(method, {
+              maxLength: 64,
+              allowLineBreaks: false,
+            }),
+          )
+          .filter((method): method is string => method.length > 0),
+      );
       setCustomMethodInput("");
       setError(null);
       setSuccessState(null);
@@ -258,6 +279,18 @@ export function OfferView({
       methods: string[],
       requirementsValue: string,
     ) => {
+      const sanitizedRequirements = sanitizeUserText(requirementsValue, {
+        maxLength: 1024,
+        allowLineBreaks: true,
+      });
+      const sanitizedMethods = methods
+        .map(method =>
+          sanitizeUserText(method, {
+            maxLength: 64,
+            allowLineBreaks: false,
+          }),
+        )
+        .filter((method): method is string => method.length > 0);
       setBaseline({
         priceScaled,
         priceDisplay: formatPriceFromScaled(priceScaled),
@@ -265,8 +298,8 @@ export function OfferView({
         minDisplay: formatUnits(minScaled, decimalsValue),
         maxAmountScaled: maxScaled,
         maxDisplay: formatUnits(maxScaled, decimalsValue),
-        paymentMethods: methods,
-        requirements: requirementsValue,
+        paymentMethods: sanitizedMethods,
+        requirements: sanitizedRequirements,
       });
     };
 
@@ -416,7 +449,10 @@ export function OfferView({
   const tokenLabel = (tokenSymbol || "token").toUpperCase();
 
   const addCustomMethod = React.useCallback(() => {
-    const trimmed = customMethodInput.trim();
+    const trimmed = sanitizeUserText(customMethodInput, {
+      maxLength: 64,
+      allowLineBreaks: false,
+    });
     if (!trimmed) return;
     fieldTouchedRef.current.paymentMethods = true;
     setSelectedMethods(prev => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
@@ -431,6 +467,25 @@ export function OfferView({
   const handleRemoveMethod = (method: string) => {
     fieldTouchedRef.current.paymentMethods = true;
     setSelectedMethods(prev => prev.filter(item => item !== method));
+  };
+
+  const handleCustomMethodInputChange = (value: string) => {
+    setCustomMethodInput(
+      sanitizeUserText(value, {
+        maxLength: 64,
+        allowLineBreaks: false,
+      }),
+    );
+  };
+
+  const handleRequirementsChange = (value: string) => {
+    fieldTouchedRef.current.requirements = true;
+    setRequirements(
+      sanitizeUserText(value, {
+        maxLength: 1024,
+        allowLineBreaks: true,
+      }),
+    );
   };
 
   const handleTokenChange = React.useCallback((symbol: string) => {
@@ -497,7 +552,10 @@ export function OfferView({
           minAmount: parsedMin,
           maxAmount: parsedMax,
           paymentMethods: selectedMethods,
-          requirements: requirements.trim()
+          requirements: sanitizeUserText(requirements, {
+            maxLength: 1024,
+            allowLineBreaks: true,
+          })
         });
 
         setSuccessState({
@@ -517,7 +575,10 @@ export function OfferView({
         minAmount: parsedMin,
         maxAmount: parsedMax,
         paymentMethods: selectedMethods,
-        requirements: requirements.trim()
+        requirements: sanitizeUserText(requirements, {
+          maxLength: 1024,
+          allowLineBreaks: true,
+        })
       });
 
       setSuccessState({
@@ -752,7 +813,7 @@ export function OfferView({
                   <div className="flex gap-2">
                     <Input
                       value={customMethodInput}
-                      onChange={event => setCustomMethodInput(event.target.value)}
+                    onChange={event => handleCustomMethodInputChange(event.target.value)}
                       onKeyDown={event => {
                         if (event.key === "Enter") {
                           event.preventDefault();
@@ -799,10 +860,7 @@ export function OfferView({
                 </label>
                 <TextArea
                   value={requirements}
-                  onChange={event => {
-                    fieldTouchedRef.current.requirements = true;
-                    setRequirements(event.target.value);
-                  }}
+                  onChange={event => handleRequirementsChange(event.target.value)}
                   placeholder="Write requirements and, if you sell crypto, include payment details for each rail."
                   maxLength={256}
                   className={cn("min-h-[200px]", requirementsChanged && "border-blue-500 focus-visible:ring-blue-500")}

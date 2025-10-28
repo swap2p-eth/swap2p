@@ -9,6 +9,7 @@ import type { DealChatMessage } from "@/lib/swap2p/types";
 import { hexToString, type Hex } from "viem";
 import { isUserRejectedError } from "@/lib/errors";
 import { error as logError, warn as logWarn } from "@/lib/logger";
+import { sanitizeDisplayText, sanitizeUserText } from "@/lib/utils";
 
 interface UseChatMessagesOptions {
   chat?: DealChatMessage[];
@@ -52,7 +53,19 @@ export function useChatMessages({
   maxLength = MAX_MESSAGE_LENGTH,
   onSend
 }: UseChatMessagesOptions = {}) {
-  const [draft, setDraft] = React.useState("");
+  const [draftState, setDraftState] = React.useState("");
+  const setDraft = React.useCallback(
+    (value: string) => {
+      setDraftState(
+        sanitizeUserText(value, {
+          maxLength,
+          allowLineBreaks: false,
+        }),
+      );
+    },
+    [maxLength],
+  );
+  const draft = draftState;
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -64,7 +77,11 @@ export function useChatMessages({
     return chat.map((entry, index) => {
       const sender = entry.toMaker ? normalizedTaker : normalizedMaker;
       const role = sender && sender === normalizedCurrent ? "user" : "assistant";
-      const content = safeDecode(entry.payload);
+      const decoded = safeDecode(entry.payload);
+      const content = sanitizeDisplayText(decoded, {
+        maxLength,
+        allowLineBreaks: false,
+      });
       const state = CHAT_MESSAGE_STATE_LABELS[entry.state];
       return {
         id: `${entry.timestamp}-${index}`,
@@ -74,7 +91,7 @@ export function useChatMessages({
         state
       };
     });
-  }, [chat, normalizedCurrent, normalizedMaker, normalizedTaker]);
+  }, [chat, normalizedCurrent, normalizedMaker, normalizedTaker, maxLength]);
 
   const isTooLong = draft.length > maxLength;
 
@@ -85,8 +102,16 @@ export function useChatMessages({
     setSending(true);
     setError(null);
     try {
-      await onSend(text);
-      setDraft("");
+      const sanitizedText = sanitizeUserText(text, {
+        maxLength,
+        allowLineBreaks: false,
+      });
+      if (!sanitizedText) {
+        setSending(false);
+        return;
+      }
+      await onSend(sanitizedText);
+      setDraftState("");
     } catch (err) {
       const log = isUserRejectedError(err) ? logWarn : logError;
       log("chat", "send failed", err);

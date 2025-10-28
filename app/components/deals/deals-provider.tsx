@@ -12,6 +12,8 @@ import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import { formatFiatAmount } from "@/lib/number-format";
 import { normalizeAddress } from "@/lib/deal-utils";
+import { sanitizeDisplayText, sanitizeUserText } from "@/lib/utils";
+import { MAX_MESSAGE_LENGTH } from "@/components/chat/chat-utils";
 import type { DealRow, DealState } from "@/lib/types/market";
 import type { OfferRow } from "@/lib/types/market";
 import { SwapDealState, SwapSide, type Deal as ContractDeal, type DealChatMessage } from "@/lib/swap2p/types";
@@ -208,14 +210,18 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
 
   const decodeChatPayload = React.useCallback((payload: string | undefined): string => {
     if (!payload) return "";
+    let decoded = payload;
     try {
       if (payload.startsWith("0x")) {
-        return hexToString(payload as Hex).trim();
+        decoded = hexToString(payload as Hex);
       }
     } catch (error) {
       debug("chat:decode:failed", { error });
     }
-    return payload;
+    return sanitizeDisplayText(decoded, {
+      maxLength: MAX_MESSAGE_LENGTH,
+      allowLineBreaks: false,
+    });
   }, []);
 
   const showChatToast = React.useCallback(
@@ -497,6 +503,14 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       }
 
       const decimals = offer.tokenDecimals ?? 18;
+      const sanitizedPaymentMethod = sanitizeUserText(paymentMethod, {
+        maxLength: 64,
+        allowLineBreaks: false,
+      });
+      const sanitizedPaymentDetails = sanitizeUserText(paymentDetails, {
+        maxLength: 512,
+        allowLineBreaks: true,
+      });
       const takerAccount = getAddress(currentUserAddress);
       const amountScaled = parseUnits(String(amount), decimals);
       const expectedPrice = BigInt(Math.round(offer.price * PRICE_SCALE));
@@ -525,8 +539,8 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         amount: amountScaled,
         fiat: fiatCode,
         expectedPrice,
-        paymentMethod,
-        details: paymentDetails,
+        paymentMethod: sanitizedPaymentMethod,
+        details: sanitizedPaymentDetails,
         partner: partnerAddress,
       });
 
@@ -565,7 +579,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         tokenDecimals: offer.tokenDecimals,
         price: offer.price,
         fiatAmount: offer.price * amount,
-        paymentMethod,
+        paymentMethod: sanitizedPaymentMethod,
       };
       return fallback;
     },
@@ -714,13 +728,16 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       if (!publicClient) {
         throw new Error("Public client unavailable for the current network.");
       }
-      const trimmed = message.trim();
-      if (!trimmed) return;
+      const sanitizedMessage = sanitizeUserText(message, {
+        maxLength: MAX_MESSAGE_LENGTH,
+        allowLineBreaks: false,
+      });
+      if (!sanitizedMessage) return;
       const deal = requireContractDeal(dealId);
       const txHash: Hash = await adapter.sendMessage({
         account: getAddress(currentUserAddress),
         id: deal.contractId,
-        message: trimmed,
+        message: sanitizedMessage,
       });
       await publicClient.waitForTransactionReceipt({ hash: txHash });
       await fetchAndSetDeals();

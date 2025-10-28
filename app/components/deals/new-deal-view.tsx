@@ -11,7 +11,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
 import type { OfferRow } from "@/lib/types/market";
-import { cn, formatAddressShort } from "@/lib/utils";
+import { cn, formatAddressShort, sanitizeUserText } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { DealStatusPanel } from "./deal-status-panel";
@@ -97,6 +97,15 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const [allowanceLoading, setAllowanceLoading] = React.useState(false);
   const [allowanceNonce, setAllowanceNonce] = React.useState(0);
   const [tokenAllowance, setTokenAllowance] = React.useState<bigint | null>(null);
+
+  const handlePaymentDetailsChange = React.useCallback((value: string) => {
+    setPaymentDetails(
+      sanitizeUserText(value, {
+        maxLength: 512,
+        allowLineBreaks: true,
+      }),
+    );
+  }, []);
 
   React.useEffect(() => {
     if (!offer) return;
@@ -314,7 +323,12 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       }
       return;
     }
-    const effectiveDetails = typeof note === "string" && note.trim().length > 0 ? note.trim() : paymentDetails.trim();
+    const effectiveDetails = typeof note === "string" && note.trim().length > 0 ? note : paymentDetails;
+    const sanitizedDetails = sanitizeUserText(effectiveDetails, {
+      maxLength: 512,
+      allowLineBreaks: true,
+    });
+    setPaymentDetails(sanitizedDetails);
     setActionBusy(true);
     setActionError(null);
     try {
@@ -323,7 +337,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         amount: tokenAmount,
         amountKind,
         paymentMethod,
-        paymentDetails: effectiveDetails
+        paymentDetails: sanitizedDetails
       });
       onCreated?.(dealRow.id);
     } catch (error) {
@@ -581,7 +595,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         comment={paymentDetails}
         commentName="new-deal-comment"
         commentError={paymentDetailsValid ? undefined : paymentDetailsError ?? "Payment details must be at least 5 characters."}
-        onCommentChange={setPaymentDetails}
+        onCommentChange={handlePaymentDetailsChange}
         onRequest={handleRequest}
         onCancel={handleCancel}
         onApproveTokens={handleApproveTokens}
