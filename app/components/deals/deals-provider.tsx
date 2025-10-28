@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { CHAT_MESSAGE_STATE_LABELS } from "@/lib/chat/chat-state";
 import { ChatToast } from "@/components/notifications/chat-toast";
 import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
+import { resolvePartnerAddress } from "@/lib/partner";
 
 type AmountKind = "crypto" | "fiat";
 export type DealParticipant = "MAKER" | "TAKER";
@@ -237,7 +238,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       })();
 
       toast.custom(
-        toastInstance => {
+        () => {
           const handleNavigate = () => {
             if (typeof window === "undefined") return;
             const targetHash = `deal/${deal.id}`;
@@ -500,6 +501,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       const amountScaled = parseUnits(String(amount), decimals);
       const expectedPrice = BigInt(Math.round(offer.price * PRICE_SCALE));
       const previousIds = new Set(chainDeals.map(deal => deal.id.toLowerCase()));
+      const partnerAddress = resolvePartnerAddress();
 
       let expectedDealId: string | null = null;
       try {
@@ -525,7 +527,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         expectedPrice,
         paymentMethod,
         details: paymentDetails,
-        partner: null,
+        partner: partnerAddress,
       });
 
       await publicClient.waitForTransactionReceipt({ hash: txHash });

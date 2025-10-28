@@ -10,6 +10,7 @@ import { useHashLocation } from "@/hooks/use-hash-location";
 import { OffersProvider } from "@/components/offers/offers-provider";
 import { OfferView } from "@/components/offers/offer-view";
 import { ProfileView } from "@/components/profile/profile-view";
+import { usePartnerReferralCapture } from "@/hooks/use-partner-referral";
 
 type ViewState =
   | { type: "offers" }
@@ -74,6 +75,7 @@ export default function HomePage() {
 }
 
 function HomePageRouter() {
+  usePartnerReferralCapture();
   const { hash, setHash } = useHashLocation("offers");
   const view = React.useMemo(() => parseHash(hash), [hash]);
   const lastStableHash = React.useRef<"offers" | "dashboard">("offers");

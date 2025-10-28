@@ -26,6 +26,7 @@ export interface AppConfigShape {
 }
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+export const DEFAULT_PARTNER_ADDRESS = ZERO_ADDRESS;
 
 const asAddress = (value?: string): `0x${string}` => {
   if (typeof value === "string" && value.startsWith("0x")) {

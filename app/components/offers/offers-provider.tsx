@@ -13,6 +13,7 @@ import type { OfferRow } from "@/lib/types/market";
 import { SwapSide, type OfferWithKey, type MakerProfile, type Offer } from "@/lib/swap2p/types";
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
 import { debug } from "@/lib/logger";
+import { resolvePartnerAddress } from "@/lib/partner";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -625,6 +626,8 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       const maxAmountScaled = parseUnits(String(maxAmount), decimals);
       const requirementsValue = requirements?.trim() ?? "";
 
+      const partnerAddress = resolvePartnerAddress();
+
       const txHash: Hash = await adapter.makerMakeOffer({
         account: makerAccount,
         token: tokenInfo.address,
@@ -635,7 +638,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         maxAmount: maxAmountScaled,
         paymentMethods: paymentMethodsValue,
         requirements: requirementsValue,
-        partner: null,
+        partner: partnerAddress,
       });
 
       await publicClient.waitForTransactionReceipt({ hash: txHash });
@@ -736,6 +739,8 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       const requirementsArg =
         desiredRequirementsValue === existingRequirementsValue ? "" : desiredRequirementsValue;
 
+      const partnerAddress = resolvePartnerAddress();
+
       const txPayload = {
         account: makerAccount,
         token: tokenAddress,
@@ -746,7 +751,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         maxAmount: maxArg,
         paymentMethods: paymentMethodsArg,
         requirements: requirementsArg,
-        partner: null,
+        partner: partnerAddress,
       };
 
       console.info("[offers] update payload", {

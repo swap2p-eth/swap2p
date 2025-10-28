@@ -10,6 +10,7 @@ import {
   getAddress,
 } from "viem";
 import { swap2pAbi } from "@/lib/swap2p/generated";
+import { DEFAULT_PARTNER_ADDRESS } from "@/config";
 import type {
   CancelDealArgs,
   CancelRequestArgs,
@@ -662,7 +663,7 @@ export const createSwap2pViemAdapter = (
           "Swap2pViemAdapter: account is required for maker_makeOffer",
         );
       }
-      const partnerAddress = partner ?? "0x0000000000000000000000000000000000000000";
+      const partnerAddress = partner ?? DEFAULT_PARTNER_ADDRESS;
       return simulateAndWrite(
         signer,
         publicClient,
@@ -736,7 +737,7 @@ export const createSwap2pViemAdapter = (
           expectedPrice,
           paymentMethod ?? "",
           details ?? "",
-          partner ?? "0x0000000000000000000000000000000000000000",
+          partner ?? DEFAULT_PARTNER_ADDRESS,
         ] as const,
         sender,
       );
