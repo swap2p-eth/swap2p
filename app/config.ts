@@ -1,8 +1,8 @@
 import hardhatDeployment from "@/networks/hardhat.json";
 import { hardhatChain } from "@/lib/chains";
 import { getFiatData } from "@/lib/fiat-data";
-import { PAYMENT_METHODS } from "@/payment-methods";
-export { PAYMENT_METHODS };
+import { BANK_TRANSFER_LABEL, PAYMENT_METHODS, getPaymentMethodsForCountry } from "@/payment-methods";
+export { PAYMENT_METHODS, BANK_TRANSFER_LABEL, getPaymentMethodsForCountry };
 import type { FiatInfo } from "@/lib/fiat-data";
 export type NetworkKey = "hardhat" | "ethereum" | "optimism";
 

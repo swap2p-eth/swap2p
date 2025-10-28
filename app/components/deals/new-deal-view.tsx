@@ -23,7 +23,7 @@ import { buildDealMetaItems } from "@/hooks/use-deal-meta";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import type { ApprovalMode } from "./token-approval-button";
-import { getNetworkConfigForChain } from "@/config";
+import { BANK_TRANSFER_LABEL, getNetworkConfigForChain } from "@/config";
 import { isUserRejectedError } from "@/lib/errors";
 import { error as logError, warn as logWarn } from "@/lib/logger";
 
@@ -43,6 +43,13 @@ const MERCHANT_REQUIREMENTS =
 const parsePaymentMethods = (raw: string): string[] => {
   if (!raw) return [];
   return raw.split(",").map(method => method.trim()).filter(Boolean);
+};
+
+const withBankTransferFirst = (methods: string[]): string[] => {
+  const trimmed = methods.map(method => method.trim()).filter(Boolean);
+  const unique = Array.from(new Set(trimmed));
+  const withoutBank = unique.filter(method => method !== BANK_TRANSFER_LABEL);
+  return [BANK_TRANSFER_LABEL, ...withoutBank];
 };
 
 const formatOfferSubtitle = (offer: OfferRow) =>
@@ -95,7 +102,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     if (!offer) return;
     setAmountKind("crypto");
     setAmount(offer.minAmount.toString());
-    const options = parsePaymentMethods(offer.paymentMethods);
+    const options = withBankTransferFirst(parsePaymentMethods(offer.paymentMethods));
     setPaymentMethod(options.length === 1 ? options[0] : "");
     setPaymentDetails("");
     setActionError(null);
@@ -173,7 +180,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const tokenDecimals = offer.tokenDecimals ?? 18;
   const displayTokenDecimals = Math.min(tokenDecimals, 8);
 
-  const paymentOptions = parsePaymentMethods(offer.paymentMethods);
+  const paymentOptions = withBankTransferFirst(parsePaymentMethods(offer.paymentMethods));
   const hasPaymentOptions = paymentOptions.length > 0;
   const limitsRange = `${formatTokenAmount(offer.minAmount, displayTokenDecimals)} – ${formatTokenAmount(offer.maxAmount, displayTokenDecimals)} ${offer.token}`;
   const amountNumber = Number(amount);

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { FIAT_BY_COUNTRY, FIAT_INFOS, PAYMENT_METHODS, getNetworkConfigForChain } from "@/config";
+import { FIAT_BY_COUNTRY, FIAT_INFOS, getNetworkConfigForChain, getPaymentMethodsForCountry } from "@/config";
 import { useOffers } from "./offers-provider";
 import { DealHeader } from "@/components/deals/deal-header";
 import { TokenIcon } from "@/components/token-icon";
@@ -85,8 +85,6 @@ const formatPriceFromScaled = (value: bigint): string => {
   }
   return `${integer.toString()}.${fractionStr}`;
 };
-
-const EMPTY_METHODS: readonly string[] = [];
 
 export function OfferView({
   mode = "create",
@@ -337,11 +335,18 @@ export function OfferView({
   }, [baseline, isEdit]);
 
   const paymentMethodOptions = React.useMemo<PaymentMethodOption[]>(() => {
-    const countryCode = selectedFiatInfo?.countryCode ?? "";
-    const countryKey = countryCode ? countryCode.toUpperCase() : "";
-    const base = PAYMENT_METHODS[countryKey] ?? EMPTY_METHODS;
+    const countryCode = selectedFiatInfo?.countryCode;
+    const base = getPaymentMethodsForCountry(countryCode);
     const extra = selectedMethods.filter(method => !base.includes(method));
-    return [...base, ...extra].map(method => ({ id: method, label: method }));
+    const combined = [...base, ...extra];
+    const seen = new Set<string>();
+    return combined
+      .filter(method => {
+        if (seen.has(method)) return false;
+        seen.add(method);
+        return true;
+      })
+      .map(method => ({ id: method, label: method }));
   }, [selectedFiatInfo, selectedMethods]);
 
   const tokenConfig = React.useMemo(
