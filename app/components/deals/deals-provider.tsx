@@ -12,8 +12,15 @@ import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import { formatFiatAmount } from "@/lib/number-format";
 import { normalizeAddress } from "@/lib/deal-utils";
-import { sanitizeDisplayText, sanitizeUserText } from "@/lib/utils";
+import { sanitizeDisplayText } from "@/lib/utils";
 import { MAX_MESSAGE_LENGTH } from "@/components/chat/chat-utils";
+import {
+  ChatMessageSchema,
+  DealRequestSchema,
+  sanitizeChatMessage,
+  sanitizeDealNote,
+  sanitizePaymentMethod,
+} from "@/lib/validation";
 import type { DealRow, DealState } from "@/lib/types/market";
 import type { OfferRow } from "@/lib/types/market";
 import { SwapDealState, SwapSide, type Deal as ContractDeal, type DealChatMessage } from "@/lib/swap2p/types";
@@ -503,14 +510,18 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       }
 
       const decimals = offer.tokenDecimals ?? 18;
-      const sanitizedPaymentMethod = sanitizeUserText(paymentMethod, {
-        maxLength: 64,
-        allowLineBreaks: false,
+      const sanitizedPaymentMethod = sanitizePaymentMethod(paymentMethod);
+      const sanitizedPaymentDetails = sanitizeDealNote(paymentDetails);
+      const validation = DealRequestSchema.safeParse({
+        amount,
+        paymentMethod: sanitizedPaymentMethod,
+        paymentDetails: sanitizedPaymentDetails,
       });
-      const sanitizedPaymentDetails = sanitizeUserText(paymentDetails, {
-        maxLength: 512,
-        allowLineBreaks: true,
-      });
+      if (!validation.success) {
+        const issue = validation.error.issues[0];
+        throw new Error(issue?.message ?? "Invalid deal request.");
+      }
+      const validated = validation.data;
       const takerAccount = getAddress(currentUserAddress);
       const amountScaled = parseUnits(String(amount), decimals);
       const expectedPrice = BigInt(Math.round(offer.price * PRICE_SCALE));
@@ -539,8 +550,8 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         amount: amountScaled,
         fiat: fiatCode,
         expectedPrice,
-        paymentMethod: sanitizedPaymentMethod,
-        details: sanitizedPaymentDetails,
+        paymentMethod: validated.paymentMethod,
+        details: validated.paymentDetails,
         partner: partnerAddress,
       });
 
@@ -566,7 +577,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         contractId: expectedDealId ? BigInt(expectedDealId) : undefined,
         contract: undefined,
         side: offer.side,
-        amount,
+        amount: validated.amount,
         fiat: offer.fiat,
         countryCode: offer.countryCode,
         currencyCode: offer.currencyCode,
@@ -578,8 +589,8 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         token: offer.token,
         tokenDecimals: offer.tokenDecimals,
         price: offer.price,
-        fiatAmount: offer.price * amount,
-        paymentMethod: sanitizedPaymentMethod,
+        fiatAmount: offer.price * validated.amount,
+        paymentMethod: validated.paymentMethod,
       };
       return fallback;
     },
@@ -728,16 +739,18 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       if (!publicClient) {
         throw new Error("Public client unavailable for the current network.");
       }
-      const sanitizedMessage = sanitizeUserText(message, {
-        maxLength: MAX_MESSAGE_LENGTH,
-        allowLineBreaks: false,
-      });
-      if (!sanitizedMessage) return;
+      const sanitizedMessage = sanitizeChatMessage(message);
+      const messageValidation = ChatMessageSchema.safeParse(sanitizedMessage);
+      if (!messageValidation.success) {
+        const issue = messageValidation.error.issues[0];
+        throw new Error(issue?.message ?? "Message is invalid.");
+      }
+      const normalizedMessage = messageValidation.data;
       const deal = requireContractDeal(dealId);
       const txHash: Hash = await adapter.sendMessage({
         account: getAddress(currentUserAddress),
         id: deal.contractId,
-        message: sanitizedMessage,
+        message: normalizedMessage,
       });
       await publicClient.waitForTransactionReceipt({ hash: txHash });
       await fetchAndSetDeals();

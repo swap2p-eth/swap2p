@@ -11,7 +11,7 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { FiatFlag } from "@/components/fiat-flag";
 import { TokenIcon } from "@/components/token-icon";
 import type { OfferRow } from "@/lib/types/market";
-import { cn, formatAddressShort, sanitizeUserText } from "@/lib/utils";
+import { cn, formatAddressShort } from "@/lib/utils";
 import { DealHeader } from "./deal-header";
 import { DealSummaryCard } from "./deal-summary-card";
 import { DealStatusPanel } from "./deal-status-panel";
@@ -26,6 +26,7 @@ import type { ApprovalMode } from "./token-approval-button";
 import { BANK_TRANSFER_LABEL, getNetworkConfigForChain } from "@/config";
 import { isUserRejectedError } from "@/lib/errors";
 import { error as logError, warn as logWarn } from "@/lib/logger";
+import { DealRequestSchema, sanitizeDealNote, sanitizePaymentMethod } from "@/lib/validation";
 
 type AmountKind = "crypto" | "fiat";
 type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
@@ -42,7 +43,10 @@ const MERCHANT_REQUIREMENTS =
 
 const parsePaymentMethods = (raw: string): string[] => {
   if (!raw) return [];
-  return raw.split(",").map(method => method.trim()).filter(Boolean);
+  return raw
+    .split(",")
+    .map(method => sanitizePaymentMethod(method))
+    .filter(Boolean);
 };
 
 const withBankTransferFirst = (methods: string[]): string[] => {
@@ -99,12 +103,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const [tokenAllowance, setTokenAllowance] = React.useState<bigint | null>(null);
 
   const handlePaymentDetailsChange = React.useCallback((value: string) => {
-    setPaymentDetails(
-      sanitizeUserText(value, {
-        maxLength: 512,
-        allowLineBreaks: true,
-      }),
-    );
+    setPaymentDetails(sanitizeDealNote(value));
   }, []);
 
   React.useEffect(() => {
@@ -112,7 +111,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     setAmountKind("crypto");
     setAmount(offer.minAmount.toString());
     const options = withBankTransferFirst(parsePaymentMethods(offer.paymentMethods));
-    setPaymentMethod(options.length === 1 ? options[0] : "");
+    setPaymentMethod(options.length === 1 ? sanitizePaymentMethod(options[0]) : "");
     setPaymentDetails("");
     setActionError(null);
   }, [offerId, offer]);
@@ -324,20 +323,30 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       return;
     }
     const effectiveDetails = typeof note === "string" && note.trim().length > 0 ? note : paymentDetails;
-    const sanitizedDetails = sanitizeUserText(effectiveDetails, {
-      maxLength: 512,
-      allowLineBreaks: true,
+    const sanitizedDetails = sanitizeDealNote(effectiveDetails);
+    const sanitizedMethod = sanitizePaymentMethod(paymentMethod);
+    const validation = DealRequestSchema.safeParse({
+      amount: tokenAmount,
+      paymentMethod: sanitizedMethod,
+      paymentDetails: sanitizedDetails,
     });
-    setPaymentDetails(sanitizedDetails);
+    if (!validation.success) {
+      const issue = validation.error.issues[0];
+      setActionError(issue?.message ?? "Invalid deal request.");
+      return;
+    }
+    const validated = validation.data;
+    setPaymentMethod(validated.paymentMethod);
+    setPaymentDetails(validated.paymentDetails);
     setActionBusy(true);
     setActionError(null);
     try {
       const dealRow = await createDeal({
         offer,
-        amount: tokenAmount,
+        amount: validated.amount,
         amountKind,
-        paymentMethod,
-        paymentDetails: sanitizedDetails
+        paymentMethod: validated.paymentMethod,
+        paymentDetails: validated.paymentDetails
       });
       onCreated?.(dealRow.id);
     } catch (error) {
@@ -517,7 +526,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
           <span className={paymentMethodHeadingClass}>Payment method</span>
           <Select
             value={paymentMethod}
-            onValueChange={setPaymentMethod}
+            onValueChange={value => setPaymentMethod(sanitizePaymentMethod(value))}
             disabled={!hasPaymentOptions}
           >
             <SelectTrigger

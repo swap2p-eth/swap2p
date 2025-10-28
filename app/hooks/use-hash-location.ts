@@ -2,8 +2,13 @@
 
 import * as React from "react";
 
+function sanitizeHash(value: string) {
+  return value.replace(/[^a-zA-Z0-9/_-]+/g, "").slice(0, 160);
+}
+
 function normalizeHash(value: string) {
-  return value.replace(/^#/, "");
+  const stripped = value.replace(/^#/, "");
+  return sanitizeHash(stripped);
 }
 
 function readHash(fallback: string) {

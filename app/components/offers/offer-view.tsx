@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn, sanitizeUserText } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { FIAT_BY_COUNTRY, FIAT_INFOS, getNetworkConfigForChain, getPaymentMethodsForCountry } from "@/config";
 import { useOffers } from "./offers-provider";
 import { DealHeader } from "@/components/deals/deal-header";
@@ -20,6 +20,14 @@ import type { OfferRow } from "@/lib/types/market";
 import { SideToggle } from "@/components/deals/side-toggle";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { error as logError } from "@/lib/logger";
+import {
+  OfferFormSchema,
+  sanitizeCountryCode,
+  sanitizePaymentMethod,
+  sanitizePaymentMethods,
+  sanitizeRequirements,
+  sanitizeTokenSymbol,
+} from "@/lib/validation";
 
 const TOKEN_STORAGE_KEY = "swap2p:offer:last-token";
 const FIAT_STORAGE_KEY = "swap2p:offer:last-fiat";
@@ -67,7 +75,7 @@ const parseMethods = (raw?: string) =>
   raw
     ? raw
         .split(",")
-        .map(value => value.trim())
+        .map(value => sanitizePaymentMethod(value))
         .filter(Boolean)
     : [];
 
@@ -160,12 +168,7 @@ export function OfferView({
   const [maxAmount, setMaxAmount] = React.useState(existingOffer ? String(existingOffer.maxAmount) : "");
   const [requirements, setRequirements] = React.useState(existingOffer?.requirements ?? "");
   const [selectedMethods, setSelectedMethods] = React.useState<string[]>(() =>
-    parseMethods(existingOffer?.paymentMethods).map(method =>
-      sanitizeUserText(method, {
-        maxLength: 64,
-        allowLineBreaks: false,
-      }),
-    ).filter((method): method is string => method.length > 0),
+    sanitizePaymentMethods(parseMethods(existingOffer?.paymentMethods)),
   );
   const [customMethodInput, setCustomMethodInput] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -202,27 +205,15 @@ export function OfferView({
   React.useEffect(() => {
     if (isEdit && existingOffer) {
       setSide(existingOffer.side);
-      setTokenSymbol(existingOffer.token);
-      setFiat(existingOffer.countryCode);
+      const normalizedToken = sanitizeTokenSymbol(existingOffer.token);
+      const normalizedCountry = sanitizeCountryCode(existingOffer.countryCode);
+      setTokenSymbol(normalizedToken || existingOffer.token);
+      setFiat(normalizedCountry || existingOffer.countryCode);
       setPrice(String(existingOffer.price));
       setMinAmount(String(existingOffer.minAmount));
       setMaxAmount(String(existingOffer.maxAmount));
-      setRequirements(
-        sanitizeUserText(existingOffer.requirements ?? "", {
-          maxLength: 1024,
-          allowLineBreaks: true,
-        }),
-      );
-      setSelectedMethods(
-        parseMethods(existingOffer.paymentMethods)
-          .map(method =>
-            sanitizeUserText(method, {
-              maxLength: 64,
-              allowLineBreaks: false,
-            }),
-          )
-          .filter((method): method is string => method.length > 0),
-      );
+      setRequirements(sanitizeRequirements(existingOffer.requirements ?? ""));
+      setSelectedMethods(sanitizePaymentMethods(parseMethods(existingOffer.paymentMethods)));
       setCustomMethodInput("");
       setError(null);
       setSuccessState(null);
@@ -279,18 +270,8 @@ export function OfferView({
       methods: string[],
       requirementsValue: string,
     ) => {
-      const sanitizedRequirements = sanitizeUserText(requirementsValue, {
-        maxLength: 1024,
-        allowLineBreaks: true,
-      });
-      const sanitizedMethods = methods
-        .map(method =>
-          sanitizeUserText(method, {
-            maxLength: 64,
-            allowLineBreaks: false,
-          }),
-        )
-        .filter((method): method is string => method.length > 0);
+      const sanitizedRequirements = sanitizeRequirements(requirementsValue);
+      const sanitizedMethods = sanitizePaymentMethods(methods);
       setBaseline({
         priceScaled,
         priceDisplay: formatPriceFromScaled(priceScaled),
@@ -369,14 +350,17 @@ export function OfferView({
 
   const paymentMethodOptions = React.useMemo<PaymentMethodOption[]>(() => {
     const countryCode = selectedFiatInfo?.countryCode;
-    const base = getPaymentMethodsForCountry(countryCode);
-    const extra = selectedMethods.filter(method => !base.includes(method));
-    const combined = [...base, ...extra];
+    const base = sanitizePaymentMethods(getPaymentMethodsForCountry(countryCode));
+    const extra = selectedMethods.filter(
+      method => !base.some(entry => entry.toLowerCase() === method.toLowerCase()),
+    );
+    const combined = sanitizePaymentMethods([...base, ...extra]);
     const seen = new Set<string>();
     return combined
       .filter(method => {
-        if (seen.has(method)) return false;
-        seen.add(method);
+        const key = method.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
       })
       .map(method => ({ id: method, label: method }));
@@ -449,10 +433,7 @@ export function OfferView({
   const tokenLabel = (tokenSymbol || "token").toUpperCase();
 
   const addCustomMethod = React.useCallback(() => {
-    const trimmed = sanitizeUserText(customMethodInput, {
-      maxLength: 64,
-      allowLineBreaks: false,
-    });
+    const trimmed = sanitizePaymentMethod(customMethodInput);
     if (!trimmed) return;
     fieldTouchedRef.current.paymentMethods = true;
     setSelectedMethods(prev => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
@@ -461,44 +442,42 @@ export function OfferView({
 
   const handleToggleMethod = (method: string) => {
     fieldTouchedRef.current.paymentMethods = true;
-    setSelectedMethods(prev => (prev.includes(method) ? prev.filter(item => item !== method) : [...prev, method]));
+    const normalized = sanitizePaymentMethod(method);
+    if (!normalized) return;
+    setSelectedMethods(prev => (prev.includes(normalized) ? prev.filter(item => item !== normalized) : [...prev, normalized]));
   };
 
   const handleRemoveMethod = (method: string) => {
     fieldTouchedRef.current.paymentMethods = true;
-    setSelectedMethods(prev => prev.filter(item => item !== method));
+    const normalized = sanitizePaymentMethod(method);
+    if (!normalized) return;
+    setSelectedMethods(prev => prev.filter(item => item !== normalized));
   };
 
   const handleCustomMethodInputChange = (value: string) => {
-    setCustomMethodInput(
-      sanitizeUserText(value, {
-        maxLength: 64,
-        allowLineBreaks: false,
-      }),
-    );
+    setCustomMethodInput(sanitizePaymentMethod(value));
   };
 
   const handleRequirementsChange = (value: string) => {
     fieldTouchedRef.current.requirements = true;
-    setRequirements(
-      sanitizeUserText(value, {
-        maxLength: 1024,
-        allowLineBreaks: true,
-      }),
-    );
+    setRequirements(sanitizeRequirements(value));
   };
 
   const handleTokenChange = React.useCallback((symbol: string) => {
-    setTokenSymbol(symbol);
+    const normalized = sanitizeTokenSymbol(symbol);
+    if (!normalized) return;
+    setTokenSymbol(normalized);
     if (!isEdit && typeof window !== "undefined") {
-      window.localStorage.setItem(TOKEN_STORAGE_KEY, symbol);
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, normalized);
     }
   }, [isEdit]);
 
   const handleFiatChange = React.useCallback((code: string) => {
-    setFiat(code);
+    const normalized = sanitizeCountryCode(code);
+    if (!normalized) return;
+    setFiat(normalized);
     if (!isEdit && typeof window !== "undefined") {
-      window.localStorage.setItem(FIAT_STORAGE_KEY, code.toUpperCase());
+      window.localStorage.setItem(FIAT_STORAGE_KEY, normalized);
     }
   }, [isEdit]);
 
@@ -543,19 +522,41 @@ export function OfferView({
       return;
     }
 
+    const normalizedToken = sanitizeTokenSymbol(tokenSymbol);
+    const normalizedCountry = sanitizeCountryCode(selectedFiatInfo?.countryCode ?? fiat);
+    const sanitizedMethods = sanitizePaymentMethods(selectedMethods);
+    const sanitizedRequirements = sanitizeRequirements(requirements);
+    const validation = OfferFormSchema.safeParse({
+      side,
+      token: normalizedToken || tokenSymbol,
+      countryCode: normalizedCountry || fiat.toUpperCase(),
+      price: parsedPrice,
+      minAmount: parsedMin,
+      maxAmount: parsedMax,
+      paymentMethods: sanitizedMethods,
+      requirements: sanitizedRequirements,
+    });
+    if (!validation.success) {
+      const issue = validation.error.issues[0];
+      setError(issue?.message ?? "Offer parameters are invalid.");
+      return;
+    }
+    const validated = validation.data;
+    setTokenSymbol(validated.token);
+    setFiat(validated.countryCode);
+    setSelectedMethods(validated.paymentMethods);
+    setRequirements(validated.requirements);
+
     setIsSubmitting(true);
 
     try {
       if (isEdit && existingOffer) {
         const updated = await updateOffer(existingOffer, {
-          price: parsedPrice,
-          minAmount: parsedMin,
-          maxAmount: parsedMax,
-          paymentMethods: selectedMethods,
-          requirements: sanitizeUserText(requirements, {
-            maxLength: 1024,
-            allowLineBreaks: true,
-          })
+          price: validated.price,
+          minAmount: validated.minAmount,
+          maxAmount: validated.maxAmount,
+          paymentMethods: validated.paymentMethods,
+          requirements: validated.requirements,
         });
 
         setSuccessState({
@@ -568,17 +569,14 @@ export function OfferView({
       }
 
       const created = await createOffer({
-        side,
-        token: tokenSymbol,
-        countryCode: fiat,
-        price: parsedPrice,
-        minAmount: parsedMin,
-        maxAmount: parsedMax,
-        paymentMethods: selectedMethods,
-        requirements: sanitizeUserText(requirements, {
-          maxLength: 1024,
-          allowLineBreaks: true,
-        })
+        side: validated.side,
+        token: validated.token,
+        countryCode: validated.countryCode,
+        price: validated.price,
+        minAmount: validated.minAmount,
+        maxAmount: validated.maxAmount,
+        paymentMethods: validated.paymentMethods,
+        requirements: validated.requirements,
       });
 
       setSuccessState({

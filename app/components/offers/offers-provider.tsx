@@ -14,7 +14,14 @@ import { SwapSide, type OfferWithKey, type MakerProfile, type Offer } from "@/li
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
 import { debug, error as logError, info as logInfo, warn as logWarn } from "@/lib/logger";
 import { resolvePartnerAddress } from "@/lib/partner";
-import { sanitizeUserText } from "@/lib/utils";
+import {
+  OfferFormSchema,
+  OfferUpdateSchema,
+  sanitizeCountryCode,
+  sanitizePaymentMethods,
+  sanitizeRequirements,
+  sanitizeTokenSymbol,
+} from "@/lib/validation";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -143,10 +150,7 @@ const formatMethodList = (methods: string[]): string => {
   return unique.join(METHODS_SEPARATOR);
 };
 
-const sanitizeMethods = (methods: string[]) =>
-  methods
-    .map(method => sanitizeUserText(method, { maxLength: 64, allowLineBreaks: false }))
-    .filter((method): method is string => method.length > 0);
+const sanitizeMethods = sanitizePaymentMethods;
 
 export function OffersProvider({ children }: { children: React.ReactNode }) {
   const { address } = useUser();
@@ -587,12 +591,32 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Public client unavailable for the current network.");
       }
 
-      const tokenInfo = tokenConfigs.find(item => item.symbol === token);
+      const normalizedToken = sanitizeTokenSymbol(token);
+      const normalizedCountryInput = sanitizeCountryCode(countryCode);
+      const sanitizedMethods = sanitizeMethods(paymentMethods);
+      const sanitizedRequirements = sanitizeRequirements(requirements ?? "");
+      const formValidation = OfferFormSchema.safeParse({
+        side,
+        token: normalizedToken || token,
+        countryCode: normalizedCountryInput || countryCode.toUpperCase(),
+        price,
+        minAmount,
+        maxAmount,
+        paymentMethods: sanitizedMethods,
+        requirements: sanitizedRequirements,
+      });
+      if (!formValidation.success) {
+        const issue = formValidation.error.issues[0];
+        throw new Error(issue?.message ?? "Offer parameters are invalid.");
+      }
+      const validated = formValidation.data;
+
+      const tokenInfo = tokenConfigs.find(item => item.symbol === validated.token);
       if (!tokenInfo) {
-        throw new Error(`Unsupported token ${token}.`);
+        throw new Error(`Unsupported token ${validated.token}.`);
       }
       const decimals = tokenInfo.decimals ?? 18;
-      const normalizedCountry = countryCode.toUpperCase();
+      const normalizedCountry = validated.countryCode;
       const fiatInfo = getFiatInfoByCountry(normalizedCountry);
       let contractFiatCode: number | undefined;
       try {
@@ -606,39 +630,32 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       const fiatLabel = fiatInfo?.shortLabel ?? normalizedCountry;
       const currencyCode = fiatInfo?.currencyCode ?? normalizedCountry;
-      const sanitizedMethods = sanitizeMethods(paymentMethods);
-      const paymentMethodsValue = formatMethodList(sanitizedMethods);
+      const paymentMethodsValue = formatMethodList(validated.paymentMethods);
       const fallbackEntry: OfferRow = {
         id: generateOfferId(),
-        side,
+        side: validated.side,
         maker: address,
-        token,
+        token: validated.token,
         tokenDecimals: decimals,
         fiat: fiatLabel,
         countryCode: normalizedCountry,
         currencyCode,
-        price,
-        minAmount,
-        maxAmount,
+        price: validated.price,
+        minAmount: validated.minAmount,
+        maxAmount: validated.maxAmount,
         paymentMethods: paymentMethodsValue,
-        requirements: sanitizeUserText(requirements ?? "", {
-          maxLength: 1024,
-          allowLineBreaks: true,
-        }),
+        requirements: validated.requirements,
         updatedAt: new Date().toISOString(),
         contractFiatCode,
         online: makerProfile?.online,
       };
 
       const makerAccount = getAddress(address);
-      const sideValue = side === "SELL" ? SwapSide.SELL : SwapSide.BUY;
-      const priceScaled = BigInt(Math.round(price * PRICE_SCALE));
-      const minAmountScaled = parseUnits(String(minAmount), decimals);
-      const maxAmountScaled = parseUnits(String(maxAmount), decimals);
-      const requirementsValue = sanitizeUserText(requirements ?? "", {
-        maxLength: 1024,
-        allowLineBreaks: true,
-      });
+      const sideValue = validated.side === "SELL" ? SwapSide.SELL : SwapSide.BUY;
+      const priceScaled = BigInt(Math.round(validated.price * PRICE_SCALE));
+      const minAmountScaled = parseUnits(String(validated.minAmount), decimals);
+      const maxAmountScaled = parseUnits(String(validated.maxAmount), decimals);
+      const requirementsValue = validated.requirements;
 
       const partnerAddress = resolvePartnerAddress();
 
@@ -699,6 +716,20 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         throw new Error("Offer is not published on-chain yet.");
       }
 
+      const sanitizedUpdates: OfferUpdateInput = {};
+      if (updates.price !== undefined) sanitizedUpdates.price = updates.price;
+      if (updates.minAmount !== undefined) sanitizedUpdates.minAmount = updates.minAmount;
+      if (updates.maxAmount !== undefined) sanitizedUpdates.maxAmount = updates.maxAmount;
+      if (updates.paymentMethods !== undefined) sanitizedUpdates.paymentMethods = sanitizeMethods(updates.paymentMethods);
+      if (updates.requirements !== undefined) sanitizedUpdates.requirements = sanitizeRequirements(updates.requirements);
+
+      const updateValidation = OfferUpdateSchema.safeParse(sanitizedUpdates);
+      if (!updateValidation.success) {
+        const issue = updateValidation.error.issues[0];
+        throw new Error(issue?.message ?? "Offer update is invalid.");
+      }
+      const validatedUpdates = updateValidation.data;
+
       const makerAccount = getAddress(address);
       const tokenAddress = key.token;
       const normalizedToken = tokenAddress.toLowerCase();
@@ -717,15 +748,15 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         ? BigInt(onchainOffer.priceFiatPerToken)
         : priceToScaled(offer.price);
       const desiredPriceScaled =
-        updates.price !== undefined ? priceToScaled(updates.price) : existingPriceScaled;
+        validatedUpdates.price !== undefined ? priceToScaled(validatedUpdates.price) : existingPriceScaled;
       const priceArg = desiredPriceScaled === existingPriceScaled ? 0n : desiredPriceScaled;
 
       const existingMinAmount = onchainOffer
         ? onchainOffer.minAmount
         : parseUnits(String(offer.minAmount), decimals);
       const desiredMinAmount =
-        updates.minAmount !== undefined
-          ? parseUnits(String(updates.minAmount), decimals)
+        validatedUpdates.minAmount !== undefined
+          ? parseUnits(String(validatedUpdates.minAmount), decimals)
           : existingMinAmount;
       const minArg = desiredMinAmount === existingMinAmount ? 0n : desiredMinAmount;
 
@@ -733,8 +764,8 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         ? onchainOffer.maxAmount
         : parseUnits(String(offer.maxAmount), decimals);
       const desiredMaxAmount =
-        updates.maxAmount !== undefined
-          ? parseUnits(String(updates.maxAmount), decimals)
+        validatedUpdates.maxAmount !== undefined
+          ? parseUnits(String(validatedUpdates.maxAmount), decimals)
           : existingMaxAmount;
       const maxArg = desiredMaxAmount === existingMaxAmount ? 0n : desiredMaxAmount;
 
@@ -742,19 +773,18 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         onchainOffer ? parseMethodList(onchainOffer.paymentMethods) : parseMethodList(offer.paymentMethods),
       );
       const nextMethodsList = sanitizeMethods(
-        updates.paymentMethods !== undefined ? updates.paymentMethods : currentMethodsList,
+        validatedUpdates.paymentMethods !== undefined ? validatedUpdates.paymentMethods : currentMethodsList,
       );
       const paymentMethodsValue = formatMethodList(nextMethodsList);
       const existingMethodsValue = formatMethodList(currentMethodsList);
       const paymentMethodsArg = paymentMethodsValue === existingMethodsValue ? "" : paymentMethodsValue;
 
-      const existingRequirementsValue = sanitizeUserText(
+      const existingRequirementsValue = sanitizeRequirements(
         onchainOffer?.requirements ?? offer.requirements ?? "",
-        { maxLength: 1024, allowLineBreaks: true },
       );
       const desiredRequirementsValue =
-        updates.requirements !== undefined
-          ? sanitizeUserText(updates.requirements, { maxLength: 1024, allowLineBreaks: true })
+        validatedUpdates.requirements !== undefined
+          ? sanitizeRequirements(validatedUpdates.requirements)
           : existingRequirementsValue;
       const requirementsArg =
         desiredRequirementsValue === existingRequirementsValue ? "" : desiredRequirementsValue;
@@ -803,9 +833,9 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       return {
         ...offer,
-        price: updates.price ?? offer.price,
-        minAmount: updates.minAmount ?? offer.minAmount,
-        maxAmount: updates.maxAmount ?? offer.maxAmount,
+        price: validatedUpdates.price ?? offer.price,
+        minAmount: validatedUpdates.minAmount ?? offer.minAmount,
+        maxAmount: validatedUpdates.maxAmount ?? offer.maxAmount,
         paymentMethods: paymentMethodsValue,
         requirements: desiredRequirementsValue,
         updatedAt: new Date().toISOString(),

@@ -15,8 +15,8 @@ import { SideToggle } from "@/components/deals/side-toggle";
 import { cn } from "@/lib/utils";
 import {
   ANY_FILTER_OPTION,
-  OFFERS_FILTER_STORAGE_KEY,
-  readStoredFilters
+  readStoredFilters,
+  writeStoredFilters
 } from "@/components/offers/filter-storage";
 import { RefreshCw } from "lucide-react";
 import { useUser } from "@/context/user-context";
@@ -44,6 +44,7 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
 
   const normalizedAddress = React.useMemo(() => address.trim().toLowerCase(), [address]);
   const [createRequested, setCreateRequested] = React.useState(false);
+  const normalizedFiat = React.useMemo(() => fiat.toUpperCase(), [fiat]);
 
   React.useEffect(() => {
     if (filtersReady) {
@@ -89,24 +90,18 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     if (!filtersReady) {
       return;
     }
-    if (typeof window === "undefined") {
-      return;
-    }
-    const payload = JSON.stringify({
+    writeStoredFilters({
       side,
       token,
-      fiat: fiat.toUpperCase(),
-      paymentMethod
+      fiat: normalizedFiat,
+      paymentMethod,
     });
-    window.localStorage.setItem(OFFERS_FILTER_STORAGE_KEY, payload);
-  }, [filtersReady, side, token, fiat, paymentMethod]);
+  }, [filtersReady, side, token, normalizedFiat, paymentMethod]);
 
   const defaultFiat = React.useMemo(
     () => (fiats[0]?.countryCode ?? DEFAULT_COUNTRY).toUpperCase(),
     [fiats],
   );
-
-  const normalizedFiat = fiat.toUpperCase();
 
   React.useEffect(() => {
     if (!fiats.some(info => info.countryCode.toUpperCase() === normalizedFiat)) {
