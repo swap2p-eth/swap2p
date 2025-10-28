@@ -9,6 +9,35 @@ const EUR_METHODS: string[] = [
 
 export const BANK_TRANSFER_LABEL = "Bank transfer";
 
+const EUR_METHOD_COUNTRIES = new Set<string>([
+  "AD",
+  "AT",
+  "BE",
+  "CY",
+  "DE",
+  "EE",
+  "ES",
+  "FI",
+  "FR",
+  "GR",
+  "HR",
+  "IE",
+  "IT",
+  "LT",
+  "LU",
+  "LV",
+  "MC",
+  "ME",
+  "MT",
+  "NL",
+  "PT",
+  "SI",
+  "SK",
+  "SM",
+  "VA",
+  "XK",
+]);
+
 const uniq = (methods: readonly string[]) => {
   const result: string[] = [];
   for (const method of methods) {
@@ -26,10 +55,8 @@ export const PAYMENT_METHODS: PaymentMethodsByCountry = {
   BD: ["bKash", "Nagad"],
   BR: ["Pix", "Mercado Pago", "PicPay"],
   BY: ["QIWI Wallet", "WebMoney"],
-  EE: ["Revolut", "Wise"],
   ET: ["Telebirr"],
-  FI: ["Revolut"],
-  GB: ["Revolut"],
+  GB: ["Faster Payments", "Revolut"],
   GE: ["TBC Bank", "Bank of Georgia", "Wise"],
   HK: ["FPS transfer", "Alipay HK", "WeChat Pay HK"],
   ID: ["BCA", "Bank Mandiri", "OVO", "GoPay", "DANA"],
@@ -38,26 +65,24 @@ export const PAYMENT_METHODS: PaymentMethodsByCountry = {
   KG: ["Elcart", "QIWI Wallet"],
   KH: ["Wing Money", "Pi Pay"],
   KR: ["KB Kookmin Bank", "Shinhan Bank", "KakaoPay", "Toss"],
-  LV: ["Revolut", "Wise"],
   MD: ["MAIB", "Victoriabank", "Paynet Wallet", "Western Union"],
   ME: ["IBAN transfer", "Wise"],
   NG: ["Access Bank", "Zenith Bank", "OPay", "Kuda"],
   PH: ["UnionBank", "GCash", "Maya"],
   PK: ["JazzCash", "Easypaisa", "NayaPay"],
-  PT: ["MB Way", "Revolut"],
+  PT: ["MB Way"],
   RU: ["QIWI Wallet", "YooMoney"],
   SG: ["PayNow/FAST", "GrabPay"],
-  SI: ["Revolut"],
   TH: [
     "Bangkok Bank",
-    "Kasikorn Bank",
-    "Siam Commercial Bank",
-    "Krungthai Bank",
+    "Kasikorn",
+    "SCB",
+    "Krungthai",
     "Krungsri",
-    "TMBThanachart (TTB)",
+    "TTB",
     "CIMB Thai",
     "PromptPay",
-    "TrueMoney Wallet",
+    "TrueMoney",
   ],
   TR: ["Ziraat Bank", "Isbank", "Papara"],
   UA: ["Monobank", "PrivatBank", "Oschadbank"],
@@ -78,7 +103,8 @@ export const PAYMENT_METHODS: PaymentMethodsByCountry = {
 export const getPaymentMethodsForCountry = (countryCode?: string): string[] => {
   const key = typeof countryCode === "string" ? countryCode.trim().toUpperCase() : "";
   const base = key ? PAYMENT_METHODS[key] ?? [] : [];
-  const normalized = uniq(base.map(method => method.trim()).filter(Boolean));
+  const eurExtras = key && EUR_METHOD_COUNTRIES.has(key) ? EUR_METHODS : [];
+  const normalized = uniq([...eurExtras, ...base].map(method => method.trim()).filter(Boolean));
   const withoutBank = normalized.filter(method => method !== BANK_TRANSFER_LABEL);
   return [BANK_TRANSFER_LABEL, ...withoutBank];
 };
