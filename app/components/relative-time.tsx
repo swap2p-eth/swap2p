@@ -25,18 +25,17 @@ function toDate(value: RelativeTimeProps["value"]): Date | null {
 
 function formatRelative(source: Date, now: Date): string {
   const diffMs = now.getTime() - source.getTime();
-  const future = diffMs < 0;
-  const absMs = Math.abs(diffMs);
-
-  // if (absMs < 30_000) {
-  //   return "now";
-  // }
+  if (diffMs <= 0) {
+    return "now";
+  }
+  if (diffMs < 60_000) {
+    return "now";
+  }
 
   const segments: string[] = [];
-  const seconds = Math.floor(absMs / 1_000);
-  const minutes = Math.floor(absMs / 60_000);
-  const hours = Math.floor(absMs / 3_600_000);
-  const days = Math.floor(absMs / 86_400_000);
+  const minutes = Math.floor(diffMs / 60_000);
+  const hours = Math.floor(diffMs / 3_600_000);
+  const days = Math.floor(diffMs / 86_400_000);
   const weeks = Math.floor(days / 7);
   const months = Math.floor(days / 30);
   const years = Math.floor(days / 365);
@@ -47,51 +46,42 @@ function formatRelative(source: Date, now: Date): string {
     }
   };
 
-  if (minutes < 1) {
-    return `${future ? "in " : ""}${seconds}s`;
-  }
-
   if (minutes < 60) {
-    return `${future ? "in " : ""}${minutes}m`;
+    return `${minutes}m`;
   }
 
   if (hours < 24) {
     push(hours, "h");
     const remMinutes = minutes % 60;
     push(remMinutes, "m");
-    const body = segments.join(" ");
-    return future ? `in ${body}` : body;
+    return segments.join(" ");
   }
 
   if (days < 7) {
     push(days, "d");
     const remHours = hours % 24;
     push(remHours, "h");
-    const body = segments.join(" ");
-    return future ? `in ${body}` : body;
+    return segments.join(" ");
   }
 
   if (weeks < 5) {
     push(weeks, "w");
     const remDays = days % 7;
     push(remDays, "d");
-    const body = segments.join(" ");
-    return future ? `in ${body}` : body;
+    return segments.join(" ");
   }
 
   if (months < 12) {
     push(months, "mo");
     const remDays = days % 30;
     push(remDays, "d");
-    const body = segments.join(" ");
-    return future ? `in ${body}` : body;
+    return segments.join(" ");
   }
 
   push(years, "y");
   const remMonths = months % 12;
   push(remMonths, "mo");
-  const body = segments.join(" ");
-  return future ? `in ${body}` : body;
+  return segments.join(" ");
 }
 
 export function RelativeTime({ value, className }: RelativeTimeProps) {
