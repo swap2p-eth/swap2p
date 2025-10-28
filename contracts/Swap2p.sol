@@ -142,11 +142,11 @@ contract Swap2p is ReentrancyGuard {
     // offer indexes
     mapping(bytes32 => bytes32[]) private _marketOffers;
     mapping(bytes32 => mapping(bytes32 => uint)) private _marketOfferPos; // +1
-    mapping(address => bytes32[]) private _makerOffers;
+    mapping(address => bytes32[]) internal _makerOffers;
     mapping(address => mapping(bytes32 => uint)) private _makerOfferPos; // +1
 
     // open deals
-    mapping(address => bytes32[]) private _openDeals;
+    mapping(address => bytes32[]) internal _openDeals;
     mapping(address => mapping(bytes32 => uint)) private _openPos; // +1
 
     // recent closed deals (RELEASED or CANCELED)
@@ -787,24 +787,6 @@ contract Swap2p is ReentrancyGuard {
         return _makerOffers[maker].length;
     }
 
-    /// @notice Returns paginated slice of offer IDs created by `maker`.
-    function getMakerOfferIds(address maker, uint off, uint lim)
-        external
-        view
-        returns (bytes32[] memory out)
-    {
-        bytes32[] storage arr = _makerOffers[maker];
-        uint len = arr.length;
-        if (off >= len || lim == 0) return out;
-        uint end = off + lim;
-        if (end < off || end > len) end = len;
-        uint slice = end - off;
-        out = new bytes32[](slice);
-        for (uint i; i < slice; i++) {
-            out[i] = arr[off + i];
-        }
-    }
-
     /// @notice Returns paginated slice of offers created by `maker`.
     function getMakerOffers(address maker, uint off, uint lim)
         external
@@ -871,23 +853,6 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Returns the count of open (non-closed) deals for a user.
     function getOpenDealCount(address u) external view returns (uint) {
         return _openDeals[u].length;
-    }
-
-    /// @notice Returns paginated list of open deal IDs for a user.
-    /// @notice Returns a paginated slice of open deal IDs for a user.
-    /// @param off Offset.
-    /// @param lim Limit.
-    function getOpenDeals(address u, uint off, uint lim)
-    external view returns (bytes32[] memory out) {
-        bytes32[] storage arr = _openDeals[u];
-        uint len = arr.length;
-        if (off >= len) return out;
-        uint end = off + lim;
-        if (end < off || end > len) end = len;
-        out = new bytes32[](end - off);
-        for (uint i = off; i < end; i++) {
-            out[i - off] = arr[i];
-        }
     }
 
     /// @notice Returns the number of chat messages for a deal.

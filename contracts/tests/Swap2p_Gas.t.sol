@@ -6,9 +6,10 @@ import {console2 as console} from "forge-std/console2.sol";
 
 import {Swap2p} from "../Swap2p.sol";
 import {MintableERC20} from "./mocks/MintableERC20.sol";
+import {Swap2pViewHarness} from "./mocks/Swap2pViewHarness.sol";
 
 contract Swap2p_GasTest is Test {
-    Swap2p internal swap;
+    Swap2pViewHarness internal swap;
     MintableERC20 internal token;
 
     address internal maker;
@@ -24,7 +25,7 @@ contract Swap2p_GasTest is Test {
         partner = makeAddr("partner");
         author = makeAddr("author");
 
-        swap = new Swap2p(author);
+        swap = new Swap2pViewHarness(author);
         token = new MintableERC20("Mock", "MCK");
 
         token.mint(maker, 1e24);

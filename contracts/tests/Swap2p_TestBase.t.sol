@@ -3,10 +3,11 @@ pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 import {Swap2p} from "../Swap2p.sol";
+import {Swap2pViewHarness} from "./mocks/Swap2pViewHarness.sol";
 import {MintableERC20} from "./mocks/MintableERC20.sol";
 
 contract Swap2p_TestBase is Test {
-    Swap2p internal swap;
+    Swap2pViewHarness internal swap;
     MintableERC20 internal token;
 
     address internal maker;
@@ -20,8 +21,8 @@ contract Swap2p_TestBase is Test {
         partner = makeAddr("partner");
         author = address(this);
 
-    swap = new Swap2p(author);
-    token = new MintableERC20("Mock", "MCK");
+        swap = new Swap2pViewHarness(author);
+        token = new MintableERC20("Mock", "MCK");
 
         // Mint balances
         token.mint(maker, 1e24);

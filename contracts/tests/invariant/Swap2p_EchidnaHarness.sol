@@ -2,13 +2,14 @@
 pragma solidity ^0.8.23;
 
 import {Swap2p} from "../../Swap2p.sol";
+import {Swap2pViewHarness} from "../mocks/Swap2pViewHarness.sol";
 import {MintableERC20} from "../mocks/MintableERC20.sol";
 
 contract ActorProxy {
-    Swap2p public immutable swap;
+    Swap2pViewHarness public immutable swap;
     MintableERC20 public immutable token;
 
-    constructor(Swap2p _swap, MintableERC20 _token) {
+    constructor(Swap2pViewHarness _swap, MintableERC20 _token) {
         swap = _swap;
         token = _token;
         _token.approve(address(_swap), type(uint256).max);
@@ -76,7 +77,7 @@ contract Swap2pEchidnaHarness {
         Swap2p.FiatCode fiat;
     }
 
-    Swap2p public immutable swap;
+    Swap2pViewHarness public immutable swap;
     MintableERC20 public immutable token;
 
     ActorProxy[] public actors;
@@ -95,7 +96,7 @@ contract Swap2pEchidnaHarness {
     }
 
     constructor() {
-        swap = new Swap2p(address(this));
+        swap = new Swap2pViewHarness(address(this));
         token = new MintableERC20("MockToken", "MCK");
 
         markets.push(Market({tokenAddr: address(token), side: Swap2p.Side.SELL, fiat: _fiat("US")}));
