@@ -4,38 +4,12 @@ import * as React from "react";
 import Jazzicon from "react-jazzicon";
 import {Copy} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatAddressShort, seedFromAddress } from "@/lib/utils";
+import { copyToClipboard, formatAddressShort, seedFromAddress } from "@/lib/utils";
 
 interface ParticipantPillProps {
   label: string;
   address: string;
   className?: string;
-}
-
-async function copyAddress(value: string): Promise<boolean> {
-  try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(value);
-      return true;
-    }
-  } catch {
-    // ignore and fallback below
-  }
-
-  try {
-    const textarea = document.createElement("textarea");
-    textarea.value = value;
-    textarea.setAttribute("readonly", "");
-    textarea.style.position = "absolute";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.select();
-    const success = document.execCommand("copy");
-    document.body.removeChild(textarea);
-    return success;
-  } catch {
-    return false;
-  }
 }
 
 export function ParticipantPill({ label, address, className }: ParticipantPillProps) {
@@ -45,7 +19,7 @@ export function ParticipantPill({ label, address, className }: ParticipantPillPr
     async (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       if (!address) return;
-      await copyAddress(address);
+      await copyToClipboard(address);
     },
     [address]
   );

@@ -9,16 +9,29 @@ import { OffersView } from "@/components/offers/offers-view";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import { OffersProvider } from "@/components/offers/offers-provider";
 import { OfferView } from "@/components/offers/offer-view";
+import { ProfileView } from "@/components/profile/profile-view";
 
 type ViewState =
   | { type: "offers" }
   | { type: "dashboard" }
   | { type: "new-deal"; offerId: string }
   | { type: "deal-detail"; dealId: string }
-  | { type: "offer"; offerId?: string };
+  | { type: "offer"; offerId?: string }
+  | { type: "profile"; address?: string };
 
 function parseHash(hash: string): ViewState {
   const normalized = hash || "offers";
+  if (normalized === "profile") {
+    return { type: "profile" };
+  }
+  if (normalized.startsWith("profile/")) {
+    const [, target] = normalized.split("/");
+    const address = decodeURIComponent(target ?? "").trim();
+    if (address.length > 0) {
+      return { type: "profile", address };
+    }
+    return { type: "profile" };
+  }
   if (normalized === "deals" || normalized === "dashboard") {
     return { type: "dashboard" };
   }
@@ -69,6 +82,8 @@ function HomePageRouter() {
     switch (view.type) {
       case "new-deal":
       case "offer":
+        return;
+      case "profile":
         return;
       case "deal-detail":
         lastStableHash.current = "dashboard";
@@ -128,6 +143,8 @@ function HomePageRouter() {
         />
       );
     }
+    case "profile":
+      return <ProfileView address={view.address} />;
     case "offers":
     default:
       return (

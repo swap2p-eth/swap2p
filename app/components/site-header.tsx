@@ -9,21 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { useCurrentUserDeals } from "@/hooks/use-current-user-deals";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import { cn } from "@/lib/utils";
-import {Toaster} from "sonner";
 
 const NAV_ITEMS = [
   { hash: "offers", label: "Offers" }
 ] as const;
-
-function deriveActiveSection(hash: string) {
-  if (hash.startsWith("deal/") || hash === "dashboard" || hash === "deals" || hash.startsWith("offer/")) {
-    return "dashboard";
-  }
-  if (hash === "offer") {
-    return "offers";
-  }
-  return hash || "offers";
-}
 
 export function SiteHeader() {
   const { hash, setHash } = useHashLocation("offers");
@@ -73,6 +62,10 @@ export function SiteHeader() {
             isActive={active === "dashboard"}
             onSelect={() => setHash("dashboard")}
           />
+          <ProfileNavItem
+            isActive={active === "profile"}
+            onSelect={() => setHash("profile")}
+          />
         </nav>
         <div className="flex items-center gap-3">
           <ThemeToggle />
@@ -82,6 +75,19 @@ export function SiteHeader() {
 
     </header>
   );
+}
+
+function deriveActiveSection(hash: string) {
+  if (hash.startsWith("deal/") || hash === "dashboard" || hash === "deals" || hash.startsWith("offer/")) {
+    return "dashboard";
+  }
+  if (hash === "offer") {
+    return "offers";
+  }
+  if (hash === "profile" || hash.startsWith("profile/")) {
+    return "profile";
+  }
+  return hash || "offers";
 }
 
 interface DashboardNavItemProps {
@@ -115,6 +121,29 @@ function DashboardNavItem({ isActive, onSelect }: DashboardNavItemProps) {
           {activeCount}
         </Badge>
       ) : null}
+    </a>
+  );
+}
+
+interface ProfileNavItemProps {
+  isActive: boolean;
+  onSelect: () => void;
+}
+
+function ProfileNavItem({ isActive, onSelect }: ProfileNavItemProps) {
+  return (
+    <a
+      href="/#profile"
+      onClick={event => {
+        event.preventDefault();
+        onSelect();
+      }}
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors",
+        isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"
+      )}
+    >
+      Profile
     </a>
   );
 }
