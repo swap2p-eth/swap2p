@@ -49,10 +49,7 @@ export function ProfileCopyField({
     <div className={cn("flex flex-col gap-2", alignmentClass, className)}>
       <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground/80">{label}</span>
       <div
-        className={cn(
-          "inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-4 py-2",
-          pillClassName
-        )}
+        className={cn("pill-surface", pillClassName)}
       >
         <span className={cn("font-mono text-sm leading-tight sm:text-base break-all", valueClassName)}>
           {value}

@@ -265,7 +265,7 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
         </Button>
       </section>
 
-      <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30 shadow-none">
+      <Card className="card-surface">
         <CardHeader className="space-y-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">

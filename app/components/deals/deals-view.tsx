@@ -106,7 +106,7 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
         <p className="text-sm text-muted-foreground">Manage your deals and offers from a single workspace.</p>
       </section>
 
-      <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30 shadow-none">
+      <Card className="card-surface">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <CardTitle className="text-xl">My Deals</CardTitle>
@@ -138,7 +138,7 @@ export function DealsView({ onSelectDeal }: DealsViewProps) {
         </CardContent>
       </Card>
 
-      <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30 shadow-none">
+      <Card className="card-surface">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <CardTitle className="text-xl">My Offers</CardTitle>

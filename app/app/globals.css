@@ -99,3 +99,17 @@ body {
 [data-rk] .ju367v1i {
   font-weight: 500 !important;
 }
+
+@layer components {
+  .card-surface {
+    @apply rounded-3xl bg-gradient-to-br from-background/70 to-background/30 shadow-none;
+  }
+
+  .card-surface-soft {
+    @apply rounded-3xl bg-gradient-to-br from-background/70 to-background/20 shadow-none;
+  }
+
+  .pill-surface {
+    @apply inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-4 py-2;
+  }
+}

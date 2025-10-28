@@ -32,7 +32,7 @@ export function DealSummaryCard({
   extraContent
 }: DealSummaryCardProps) {
   return (
-    <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/20">
+    <Card className="card-surface-soft">
       <CardHeader className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2">
           <CardTitle className="text-xl">{title}</CardTitle>
