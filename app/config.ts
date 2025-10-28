@@ -1,6 +1,8 @@
 import hardhatDeployment from "@/networks/hardhat.json";
 import { hardhatChain } from "@/lib/chains";
 import { getFiatData } from "@/lib/fiat-data";
+import { PAYMENT_METHODS } from "@/payment-methods";
+export { PAYMENT_METHODS };
 import type { FiatInfo } from "@/lib/fiat-data";
 export type NetworkKey = "hardhat" | "ethereum" | "optimism";
 
@@ -17,12 +19,12 @@ export interface NetworkConfig {
   name: string;
   swap2pAddress: `0x${string}`;
   tokens: TokenConfig[];
-  paymentMethods: Record<string, string[]>;
 }
 
 export interface AppConfigShape {
   defaultNetwork: NetworkKey;
   networks: Record<NetworkKey, NetworkConfig>;
+  paymentMethods: Record<string, readonly string[]>;
 }
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
@@ -64,12 +66,6 @@ export const APP_CONFIG: AppConfigShape = {
             decimals: HARDHAT_TOKEN_DECIMALS[symbol] ?? 18,
           }) satisfies TokenConfig,
       ),
-      paymentMethods: {
-        USD: ["Wire (Fedwire)", "ACH", "Zelle"],
-        EUR: ["SEPA", "SEPA Instant", "Revolut Business"],
-        BRL: ["PIX", "TED", "Itau Transfer"],
-        GBP: ["Faster Payments", "SWIFT GBP", "Revolut"],
-      },
     },
     ethereum: {
       chainId: 1,
@@ -97,12 +93,6 @@ export const APP_CONFIG: AppConfigShape = {
           decimals: 18,
         },
       ] satisfies TokenConfig[],
-      paymentMethods: {
-        USD: ["Wire", "Silvergate SEN", "Signet"],
-        EUR: ["SEPA", "SEPA Instant", "SWIFT EUR"],
-        GBP: ["Faster Payments", "SWIFT GBP"],
-        JPY: ["Domestic Transfer", "SWIFT JPY"],
-      },
     },
     optimism: {
       chainId: 10,
@@ -130,13 +120,9 @@ export const APP_CONFIG: AppConfigShape = {
           decimals: 18,
         },
       ] satisfies TokenConfig[],
-      paymentMethods: {
-        USD: ["ACH", "Wire", "Zelle"],
-        MXN: ["SPEI", "Banorte Transfer"],
-        CLP: ["WebPay", "BancoEstado"],
-      },
     },
   },
+  paymentMethods: PAYMENT_METHODS,
 };
 
 export function getNetworkConfig(key?: NetworkKey): NetworkConfig {
@@ -155,7 +141,6 @@ export function getNetworkConfigForChain(chainId?: number): NetworkConfig {
       chainId,
       swap2pAddress: ZERO_ADDRESS,
       tokens: [],
-      paymentMethods: {},
     };
   }
   return getNetworkConfig(APP_CONFIG.defaultNetwork);
