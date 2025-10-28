@@ -72,7 +72,7 @@ const tokenConfigs = [
     offers: {
       sell: {
         fiat: US,
-        price: 68_350_000n,
+        price: 114_515_000_000n,
         min: "0.01",
         max: "2.5",
         paymentMethods: "Fedwire, Wise USD",
@@ -80,7 +80,7 @@ const tokenConfigs = [
       },
       buy: {
         fiat: TH,
-        price: 2_420_000_000n,
+        price: 3_664_480_000_000n,
         min: "0.01",
         max: "1.5",
         paymentMethods: "SCB PromptPay, Wise THB",
@@ -98,7 +98,7 @@ const tokenConfigs = [
     offers: {
       sell: {
         fiat: US,
-        price: 100_050n,
+        price: 1_000_000n,
         min: "10",
         max: "15000",
         paymentMethods: "ACH, Wise USD, Revolut",
@@ -106,7 +106,7 @@ const tokenConfigs = [
       },
       buy: {
         fiat: TH,
-        price: 3_560_000n,
+        price: 32_000_000n,
         min: "10",
         max: "12000",
         paymentMethods: "PromptPay, Bangkok Bank",
@@ -124,7 +124,7 @@ const tokenConfigs = [
     offers: {
       sell: {
         fiat: US,
-        price: 100_000n,
+        price: 1_000_000n,
         min: "50",
         max: "20000",
         paymentMethods: "ACH, Zelle",
@@ -132,7 +132,7 @@ const tokenConfigs = [
       },
       buy: {
         fiat: TH,
-        price: 3_480_000n,
+        price: 32_000_000n,
         min: "50",
         max: "18000",
         paymentMethods: "Krungsri, Kasikorn",
@@ -150,7 +150,7 @@ const tokenConfigs = [
     offers: {
       sell: {
         fiat: US,
-        price: 3_320_000n,
+        price: 4_120_000_000n,
         min: "0.05",
         max: "20",
         paymentMethods: "SWIFT USD, Wise Business",
@@ -158,7 +158,7 @@ const tokenConfigs = [
       },
       buy: {
         fiat: TH,
-        price: 120_500_000n,
+        price: 131_840_000_000n,
         min: "0.05",
         max: "18",
         paymentMethods: "SCB PromptPay, Krungthai",

@@ -33,7 +33,7 @@ const TOKEN_STORAGE_KEY = "swap2p:offer:last-token";
 const FIAT_STORAGE_KEY = "swap2p:offer:last-fiat";
 const DEFAULT_TOKEN_SYMBOL = "USDT";
 const DEFAULT_FIAT_CODE = "US";
-const PRICE_SCALE = 1_000;
+const PRICE_SCALE = 1_000_000;
 const PRICE_SCALE_BI = BigInt(PRICE_SCALE);
 
 type BaselineValues = {
@@ -87,7 +87,7 @@ const formatPriceFromScaled = (value: bigint): string => {
   if (fraction === 0n) {
     return integer.toString();
   }
-  let fractionStr = fraction.toString().padStart(3, "0");
+  let fractionStr = fraction.toString().padStart(6, "0");
   while (fractionStr.endsWith("0")) {
     fractionStr = fractionStr.slice(0, -1);
   }

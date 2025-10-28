@@ -7,7 +7,7 @@ const DEFAULT_FIAT_OPTIONS: Intl.NumberFormatOptions = {
 
 const DEFAULT_PRICE_OPTIONS: Intl.NumberFormatOptions = {
   minimumFractionDigits: 2,
-  maximumFractionDigits: 4
+  maximumFractionDigits: 6
 };
 
 export function formatNumber(

@@ -67,7 +67,7 @@ interface OfferUpdateInput {
 
 const OffersContext = React.createContext<OffersContextValue | null>(null);
 
-const PRICE_SCALE = 1_000;
+const PRICE_SCALE = 1_000_000;
 const OFFER_FETCH_LIMIT = 100;
 const OFFER_CACHE_TTL_MS = 60_000;
 const toSideLabel = (side: SwapSide): OfferRow["side"] =>

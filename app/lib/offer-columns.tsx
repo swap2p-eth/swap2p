@@ -82,7 +82,7 @@ export function createOfferColumns(
         const offer = row.original as OfferRow;
         const fiat = offer.currencyCode;
         const price = Number(row.getValue("price"));
-        return <PriceCell price={price} fiat={fiat} fractionDigits={{ min: 2, max: 3 }} />;
+        return <PriceCell price={price} fiat={fiat} fractionDigits={{ min: 2, max: 6 }} />;
       },
       meta: {
         align: "right",

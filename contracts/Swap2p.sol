@@ -62,7 +62,7 @@ contract Swap2p is ReentrancyGuard {
     struct Offer {
         uint128  minAmt;
         uint128  maxAmt;
-        uint96   priceFiatPerToken;   // fiat/token price ratio
+        uint96   priceFiatPerToken;   // fiat/token price ratio, 6 decimals
         uint40   ts;                  // last update timestamp
         FiatCode fiat;                // ISO 3166-1 alpha-2 country code
         Side     side;
@@ -90,7 +90,7 @@ contract Swap2p is ReentrancyGuard {
     /// @notice Active deal between maker and taker.
     struct Deal {
         uint128   amount;
-        uint96    price;
+        uint96    price;  // 6 decimals
         FiatCode  fiat;
         DealState state;
         Side      side;
@@ -382,7 +382,7 @@ contract Swap2p is ReentrancyGuard {
     /// @param token ERC20 token address.
     /// @param s Side (BUY/SELL).
     /// @param f ISO 3166-1 alpha-2 country code (uint16).
-    /// @param price Fiat per token price (unit is UI-defined).
+    /// @param price Fiat per token price (unit is UI-defined) - 6 decimals.
     /// @param minAmt Minimum per-request amount.
     /// @param maxAmt Maximum per-request amount.
     /// @param paymentMethods Supported fiat payment methods.

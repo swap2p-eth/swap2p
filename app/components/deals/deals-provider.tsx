@@ -56,7 +56,7 @@ interface DealsContextValue {
 
 const DealsContext = React.createContext<DealsContextValue | null>(null);
 
-const PRICE_SCALE = 1_000;
+const PRICE_SCALE = 1_000_000;
 const DEAL_FETCH_LIMIT = 100;
 
 const stateMap: Record<SwapDealState, DealState> = {
