@@ -12,7 +12,7 @@ import { decodeCountryCode, encodeCountryCode, getFiatInfoByCountry } from "@/li
 import type { OfferRow } from "@/lib/types/market";
 import { SwapSide, type OfferWithKey, type MakerProfile, type Offer } from "@/lib/swap2p/types";
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
-import { debug } from "@/lib/logger";
+import { debug, error as logError, info as logInfo, warn as logWarn } from "@/lib/logger";
 import { resolvePartnerAddress } from "@/lib/partner";
 
 interface OffersContextValue {
@@ -235,7 +235,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           setMakerProfile(profile ?? EMPTY_PROFILE);
         }
       } catch (error) {
-        console.error("[offers] failed to load maker profile", error);
+        logError("offers-provider", "failed to load maker profile", error);
         if (!cancelled) {
           setMakerProfile(EMPTY_PROFILE);
         }
@@ -278,7 +278,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           return { ...base, online };
         });
       } catch (error) {
-        console.error("[offers] failed to set maker availability", error);
+        logError("offers-provider", "failed to set maker availability", error);
         const message = error instanceof Error ? error.message : "Failed to update availability.";
         throw new Error(message);
       } finally {
@@ -331,8 +331,9 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
               count: mapped.length,
             });
           } catch (error) {
-            console.error(
-              "[swap2p] failed to fetch offers",
+            logError(
+              "offers-provider",
+              "failed to fetch offers",
               {
                 token: token.address,
                 fiat: fiat.info.shortLabel,
@@ -387,7 +388,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         setMakerChainOffers(mapped);
         return mapped;
       } catch (error) {
-        console.error("[swap2p] failed to fetch maker offers", { maker: address }, error);
+        logError("offers-provider", "failed to fetch maker offers", { maker: address }, error);
         makerCacheRef.current = { items: [], fetchedAt: Date.now() };
         setMakerChainOffers([]);
         return [];
@@ -695,7 +696,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       try {
         onchainOffer = await adapter.getOffer(key);
       } catch (error) {
-        console.warn("[offers] failed to fetch on-chain offer before update", error);
+        logWarn("offers-provider", "failed to fetch on-chain offer before update", error);
       }
 
       const priceToScaled = (value: number) => BigInt(Math.round(value * PRICE_SCALE));
@@ -754,7 +755,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         partner: partnerAddress,
       };
 
-      console.info("[offers] update payload", {
+      logInfo("offers-provider", "update payload", {
         offerId: offer.id,
         payload: {
           price: txPayload.price,

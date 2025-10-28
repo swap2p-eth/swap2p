@@ -4,6 +4,7 @@ import * as React from "react";
 import { useChainId, usePublicClient, useWalletClient } from "wagmi";
 
 import { createSwap2pAdapter, resolveSwap2pAddress } from "@/lib/swap2p";
+import { error as logError } from "@/lib/logger";
 
 export function useSwap2pAdapter() {
   const chainId = useChainId();
@@ -26,7 +27,7 @@ export function useSwap2pAdapter() {
       });
       return { adapter, chainId };
     } catch (error) {
-      console.error("[swap2p] failed to create adapter", error);
+      logError("swap2p-adapter", "failed to create adapter", error);
       return { adapter: null, chainId };
     }
   }, [chainId, publicClient, walletClient]);

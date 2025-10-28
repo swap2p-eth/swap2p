@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { normalizePartnerAddress, PARTNER_STORAGE_KEY } from "@/lib/partner";
+import { info as logInfo, warn as logWarn } from "@/lib/logger";
 
 export function usePartnerReferralCapture() {
   React.useEffect(() => {
@@ -15,12 +16,12 @@ export function usePartnerReferralCapture() {
     if (normalized) {
       try {
         window.localStorage.setItem(PARTNER_STORAGE_KEY, normalized);
-        console.info("[partner] stored referral address", normalized);
+        logInfo("partner", "stored referral address", normalized);
       } catch (error) {
-        console.warn("[partner] failed to store referral address", error);
+        logWarn("partner", "failed to store referral address", error);
       }
     } else {
-      console.info("[partner] invalid referral parameter, ignoring", rawPartner);
+      logInfo("partner", "invalid referral parameter, ignoring", rawPartner);
     }
 
     url.searchParams.delete("p");

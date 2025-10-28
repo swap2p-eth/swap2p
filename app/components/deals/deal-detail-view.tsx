@@ -17,6 +17,7 @@ import { getDealSideCopy } from "@/lib/deal-copy";
 import type { ApprovalMode } from "./token-approval-button";
 import { useNetworkConfig } from "@/hooks/use-network-config";
 import { isUserRejectedError } from "@/lib/errors";
+import { error as logError, warn as logWarn } from "@/lib/logger";
 
 export interface DealDetailViewProps {
   dealId: string;
@@ -91,8 +92,8 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     try {
       await task();
     } catch (error) {
-      const log = isUserRejectedError(error) ? console.warn : console.error;
-      log("[deal] action failed", error);
+      const log = isUserRejectedError(error) ? logWarn : logError;
+      log("deal-detail", "action failed", error);
       const fullMessage =
         error instanceof Error ? error.message : typeof error === "string" ? error : "Operation failed.";
       const shortMessage = fullMessage.split(".")[0] ?? "Operation failed";
@@ -127,7 +128,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
           setTokenAllowance(value as bigint);
         }
       } catch (error) {
-        console.error("[deal-detail] allowance read failed", error);
+        logError("deal-detail", "allowance read failed", error);
         if (!cancelled) {
           setTokenAllowance(null);
         }
@@ -247,7 +248,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
       setAllowanceNonce(value => value + 1);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Token approval failed.";
-      console.error("[deal-detail] approval failed", error);
+      logError("deal-detail", "approval failed", error);
       setActionError(message);
     } finally {
       setApprovalBusy(false);

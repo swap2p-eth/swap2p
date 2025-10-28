@@ -3,6 +3,7 @@
 import { getAddress, isAddress, type Address } from "viem";
 
 import { DEFAULT_PARTNER_ADDRESS } from "@/config";
+import { warn as logWarn } from "@/lib/logger";
 
 export const PARTNER_STORAGE_KEY = "partner";
 
@@ -28,7 +29,7 @@ export function writePartnerToStorage(value: string): Address | null {
     }
     window.localStorage.removeItem(PARTNER_STORAGE_KEY);
   } catch (error) {
-    console.warn("[partner] failed to persist referral", error);
+    logWarn("partner", "failed to persist referral", error);
   }
   return null;
 }
@@ -39,7 +40,7 @@ export function readPartnerFromStorage(): Address | null {
     const stored = window.localStorage.getItem(PARTNER_STORAGE_KEY);
     return normalizePartnerAddress(stored);
   } catch (error) {
-    console.warn("[partner] failed to read referral from storage", error);
+    logWarn("partner", "failed to read referral from storage", error);
     return null;
   }
 }

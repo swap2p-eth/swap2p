@@ -8,6 +8,7 @@ import { CHAT_MESSAGE_STATE_LABELS } from "@/lib/chat/chat-state";
 import type { DealChatMessage } from "@/lib/swap2p/types";
 import { hexToString, type Hex } from "viem";
 import { isUserRejectedError } from "@/lib/errors";
+import { error as logError, warn as logWarn } from "@/lib/logger";
 
 interface UseChatMessagesOptions {
   chat?: DealChatMessage[];
@@ -87,8 +88,8 @@ export function useChatMessages({
       await onSend(text);
       setDraft("");
     } catch (err) {
-      const log = isUserRejectedError(err) ? console.warn : console.error;
-      log("[chat] send failed", err);
+      const log = isUserRejectedError(err) ? logWarn : logError;
+      log("chat", "send failed", err);
       const fullMessage =
         err instanceof Error ? err.message : typeof err === "string" ? err : "Failed to send message.";
       const shortMessage = fullMessage.split(".")[0] ?? "Failed to send message";

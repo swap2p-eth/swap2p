@@ -23,7 +23,8 @@ export function readStoredFilters(): StoredFilters | null {
     }
     return parsed;
   } catch (error) {
-    console.warn("Failed to read offer filters from storage", error);
+    logWarn("offers-filter-storage", "failed to read filters from storage", error);
     return null;
   }
 }
+import { warn as logWarn } from "@/lib/logger";

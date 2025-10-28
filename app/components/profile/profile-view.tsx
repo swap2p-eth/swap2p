@@ -73,7 +73,7 @@ export function ProfileView({ address }: ProfileViewProps) {
         <p className="text-sm text-muted-foreground sm:text-base">Review user profile</p>
       </section>
 
-      <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30 shadow-none">
+      <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/20">
         <CardContent className="flex flex-col items-center gap-6 py-8 text-center sm:pt-8">
           <div className="flex h-24 w-24 items-center justify-center rounded-full border border-border/60 bg-background/80 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.7)]">
             <Jazzicon diameter={80} seed={seed} />
@@ -83,7 +83,7 @@ export function ProfileView({ address }: ProfileViewProps) {
       </Card>
 
       {isCurrentUser ? (
-        <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30 shadow-none">
+        <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/20">
           <CardHeader className="gap-4">
             <div className="space-y-2">
               <CardTitle className="text-xl">Partner program</CardTitle>

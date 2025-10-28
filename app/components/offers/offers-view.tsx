@@ -21,6 +21,7 @@ import {
 import { RefreshCw } from "lucide-react";
 import { useUser } from "@/context/user-context";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { debug as logDebug } from "@/lib/logger";
 
 const DEFAULT_COUNTRY = "US";
 
@@ -75,12 +76,12 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     setToken(nextToken);
     setFiat(nextFiat);
     setPaymentMethod(nextPaymentMethod);
-    console.debug("[OffersView] filters hydrated", JSON.stringify({
+    logDebug("offers-view", "filters hydrated", {
       side: nextSide,
       token: nextToken,
       fiat: nextFiat,
       paymentMethod: nextPaymentMethod,
-    }));
+    });
     setFiltersReady(true);
   }, [filtersReady, activeMarket.side, activeMarket.fiat]);
 
@@ -121,7 +122,7 @@ export function OffersView({ onStartDeal, onCreateOffer, onEditOffer }: OffersVi
     if (side === activeMarket.side && normalizedFiat === currentFiat) {
       return;
     }
-    console.debug("[OffersView] ensureMarket", JSON.stringify({ side, fiat: normalizedFiat }));
+    logDebug("offers-view", "ensureMarket", { side, fiat: normalizedFiat });
     void ensureMarket({ side, fiat: normalizedFiat });
   }, [filtersReady, side, normalizedFiat, ensureMarket, activeMarket.side, activeMarket.fiat]);
 

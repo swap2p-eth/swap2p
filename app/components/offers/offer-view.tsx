@@ -19,6 +19,7 @@ import { FiatFlag } from "@/components/fiat-flag";
 import type { OfferRow } from "@/lib/types/market";
 import { SideToggle } from "@/components/deals/side-toggle";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
+import { error as logError } from "@/lib/logger";
 
 const TOKEN_STORAGE_KEY = "swap2p:offer:last-token";
 const FIAT_STORAGE_KEY = "swap2p:offer:last-fiat";
@@ -278,7 +279,7 @@ export function OfferView({
         const requirementsValue = existingOffer.requirements ?? "";
         applyBaseline(priceScaled, minScaled, maxScaled, methods, requirementsValue);
       } catch (error) {
-        console.error("[offer] failed to derive fallback baseline", error);
+        logError("offer-view", "failed to derive fallback baseline", error);
         setBaseline(null);
       } finally {
         setBaselineLoaded(true);
@@ -312,7 +313,7 @@ export function OfferView({
         setBaselineLoaded(true);
       } catch (error) {
         if (!cancelled) {
-          console.error("[offer] failed to fetch on-chain baseline", error);
+          logError("offer-view", "failed to fetch on-chain baseline", error);
           fallbackBaseline();
         }
       }
@@ -519,7 +520,7 @@ export function OfferView({
       onCreated?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to publish offer.";
-      console.error("[offer] submit failed", err);
+      logError("offer-view", "submit failed", err);
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -537,7 +538,7 @@ export function OfferView({
       navigateBack();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to delete offer.";
-      console.error("[offer] delete failed", err);
+      logError("offer-view", "delete failed", err);
       setError(message);
     } finally {
       setIsDeleting(false);

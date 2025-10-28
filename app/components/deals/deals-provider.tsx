@@ -6,7 +6,7 @@ import { formatUnits, getAddress, hexToString, parseUnits, type Address, type Ha
 
 import { useUser } from "@/context/user-context";
 import { useNetworkConfig } from "@/hooks/use-network-config";
-import { debug } from "@/lib/logger";
+import { debug, error as logError } from "@/lib/logger";
 import { ZERO_ADDRESS, type NetworkConfig } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
@@ -307,7 +307,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       setChainDeals(next);
       return next;
     } catch (error) {
-      console.error("[DealsProvider] failed to fetch deals", {
+      logError("deals-provider", "failed to fetch deals", {
         chainId,
         user: currentUserAddress,
         network: network.name,
@@ -352,7 +352,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       normalizedUser = getAddress(currentUserAddress);
       contractAddress = getAddress(network.swap2pAddress);
     } catch (error) {
-      console.error("[DealsProvider] failed to normalize addresses for event subscriptions", error);
+      logError("deals-provider", "failed to normalize addresses for event subscriptions", error);
       return undefined;
     }
 
@@ -377,7 +377,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         });
         unwatchers.push(unwatch);
       } catch (error) {
-        console.error("[DealsProvider] failed to watch DealUpdated events", { args, error });
+        logError("deals-provider", "failed to watch DealUpdated events", { args, error });
       }
     };
 
@@ -429,18 +429,18 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
                   }
                 })
                 .catch(error => {
-                  console.error("[DealsProvider] failed to refresh deals after chat event", error);
+                  logError("deals-provider", "failed to refresh deals after chat event", error);
                 });
             } else {
               void update.catch(error => {
-                console.error("[DealsProvider] failed to refresh deals after chat event", error);
+                logError("deals-provider", "failed to refresh deals after chat event", error);
               });
             }
           },
         });
         unwatchers.push(unwatch);
       } catch (error) {
-        console.error("[DealsProvider] failed to watch Chat events", { args, error });
+        logError("deals-provider", "failed to watch Chat events", { args, error });
       }
     };
 
@@ -454,7 +454,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         try {
           unwatch();
         } catch (error) {
-          console.error("[DealsProvider] failed to unwatch contract event", error);
+          logError("deals-provider", "failed to unwatch contract event", error);
         }
       }
     };

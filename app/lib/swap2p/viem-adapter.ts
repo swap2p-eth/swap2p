@@ -11,6 +11,7 @@ import {
 } from "viem";
 import { swap2pAbi } from "@/lib/swap2p/generated";
 import { DEFAULT_PARTNER_ADDRESS } from "@/config";
+import { error as logError, warn as logWarn } from "@/lib/logger";
 import type {
   CancelDealArgs,
   CancelRequestArgs,
@@ -144,7 +145,7 @@ const mapOfferInfo = (raw: any): OfferWithKey | null => {
   const idHex = toBytes32(idValue);
   if (!idHex) return null;
   let onlineValue: boolean | undefined;
-  if (typeof raw === "object" && raw !== null) {
+  if (typeof raw === "object") {
     if ("online" in raw && typeof raw.online === "boolean") {
       onlineValue = raw.online;
     } else if (Array.isArray(raw) && raw.length > 3) {
@@ -299,8 +300,8 @@ const simulateAndWrite = async (
       value,
       error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
     };
-    const log = isUserRejectedError(error) ? console.warn : console.error;
-    log("[swap2p][simulate:error]", payload);
+    const log = isUserRejectedError(error) ? logWarn : logError;
+    log("swap2p:simulate", "error", payload);
     debugLog("[swap2p][simulate:error]", payload);
     throw error;
   }
@@ -337,8 +338,8 @@ export const createSwap2pViemAdapter = (
           args: params.args,
           error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
         };
-        const log = isUserRejectedError(error) ? console.warn : console.error;
-        log("[swap2p][read:error]", payload);
+        const log = isUserRejectedError(error) ? logWarn : logError;
+        log("swap2p:read", "error", payload);
         debugLog("[swap2p][read:error]", payload);
         throw error;
       }

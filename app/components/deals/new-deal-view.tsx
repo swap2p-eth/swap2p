@@ -25,6 +25,7 @@ import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import type { ApprovalMode } from "./token-approval-button";
 import { getNetworkConfigForChain } from "@/config";
 import { isUserRejectedError } from "@/lib/errors";
+import { error as logError, warn as logWarn } from "@/lib/logger";
 
 type AmountKind = "crypto" | "fiat";
 type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
@@ -124,7 +125,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
           setTokenAllowance(value as bigint);
         }
       } catch (error) {
-        console.error("[new-deal] allowance read failed", error);
+        logError("new-deal", "allowance read failed", error);
         if (!cancelled) {
           setTokenAllowance(null);
         }
@@ -319,8 +320,8 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       });
       onCreated?.(dealRow.id);
     } catch (error) {
-      const log = isUserRejectedError(error) ? console.warn : console.error;
-      log("[new-deal] request failed", error);
+      const log = isUserRejectedError(error) ? logWarn : logError;
+      log("new-deal", "request failed", error);
       const fullMessage =
         error instanceof Error ? error.message : typeof error === "string" ? error : "Failed to create deal.";
       const shortMessage = fullMessage.split(".")[0] ?? "Failed to create deal";
@@ -377,8 +378,8 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       await publicClient.waitForTransactionReceipt({ hash: txHash });
       setAllowanceNonce(value => value + 1);
     } catch (error) {
-      const log = isUserRejectedError(error) ? console.warn : console.error;
-      log("[deal] approval failed", error);
+      const log = isUserRejectedError(error) ? logWarn : logError;
+      log("new-deal", "approval failed", error);
       const fullMessage =
         error instanceof Error ? error.message : typeof error === "string" ? error : "Token approval failed.";
       const shortMessage = fullMessage.split(".")[0] ?? "Token approval failed";

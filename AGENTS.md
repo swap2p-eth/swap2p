@@ -24,7 +24,8 @@ Networks: Hardhat uses simulated networks (hardhatMainnet, hardhatOp). For Sepol
   - Test contracts follow Swap2p_*Test naming in contracts/tests/.
 - TypeScript: ESM, Node 16 module resolution, strict on. 2‑space indentation.
   - Place Node.js tests in test/*.ts; name as feature.node.ts when helpful.
-- Write code comments and UI copy in English to keep the documentation consistent.
+  - Write code comments and UI copy in English to keep the documentation consistent.
+  - Use the scoped logger in `@/lib/logger` (`debug`, `info`, `warn`, `error`) instead of `console.*` in application code.
 
 ## Testing Guidelines
 - Solidity tests: Foundry‑style in contracts/tests/*.t.sol (executed by Hardhat).
