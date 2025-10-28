@@ -602,22 +602,6 @@ export function OfferView({
           </div>
           <div className="flex flex-col items-end gap-3">
             <SideToggle value={side} onChange={value => !disableImmutable && setSide(value)} disabled={disableImmutable} />
-            {isEdit ? (
-              <Button
-                type="button"
-                variant="destructive"
-                className="rounded-full px-6"
-                onClick={handleDelete}
-                disabled={isDeleting || isSubmitting}
-              >
-                {isDeleting ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 h-4 w-4" />
-                )}
-                {isDeleting ? "Deleting…" : "Delete offer"}
-              </Button>
-            ) : null}
           </div>
         </CardHeader>
         <CardContent>
@@ -834,14 +818,37 @@ export function OfferView({
               </div>
             )}
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <Button type="button" variant="outline" onClick={navigateBack} className="rounded-full px-6" disabled={isSubmitting || isDeleting}>
-                Cancel
-              </Button>
-              <Button type="submit" className="rounded-full px-6" disabled={isSubmitting || isDeleting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {submitLabel}
-              </Button>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+                <Button type="submit" className="rounded-full px-6" disabled={isSubmitting || isDeleting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {submitLabel}
+                </Button>
+                <Button type="button" variant="outline" onClick={navigateBack} className="rounded-full px-6" disabled={isSubmitting || isDeleting}>
+                  Cancel
+                </Button>
+              </div>
+              {isEdit ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="rounded-full px-6"
+                  onClick={handleDelete}
+                  disabled={isDeleting || isSubmitting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting…
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete offer
+                    </>
+                  )}
+                </Button>
+              ) : null}
             </div>
           </form>
         </CardContent>
