@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Loader2, Trash2, Trophy, X } from "lucide-react";
 import { useChainId } from "wagmi";
-import { isHex } from "viem";
+import { formatUnits, isHex, parseUnits } from "viem";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,11 +18,25 @@ import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 import type { OfferRow } from "@/lib/types/market";
 import { SideToggle } from "@/components/deals/side-toggle";
+import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 
 const TOKEN_STORAGE_KEY = "swap2p:offer:last-token";
 const FIAT_STORAGE_KEY = "swap2p:offer:last-fiat";
 const DEFAULT_TOKEN_SYMBOL = "USDT";
 const DEFAULT_FIAT_CODE = "US";
+const PRICE_SCALE = 1_000;
+const PRICE_SCALE_BI = BigInt(PRICE_SCALE);
+
+type BaselineValues = {
+  priceScaled: bigint;
+  priceDisplay: string;
+  minAmountScaled: bigint;
+  minDisplay: string;
+  maxAmountScaled: bigint;
+  maxDisplay: string;
+  paymentMethods: string[];
+  requirements: string;
+};
 
 type DealSide = "BUY" | "SELL";
 type OfferEditorMode = "create" | "edit";
@@ -58,6 +72,19 @@ const parseMethods = (raw?: string) =>
 
 const summarizeMethods = (methods: string[]) => (methods.length ? methods.join(", ") : "no payment methods");
 
+const formatPriceFromScaled = (value: bigint): string => {
+  const integer = value / PRICE_SCALE_BI;
+  const fraction = value % PRICE_SCALE_BI;
+  if (fraction === 0n) {
+    return integer.toString();
+  }
+  let fractionStr = fraction.toString().padStart(3, "0");
+  while (fractionStr.endsWith("0")) {
+    fractionStr = fractionStr.slice(0, -1);
+  }
+  return `${integer.toString()}.${fractionStr}`;
+};
+
 export function OfferView({
   mode = "create",
   offerId,
@@ -70,6 +97,7 @@ export function OfferView({
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
   const defaultFiat = FIAT_INFOS[0]?.countryCode ?? "";
   const { offers, makerOffers, createOffer, updateOffer, removeOffer } = useOffers();
+  const { adapter } = useSwap2pAdapter();
 
   const rawOfferId = React.useMemo(() => (typeof offerId === "string" ? offerId.trim() : ""), [offerId]);
   const normalizedOfferId = React.useMemo(() => {
@@ -136,6 +164,15 @@ export function OfferView({
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [successState, setSuccessState] = React.useState<null | { message: string; summary: string }>(null);
+  const fieldTouchedRef = React.useRef({
+    price: false,
+    minAmount: false,
+    maxAmount: false,
+    paymentMethods: false,
+    requirements: false,
+  });
+  const [baseline, setBaseline] = React.useState<BaselineValues | null>(null);
+  const [baselineLoaded, setBaselineLoaded] = React.useState(false);
 
   const backLabel = "Back";
   const fallbackHash = returnHash ?? "offers";
@@ -171,6 +208,16 @@ export function OfferView({
   }, [isEdit, existingOffer]);
 
   React.useEffect(() => {
+    fieldTouchedRef.current = {
+      price: false,
+      minAmount: false,
+      maxAmount: false,
+      paymentMethods: false,
+      requirements: false,
+    };
+  }, [isEdit, existingOffer?.id]);
+
+  React.useEffect(() => {
     if (!isEdit) {
       setTokenSymbol(preferredTokenSymbol);
       setFiat(preferredFiatCode);
@@ -192,6 +239,100 @@ export function OfferView({
     }
   }, [fiat, isEdit]);
 
+  React.useEffect(() => {
+    if (!(isEdit && existingOffer)) {
+      setBaseline(null);
+      setBaselineLoaded(false);
+      return;
+    }
+
+    const decimalsValue =
+      existingOffer.tokenDecimals ??
+      (sortedTokens.find(item => item.symbol === existingOffer.token)?.decimals ?? 18);
+
+    const applyBaseline = (
+      priceScaled: bigint,
+      minScaled: bigint,
+      maxScaled: bigint,
+      methods: string[],
+      requirementsValue: string,
+    ) => {
+      setBaseline({
+        priceScaled,
+        priceDisplay: formatPriceFromScaled(priceScaled),
+        minAmountScaled: minScaled,
+        minDisplay: formatUnits(minScaled, decimalsValue),
+        maxAmountScaled: maxScaled,
+        maxDisplay: formatUnits(maxScaled, decimalsValue),
+        paymentMethods: methods,
+        requirements: requirementsValue,
+      });
+    };
+
+    const fallbackBaseline = () => {
+      try {
+        const priceScaled = BigInt(Math.round(existingOffer.price * PRICE_SCALE));
+        const minScaled = parseUnits(String(existingOffer.minAmount), decimalsValue);
+        const maxScaled = parseUnits(String(existingOffer.maxAmount), decimalsValue);
+        const methods = parseMethods(existingOffer.paymentMethods);
+        const requirementsValue = existingOffer.requirements ?? "";
+        applyBaseline(priceScaled, minScaled, maxScaled, methods, requirementsValue);
+      } catch (error) {
+        console.error("[offer] failed to derive fallback baseline", error);
+        setBaseline(null);
+      } finally {
+        setBaselineLoaded(true);
+      }
+    };
+
+    const contractKey = existingOffer.contractKey;
+
+    if (!adapter || !contractKey) {
+      fallbackBaseline();
+      return;
+    }
+
+    let cancelled = false;
+    setBaselineLoaded(false);
+
+    (async () => {
+      try {
+        const onchain = await adapter.getOffer(contractKey);
+        if (cancelled) return;
+        if (!onchain) {
+          fallbackBaseline();
+          return;
+        }
+        const priceScaled = BigInt(onchain.priceFiatPerToken);
+        const minScaled = onchain.minAmount;
+        const maxScaled = onchain.maxAmount;
+        const methods = parseMethods(onchain.paymentMethods);
+        const requirementsValue = onchain.requirements ?? "";
+        applyBaseline(priceScaled, minScaled, maxScaled, methods, requirementsValue);
+        setBaselineLoaded(true);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("[offer] failed to fetch on-chain baseline", error);
+          fallbackBaseline();
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [adapter, existingOffer, isEdit, sortedTokens]);
+
+  React.useEffect(() => {
+    if (!isEdit || !baseline) return;
+    const touched = fieldTouchedRef.current;
+    if (!touched.price) setPrice(baseline.priceDisplay);
+    if (!touched.minAmount) setMinAmount(baseline.minDisplay);
+    if (!touched.maxAmount) setMaxAmount(baseline.maxDisplay);
+    if (!touched.paymentMethods) setSelectedMethods(baseline.paymentMethods);
+    if (!touched.requirements) setRequirements(baseline.requirements);
+  }, [baseline, isEdit]);
+
   const paymentMethodOptions = React.useMemo<PaymentMethodOption[]>(() => {
     const currencyKey = selectedFiatInfo?.currencyCode ?? "";
     const base = network.paymentMethods[currencyKey] ?? [];
@@ -199,20 +340,87 @@ export function OfferView({
     return [...base, ...extra].map(method => ({ id: method, label: method }));
   }, [network, selectedFiatInfo, selectedMethods]);
 
+  const tokenConfig = React.useMemo(
+    () => sortedTokens.find(item => item.symbol === tokenSymbol),
+    [sortedTokens, tokenSymbol],
+  );
+  const tokenDecimals = React.useMemo(
+    () => existingOffer?.tokenDecimals ?? tokenConfig?.decimals ?? 18,
+    [existingOffer?.tokenDecimals, tokenConfig],
+  );
+
+  const getPriceScaled = React.useCallback((value: string): bigint | null => {
+    if (!value || !value.trim()) return null;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return null;
+    return BigInt(Math.round(numeric * PRICE_SCALE));
+  }, []);
+
+  const getAmountScaled = React.useCallback(
+    (value: string): bigint | null => {
+      if (!value || !value.trim()) return null;
+      try {
+        return parseUnits(value, tokenDecimals);
+      } catch {
+        return null;
+      }
+    },
+    [tokenDecimals],
+  );
+
+  const priceChanged = React.useMemo(() => {
+    if (!isEdit || !baselineLoaded || !baseline) return false;
+    const scaled = getPriceScaled(price);
+    if (scaled === null) return true;
+    return scaled !== baseline.priceScaled;
+  }, [baseline, baselineLoaded, getPriceScaled, isEdit, price]);
+
+  const minChanged = React.useMemo(() => {
+    if (!isEdit || !baselineLoaded || !baseline) return false;
+    const scaled = getAmountScaled(minAmount);
+    if (scaled === null) return true;
+    return scaled !== baseline.minAmountScaled;
+  }, [baseline, baselineLoaded, getAmountScaled, isEdit, minAmount]);
+
+  const maxChanged = React.useMemo(() => {
+    if (!isEdit || !baselineLoaded || !baseline) return false;
+    const scaled = getAmountScaled(maxAmount);
+    if (scaled === null) return true;
+    return scaled !== baseline.maxAmountScaled;
+  }, [baseline, baselineLoaded, getAmountScaled, isEdit, maxAmount]);
+
+  const paymentMethodsChanged = React.useMemo(() => {
+    if (!isEdit || !baselineLoaded || !baseline) return false;
+    const normalize = (list: string[]) =>
+      Array.from(new Set(list.map(item => item.trim().toLowerCase()).filter(Boolean))).sort();
+    const current = normalize(selectedMethods);
+    const baselineNormalized = normalize(baseline.paymentMethods);
+    if (current.length !== baselineNormalized.length) return true;
+    return current.some((entry, index) => entry !== baselineNormalized[index]);
+  }, [baseline, baselineLoaded, isEdit, selectedMethods]);
+
+  const requirementsChanged = React.useMemo(() => {
+    if (!isEdit || !baselineLoaded || !baseline) return false;
+    return requirements.trim() !== baseline.requirements.trim();
+  }, [baseline, baselineLoaded, isEdit, requirements]);
+
   const tokenLabel = (tokenSymbol || "token").toUpperCase();
 
   const addCustomMethod = React.useCallback(() => {
     const trimmed = customMethodInput.trim();
     if (!trimmed) return;
+    fieldTouchedRef.current.paymentMethods = true;
     setSelectedMethods(prev => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
     setCustomMethodInput("");
   }, [customMethodInput]);
 
   const handleToggleMethod = (method: string) => {
+    fieldTouchedRef.current.paymentMethods = true;
     setSelectedMethods(prev => (prev.includes(method) ? prev.filter(item => item !== method) : [...prev, method]));
   };
 
   const handleRemoveMethod = (method: string) => {
+    fieldTouchedRef.current.paymentMethods = true;
     setSelectedMethods(prev => prev.filter(item => item !== method));
   };
 
@@ -279,7 +487,8 @@ export function OfferView({
           price: parsedPrice,
           minAmount: parsedMin,
           maxAmount: parsedMax,
-          paymentMethods: selectedMethods
+          paymentMethods: selectedMethods,
+          requirements: requirements.trim()
         });
 
         setSuccessState({
@@ -466,9 +675,12 @@ export function OfferView({
               </label>
               <NumericInput
                 value={price}
-                onChange={event => setPrice(event.target.value)}
+                onChange={event => {
+                  fieldTouchedRef.current.price = true;
+                  setPrice(event.target.value);
+                }}
                 placeholder="e.g. 1.01"
-                className="rounded-full"
+                className={cn("rounded-full", priceChanged && "border-blue-500 focus-visible:ring-blue-500")}
               />
               <p className="text-xs text-muted-foreground">
                 Price per token unit in {selectedFiatInfo?.currencyCode ?? (fiat || "selected currency")}.
@@ -482,9 +694,12 @@ export function OfferView({
                 </label>
                 <NumericInput
                   value={minAmount}
-                  onChange={event => setMinAmount(event.target.value)}
+                  onChange={event => {
+                    fieldTouchedRef.current.minAmount = true;
+                    setMinAmount(event.target.value);
+                  }}
                   placeholder="e.g. 200"
-                  className="rounded-full"
+                  className={cn("rounded-full", minChanged && "border-blue-500 focus-visible:ring-blue-500")}
                 />
               </div>
               <div className="space-y-3">
@@ -493,9 +708,12 @@ export function OfferView({
                 </label>
                 <NumericInput
                   value={maxAmount}
-                  onChange={event => setMaxAmount(event.target.value)}
+                  onChange={event => {
+                    fieldTouchedRef.current.maxAmount = true;
+                    setMaxAmount(event.target.value);
+                  }}
                   placeholder="e.g. 2500"
-                  className="rounded-full"
+                  className={cn("rounded-full", maxChanged && "border-blue-500 focus-visible:ring-blue-500")}
                 />
               </div>
             </section>
@@ -505,7 +723,12 @@ export function OfferView({
                 <label className="text-xs uppercase tracking-[0.2em] text-muted-foreground/70">
                   Payment methods ({selectedFiatInfo?.currencyCode ?? "select fiat"})
                 </label>
-                <div className="grid gap-2 rounded-3xl border border-border/60 bg-background/60 p-4">
+                <div
+                  className={cn(
+                    "grid gap-2 rounded-3xl border border-border/60 bg-background/60 p-4",
+                    paymentMethodsChanged && "border-blue-500"
+                  )}
+                >
                   {paymentMethodOptions.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
                       No payment methods configured for {fiat || "this fiat"}.
@@ -581,11 +804,13 @@ export function OfferView({
                 </label>
                 <TextArea
                   value={requirements}
-                  onChange={event => setRequirements(event.target.value)}
+                  onChange={event => {
+                    fieldTouchedRef.current.requirements = true;
+                    setRequirements(event.target.value);
+                  }}
                   placeholder="Write requirements and, if you sell crypto, include payment details for each rail."
                   maxLength={256}
-                  className="min-h-[200px]"
-                  readOnly={isEdit}
+                  className={cn("min-h-[200px]", requirementsChanged && "border-blue-500 focus-visible:ring-blue-500")}
                 />
                 <p className="text-xs text-muted-foreground">
                   Write requirements and, if you sell, include payment details for each rail.

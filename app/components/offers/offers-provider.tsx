@@ -10,7 +10,7 @@ import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { useNetworkConfig } from "@/hooks/use-network-config";
 import { decodeCountryCode, encodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import type { OfferRow } from "@/lib/types/market";
-import { SwapSide, type OfferWithKey, type MakerProfile } from "@/lib/swap2p/types";
+import { SwapSide, type OfferWithKey, type MakerProfile, type Offer } from "@/lib/swap2p/types";
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
 import { debug } from "@/lib/logger";
 
@@ -53,6 +53,7 @@ interface OfferUpdateInput {
   minAmount?: number;
   maxAmount?: number;
   paymentMethods?: string[];
+  requirements?: string;
 }
 
 const OffersContext = React.createContext<OffersContextValue | null>(null);
@@ -122,6 +123,23 @@ const mapOffer = (
 
 const makeCacheKey = (tokenAddress: string, side: SwapSide, fiat: number) =>
   `${tokenAddress.toLowerCase()}|${side}|${fiat}`;
+
+const METHODS_SEPARATOR = ", ";
+
+const parseMethodList = (raw?: string): string[] =>
+  raw
+    ? raw
+        .split(",")
+        .map(method => method.trim())
+        .filter(Boolean)
+    : [];
+
+const formatMethodList = (methods: string[]): string => {
+  const unique = Array.from(
+    new Set(methods.map(method => method.trim()).filter(Boolean))
+  );
+  return unique.join(METHODS_SEPARATOR);
+};
 
 export function OffersProvider({ children }: { children: React.ReactNode }) {
   const { address } = useUser();
@@ -580,7 +598,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       const fiatLabel = fiatInfo?.shortLabel ?? normalizedCountry;
       const currencyCode = fiatInfo?.currencyCode ?? normalizedCountry;
-      const paymentMethodsValue = paymentMethods.join(", ");
+      const paymentMethodsValue = formatMethodList(paymentMethods);
       const fallbackEntry: OfferRow = {
         id: generateOfferId(),
         side,
@@ -670,28 +688,79 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       const tokenInfo = tokenConfigs.find(item => item.address.toLowerCase() === normalizedToken);
       const decimals = offer.tokenDecimals ?? tokenInfo?.decimals ?? 18;
 
-      const nextPrice = updates.price ?? offer.price;
-      const nextMinAmount = updates.minAmount ?? offer.minAmount;
-      const nextMaxAmount = updates.maxAmount ?? offer.maxAmount;
-      const existingMethods = offer.paymentMethods
-        ? offer.paymentMethods.split(",").map(method => method.trim()).filter(Boolean)
-        : [];
-      const nextMethodsList =
-        updates.paymentMethods !== undefined ? updates.paymentMethods : existingMethods;
-      const paymentMethodsValue = nextMethodsList.join(", ");
+      let onchainOffer: Offer | null = null;
+      try {
+        onchainOffer = await adapter.getOffer(key);
+      } catch (error) {
+        console.warn("[offers] failed to fetch on-chain offer before update", error);
+      }
 
-      const txHash: Hash = await adapter.makerMakeOffer({
+      const priceToScaled = (value: number) => BigInt(Math.round(value * PRICE_SCALE));
+      const existingPriceScaled = onchainOffer
+        ? BigInt(onchainOffer.priceFiatPerToken)
+        : priceToScaled(offer.price);
+      const desiredPriceScaled =
+        updates.price !== undefined ? priceToScaled(updates.price) : existingPriceScaled;
+      const priceArg = desiredPriceScaled === existingPriceScaled ? 0n : desiredPriceScaled;
+
+      const existingMinAmount = onchainOffer
+        ? onchainOffer.minAmount
+        : parseUnits(String(offer.minAmount), decimals);
+      const desiredMinAmount =
+        updates.minAmount !== undefined
+          ? parseUnits(String(updates.minAmount), decimals)
+          : existingMinAmount;
+      const minArg = desiredMinAmount === existingMinAmount ? 0n : desiredMinAmount;
+
+      const existingMaxAmount = onchainOffer
+        ? onchainOffer.maxAmount
+        : parseUnits(String(offer.maxAmount), decimals);
+      const desiredMaxAmount =
+        updates.maxAmount !== undefined
+          ? parseUnits(String(updates.maxAmount), decimals)
+          : existingMaxAmount;
+      const maxArg = desiredMaxAmount === existingMaxAmount ? 0n : desiredMaxAmount;
+
+      const currentMethodsList = onchainOffer
+        ? parseMethodList(onchainOffer.paymentMethods)
+        : parseMethodList(offer.paymentMethods);
+      const nextMethodsList =
+        updates.paymentMethods !== undefined ? updates.paymentMethods : currentMethodsList;
+      const paymentMethodsValue = formatMethodList(nextMethodsList);
+      const existingMethodsValue = formatMethodList(currentMethodsList);
+      const paymentMethodsArg = paymentMethodsValue === existingMethodsValue ? "" : paymentMethodsValue;
+
+      const existingRequirementsValue = (onchainOffer?.requirements ?? offer.requirements ?? "").trim();
+      const desiredRequirementsValue =
+        updates.requirements !== undefined ? updates.requirements.trim() : existingRequirementsValue;
+      const requirementsArg =
+        desiredRequirementsValue === existingRequirementsValue ? "" : desiredRequirementsValue;
+
+      const txPayload = {
         account: makerAccount,
         token: tokenAddress,
         side: key.side,
         fiat: key.fiat,
-        price: BigInt(Math.round(nextPrice * PRICE_SCALE)),
-        minAmount: parseUnits(String(nextMinAmount), decimals),
-        maxAmount: parseUnits(String(nextMaxAmount), decimals),
-        paymentMethods: paymentMethodsValue,
-        requirements: (offer.requirements ?? "").trim(),
+        price: priceArg,
+        minAmount: minArg,
+        maxAmount: maxArg,
+        paymentMethods: paymentMethodsArg,
+        requirements: requirementsArg,
         partner: null,
+      };
+
+      console.info("[offers] update payload", {
+        offerId: offer.id,
+        payload: {
+          price: txPayload.price,
+          minAmount: txPayload.minAmount,
+          maxAmount: txPayload.maxAmount,
+          paymentMethods: txPayload.paymentMethods,
+          requirements: txPayload.requirements,
+        },
       });
+
+      const txHash: Hash = await adapter.makerMakeOffer(txPayload);
 
       await publicClient.waitForTransactionReceipt({ hash: txHash });
 
@@ -709,10 +778,11 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       return {
         ...offer,
-        price: nextPrice,
-        minAmount: nextMinAmount,
-        maxAmount: nextMaxAmount,
+        price: updates.price ?? offer.price,
+        minAmount: updates.minAmount ?? offer.minAmount,
+        maxAmount: updates.maxAmount ?? offer.maxAmount,
         paymentMethods: paymentMethodsValue,
+        requirements: desiredRequirementsValue,
         updatedAt: new Date().toISOString(),
       };
     },

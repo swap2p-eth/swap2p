@@ -458,11 +458,21 @@ contract Swap2p is ReentrancyGuard {
             o.maker = msg.sender;
         }
 
-        o.minAmt = minAmt;
-        o.maxAmt = maxAmt;
-        o.priceFiatPerToken = price;
-        o.paymentMethods = paymentMethods;
-        o.requirements = requirements;
+        if (minAmt != 0) {
+            o.minAmt = minAmt;
+        }
+        if (maxAmt != 0) {
+            o.maxAmt = maxAmt;
+        }
+        if (price != 0) {
+            o.priceFiatPerToken = price;
+        }
+        if (bytes(paymentMethods).length != 0) {
+            o.paymentMethods = paymentMethods;
+        }
+        if (bytes(requirements).length != 0) {
+            o.requirements = requirements;
+        }
 
         o.ts = uint40(block.timestamp);
 
