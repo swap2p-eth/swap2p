@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Jazzicon from "react-jazzicon";
-import {Copy} from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { copyToClipboard, formatAddressShort, seedFromAddress } from "@/lib/utils";
 
@@ -14,15 +14,26 @@ interface ParticipantPillProps {
 
 export function ParticipantPill({ label, address, className }: ParticipantPillProps) {
   const seed = seedFromAddress(address);
+  const [copied, setCopied] = React.useState(false);
 
   const handleCopy = React.useCallback(
     async (event: React.MouseEvent<HTMLButtonElement>) => {
       event.preventDefault();
       if (!address) return;
-      await copyToClipboard(address);
+      const success = await copyToClipboard(address);
+      if (success) {
+        setCopied(true);
+      }
     },
     [address]
   );
+
+  React.useEffect(() => {
+    if (!copied) return;
+    if (typeof window === "undefined") return;
+    const timeout = window.setTimeout(() => setCopied(false), 1600);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
 
   return (
     <>
@@ -43,7 +54,11 @@ export function ParticipantPill({ label, address, className }: ParticipantPillPr
         >
           <Jazzicon diameter={20} seed={seed} />
           <span className="font-normal tracking-tight">{formatAddressShort(address)}</span>
-          <Copy className="h-3.5 w-3.5 text-muted-foreground/70 transition group-hover:text-foreground" />
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-emerald-500 transition group-hover:text-emerald-500" />
+          ) : (
+            <Copy className="h-3.5 w-3.5 text-muted-foreground/70 transition group-hover:text-foreground" />
+          )}
         </button>
       </div>
     </>
