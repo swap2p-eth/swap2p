@@ -175,7 +175,7 @@ export function OfferView({
   const [baselineLoaded, setBaselineLoaded] = React.useState(false);
 
   const backLabel = "Back";
-  const fallbackHash = returnHash ?? "offers";
+  const fallbackHash = returnHash ?? "dashboard";
 
   React.useEffect(() => {
     if (!fiat && preferredFiatCode) {
@@ -495,6 +495,7 @@ export function OfferView({
           message: "Offer updated",
           summary: `${updated.side} ${updated.token} for ${updated.fiat} · ${summarizeMethods(parseMethods(updated.paymentMethods))}`
         });
+        navigateBack();
         onCreated?.();
         return;
       }
@@ -514,6 +515,7 @@ export function OfferView({
         message: "Offer published",
         summary: `${created.side} ${created.token} for ${created.fiat} · ${summarizeMethods(parseMethods(created.paymentMethods))}`
       });
+      navigateBack();
       onCreated?.();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to publish offer.";
