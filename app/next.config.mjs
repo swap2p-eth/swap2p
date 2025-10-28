@@ -18,12 +18,22 @@ const connectSrc = [
 ];
 
 if (isDev) {
-  connectSrc.push("http://127.0.0.1:*", "http://localhost:*");
+  connectSrc.push(
+    "http://127.0.0.1:*",
+    "http://localhost:*",
+    "ws://127.0.0.1:*",
+    "ws://localhost:*"
+  );
+}
+
+const scriptSrc = ["'self'"];
+if (isDev) {
+  scriptSrc.push("'unsafe-eval'", "'unsafe-inline'");
 }
 
 const cspDirectives = [
   "default-src 'self'",
-  `script-src 'self'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src ${scriptSrc.join(" ")}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob:",
   "font-src 'self' https://fonts.gstatic.com data:",
