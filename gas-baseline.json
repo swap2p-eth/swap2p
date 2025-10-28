@@ -1,14 +1,14 @@
 {
-  "G_SELL_setOnline": 45599,
-  "G_SELL_maker_makeOffer": 282117,
-  "G_SELL_taker_requestOffer": 351108,
-  "G_SELL_maker_acceptRequest": 68623,
-  "G_SELL_sendMessage": 36871,
-  "G_SELL_markFiatPaid": 47218,
-  "G_SELL_release": 223986,
-  "G_BUY_maker_makeOffer": 265005,
-  "G_BUY_taker_requestOffer": 317008,
-  "G_BUY_maker_acceptRequest": 68498,
-  "G_BUY_markFiatPaid": 45081,
-  "G_BUY_release": 189913
+  "G_SELL_setOnline": 45650,
+  "G_SELL_maker_makeOffer": 319662,
+  "G_SELL_taker_requestOffer": 420504,
+  "G_SELL_maker_acceptRequest": 117638,
+  "G_SELL_sendMessage": 82349,
+  "G_SELL_markFiatPaid": 91949,
+  "G_SELL_release": 294837,
+  "G_BUY_maker_makeOffer": 285450,
+  "G_BUY_taker_requestOffer": 403504,
+  "G_BUY_maker_acceptRequest": 117513,
+  "G_BUY_markFiatPaid": 91928,
+  "G_BUY_release": 243548
 }

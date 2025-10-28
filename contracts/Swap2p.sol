@@ -217,12 +217,10 @@ contract Swap2p is ReentrancyGuard {
         _marketOffers[marketKey].push(id);
     }
 
-    /// @dev Removes offer id from market index if present.
-    function _removeMarketOffer(bytes32 marketKey, bytes32 id) private {
-        mapping(bytes32 => uint) storage posMap = _marketOfferPos[marketKey];
+    /// @dev Swap-and-pop removal for indexed arrays.
+    function _removeIndexed(bytes32[] storage arr, mapping(bytes32 => uint) storage posMap, bytes32 id) private {
         uint pos = posMap[id];
         if (pos == 0) return;
-        bytes32[] storage arr = _marketOffers[marketKey];
         uint idx = pos - 1;
         uint last = arr.length - 1;
         if (idx != last) {
@@ -234,6 +232,12 @@ contract Swap2p is ReentrancyGuard {
         delete posMap[id];
     }
 
+    /// @dev Removes offer id from market index if present.
+    function _removeMarketOffer(bytes32 marketKey, bytes32 id) private {
+        mapping(bytes32 => uint) storage posMap = _marketOfferPos[marketKey];
+        _removeIndexed(_marketOffers[marketKey], posMap, id);
+    }
+
     /// @dev Adds offer id into maker index if absent.
     function _addMakerOffer(address maker, bytes32 id) private {
         if (_makerOfferPos[maker][id] != 0) return;
@@ -243,18 +247,7 @@ contract Swap2p is ReentrancyGuard {
 
     /// @dev Removes offer id from maker index if present.
     function _removeMakerOffer(address maker, bytes32 id) private {
-        uint pos = _makerOfferPos[maker][id];
-        if (pos == 0) return;
-        bytes32[] storage arr = _makerOffers[maker];
-        uint idx = pos - 1;
-        uint last = arr.length - 1;
-        if (idx != last) {
-            bytes32 lastId = arr[last];
-            arr[idx] = lastId;
-            _makerOfferPos[maker][lastId] = pos;
-        }
-        arr.pop();
-        delete _makerOfferPos[maker][id];
+        _removeIndexed(_makerOffers[maker], _makerOfferPos[maker], id);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -266,18 +259,7 @@ contract Swap2p is ReentrancyGuard {
     }
     /// @dev Removes a deal from user's open list if present.
     function _removeOpen(address u, bytes32 id) private {
-        uint pos = _openPos[u][id];
-        if (pos == 0) return;
-        uint idx = pos - 1;
-        bytes32[] storage arr = _openDeals[u];
-        uint last = arr.length - 1;
-        if (idx != last) {
-            bytes32 lastId = arr[last];
-            arr[idx] = lastId;
-            _openPos[u][lastId] = pos;
-        }
-        arr.pop();
-        delete _openPos[u][id];
+        _removeIndexed(_openDeals[u], _openPos[u], id);
     }
     /// @dev Removes a deal from both maker and taker open lists.
     function _closeBoth(address m, address t, bytes32 id) private {
@@ -296,18 +278,7 @@ contract Swap2p is ReentrancyGuard {
     }
     /// @dev Removes a deal from user's recent (closed) list if present.
     function _removeRecent(address u, bytes32 id) private {
-        uint pos = _recentPos[u][id];
-        if (pos == 0) return;
-        uint idx = pos - 1;
-        bytes32[] storage arr = _recentDeals[u];
-        uint last = arr.length - 1;
-        if (idx != last) {
-            bytes32 lastId = arr[last];
-            arr[idx] = lastId;
-            _recentPos[u][lastId] = pos;
-        }
-        arr.pop();
-        delete _recentPos[u][id];
+        _removeIndexed(_recentDeals[u], _recentPos[u], id);
     }
 
     // ────────────────────────────────────────────────────────────────────────
@@ -327,6 +298,14 @@ contract Swap2p is ReentrancyGuard {
         IERC20(token).safeTransfer(to, amt);
     }
 
+    function _payAffiliate(address token, address partner, uint128 fee, uint32 shareBp) private returns (uint128 paid) {
+        if (partner == address(0) || fee == 0 || shareBp == 0) return 0;
+        paid = uint128((uint256(fee) * shareBp) / 10_000);
+        if (paid != 0) {
+            _push(token, partner, paid);
+        }
+    }
+
     /// @dev Pays `amt` to `to`, charges protocol fee and splits affiliate share between taker/maker partners.
     function _payWithFee(
         address token,
@@ -340,24 +319,11 @@ contract Swap2p is ReentrancyGuard {
 
         uint128 remaining = fee;
 
-        address takerPartner = affiliates[taker];
-        uint128 takerShare = 0;
-        if (takerPartner != address(0)) {
-            takerShare = uint128((uint256(fee) * TAKER_AFF_SHARE_BP) / 10_000);
-            if (takerShare != 0) {
-                _push(token, takerPartner, takerShare);
-                remaining -= takerShare;
-            }
-        }
+        uint128 takerShare = _payAffiliate(token, affiliates[taker], fee, TAKER_AFF_SHARE_BP);
+        if (takerShare != 0) remaining -= takerShare;
 
-        address makerPartner = affiliates[maker];
-        if (makerPartner != address(0)) {
-            uint128 makerShare = uint128((uint256(fee) * MAKER_AFF_SHARE_BP) / 10_000);
-            if (makerShare != 0) {
-                _push(token, makerPartner, makerShare);
-                remaining -= makerShare;
-            }
-        }
+        uint128 makerShare = _payAffiliate(token, affiliates[maker], fee, MAKER_AFF_SHARE_BP);
+        if (makerShare != 0) remaining -= makerShare;
 
         if (remaining != 0) {
             _push(token, author, remaining);
@@ -808,19 +774,25 @@ contract Swap2p is ReentrancyGuard {
         out = _collectOfferInfos(ids, off, lim, false);
     }
 
+    function _sliceBounds(uint len, uint off, uint lim) private pure returns (uint start, uint end) {
+        if (lim == 0 || off >= len) return (0, 0);
+        uint remaining = len - off;
+        if (lim > remaining) lim = remaining;
+        start = off;
+        end = off + lim;
+    }
+
     function _collectOfferInfos(bytes32[] storage ids, uint off, uint lim, bool includeOnline)
         private
         view
         returns (OfferInfo[] memory out)
     {
         uint len = ids.length;
-        if (off >= len || lim == 0) return out;
-        uint end = off + lim;
-        if (end < off || end > len) end = len;
-        uint slice = end - off;
-        out = new OfferInfo[](slice);
+        (uint start, uint end) = _sliceBounds(len, off, lim);
+        if (start == end) return out;
+        out = new OfferInfo[](end - start);
         uint pos;
-        for (uint i = off; i < end; i++) {
+        for (uint i = start; i < end; i++) {
             bytes32 id = ids[i];
             Offer storage o = offers[id];
             if (o.ts == 0) continue;
@@ -840,13 +812,11 @@ contract Swap2p is ReentrancyGuard {
         returns (DealInfo[] memory out)
     {
         uint len = ids.length;
-        if (off >= len || lim == 0) return out;
-        uint end = off + lim;
-        if (end < off || end > len) end = len;
-        uint slice = end - off;
-        out = new DealInfo[](slice);
+        (uint start, uint end) = _sliceBounds(len, off, lim);
+        if (start == end) return out;
+        out = new DealInfo[](end - start);
         uint pos;
-        for (uint i = off; i < end; i++) {
+        for (uint i = start; i < end; i++) {
             bytes32 id = ids[i];
             Deal storage d = deals[id];
             if (d.state == DealState.NONE) continue;
@@ -881,13 +851,12 @@ contract Swap2p is ReentrancyGuard {
     {
         ChatMessage[] storage arr = deals[id].chat;
         uint256 len = arr.length;
-        if (off >= len || lim == 0) return out;
-        uint256 end = off + lim;
-        if (end < off || end > len) end = len;
-        uint256 slice = end - off;
+        (uint start, uint end) = _sliceBounds(len, off, lim);
+        if (start == end) return out;
+        uint slice = end - start;
         out = new ChatMessage[](slice);
         for (uint256 i; i < slice; i++) {
-            out[i] = arr[off + i];
+            out[i] = arr[start + i];
         }
     }
 
