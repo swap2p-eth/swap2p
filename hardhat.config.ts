@@ -4,13 +4,11 @@ import HardhatContractSizer from '@solidstate/hardhat-contract-sizer';
 import "@nomicfoundation/hardhat-verify";
 import "dotenv/config";
 
-const DEFAULT_LOCAL_PRIVATE_KEY = "0x59c6995e998f97a5a004497e5dce3c08ad94b5c2378de0b5b743cba3cbb58533";
 const hasUserPrivateKey = Boolean(process.env.PRIVATE_KEY);
-const resolvedPrivateKey = hasUserPrivateKey ? process.env.PRIVATE_KEY! : DEFAULT_LOCAL_PRIVATE_KEY;
 
 if (!hasUserPrivateKey) {
   console.warn(
-    "PRIVATE_KEY env variable not set. Using a default local key for tooling. Set PRIVATE_KEY before deploying to real networks.",
+    "PRIVATE_KEY env variable not set. Deployments to real networks require PRIVATE_KEY.",
   );
 }
 
@@ -42,15 +40,12 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
       loggingEnabled: true
     },
-    hardhatOp: {
-      type: "edr-simulated",
-      chainType: "op",
-    },
-    sepolia: {
+    mezo: {
       type: "http",
       chainType: "l1",
-      url: 'https://0xrpc.io/sep',
-      accounts: hasUserPrivateKey ? [resolvedPrivateKey] : [],
+      chainId: 31612,
+      url: process.env.MEZO_RPC_URL ?? "https://mainnet.mezo.public.validationcloud.io",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
   },
 /*  etherscan: {

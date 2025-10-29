@@ -31,7 +31,7 @@
     "local:node": "HARDHAT_VERBOSE=true npx hardhat node --show-stack-traces",
     "local:seed": "npx hardhat run --network localhost scripts/seed-hardhat.ts",
     "deploy:hardhat": "npx hardhat run --network hardhat scripts/deploy-swap2p.ts",
-    "deploy:sepolia": "npx hardhat run --network sepolia scripts/deploy-swap2p.ts"
+    "deploy:mezo": "npx hardhat run --network mezo scripts/deploy-swap2p.ts"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
