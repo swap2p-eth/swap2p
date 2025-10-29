@@ -1,4 +1,5 @@
 import hardhat from "hardhat";
+import { defineChain } from "viem";
 
 const { network } = hardhat;
 
@@ -10,30 +11,72 @@ if (!hreViem) {
   throw new Error("Hardhat viem plugin is not available. Ensure @nomicfoundation/hardhat-toolbox-viem is configured.");
 }
 
-const walletClients = await hreViem.getWalletClients();
+const targetNetwork = connection.networkName;
+const LOCAL_NETWORKS = new Set(["hardhat", "hardhatMainnet"]);
+const isLocalNetwork = LOCAL_NETWORKS.has(targetNetwork);
+const defaultHttpRpc = process.env.MEZO_RPC_URL ?? "https://mainnet.mezo.public.validationcloud.io";
+const defaultWsRpc = process.env.MEZO_RPC_WS_URL ?? "wss://mainnet.mezo.public.validationcloud.io";
+const mezoChain = !isLocalNetwork
+  ? defineChain({
+      id: 31612,
+      name: "Mezo Mainnet",
+      network: "mezo",
+      nativeCurrency: {
+        name: "Bitcoin",
+        symbol: "BTC",
+        decimals: 18,
+      },
+      rpcUrls: {
+        default: {
+          http: [defaultHttpRpc],
+          webSocket: [defaultWsRpc],
+        },
+        public: {
+          http: [defaultHttpRpc],
+          webSocket: [defaultWsRpc],
+        },
+      },
+      blockExplorers: {
+        default: {
+          name: "Mezo Explorer",
+          url: "https://explorer.mezo.org",
+        },
+      },
+    })
+  : undefined;
+
+const walletClients = await hreViem.getWalletClients(
+  mezoChain ? { chain: mezoChain } : undefined,
+);
 
 if (walletClients.length === 0) {
   throw new Error("No Hardhat wallet clients configured. Set PRIVATE_KEY for the selected network.");
 }
 
 const [deployer] = walletClients;
-const targetNetwork = connection.networkName;
-
-const LOCAL_NETWORKS = new Set(["hardhat", "hardhatMainnet"]);
-const isLocalNetwork = LOCAL_NETWORKS.has(targetNetwork);
+const publicClient = await hreViem.getPublicClient(
+  mezoChain ? { chain: mezoChain } : undefined,
+);
 
 console.log(`Deploying Swap2p using ${deployer.account.address} to ${targetNetwork}`);
 
 const confirmations = isLocalNetwork ? 1 : 3;
 const constructorArguments = [AUTHOR_ADDRESS];
-const swap = await hreViem.deployContract("Swap2p", constructorArguments, { confirmations });
+const swap = await hreViem.deployContract("Swap2p", constructorArguments, {
+  confirmations,
+  client: mezoChain
+    ? {
+        wallet: deployer,
+        public: publicClient,
+      }
+    : undefined,
+});
 
 console.log(`Swap2p deployed at ${swap.address}`);
 
 if (!isLocalNetwork) {
   const waitBlocks = 5n;
   const pollingIntervalMs = 4_000;
-  const publicClient = await hreViem.getPublicClient();
   const startingBlock = await publicClient.getBlockNumber();
   const targetBlock = startingBlock + waitBlocks;
 

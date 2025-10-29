@@ -58,6 +58,18 @@ const config: HardhatUserConfig = {
       apiKey: process.env.ETHERSCAN_API_KEY,
     },
   },
+  chainDescriptors: {
+    31612: {
+      name: "mezo",
+      blockExplorers: {
+        blockscout: {
+          name: "Mezo Explorer",
+          url: "https://explorer.mezo.org/",
+          apiUrl: "https://api.explorer.mezo.org/api"
+        }
+      }
+    },
+  },
 };
 
 export default config;
