@@ -18,7 +18,6 @@ import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
 import type { OfferRow } from "@/lib/types/market";
 import { SideToggle } from "@/components/deals/side-toggle";
-import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { error as logError } from "@/lib/logger";
 import {
   OfferFormSchema,
@@ -105,8 +104,7 @@ export function OfferView({
   const chainId = useChainId();
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
   const defaultFiat = FIAT_INFOS[0]?.countryCode ?? "";
-  const { offers, makerOffers, createOffer, updateOffer, removeOffer } = useOffers();
-  const { adapter } = useSwap2pAdapter();
+  const { offers, makerOffers, createOffer, updateOffer, removeOffer, refreshOffer } = useOffers();
 
   const rawOfferId = React.useMemo(() => (typeof offerId === "string" ? offerId.trim() : ""), [offerId]);
   const normalizedOfferId = React.useMemo(() => {
@@ -185,6 +183,7 @@ export function OfferView({
   });
   const [baseline, setBaseline] = React.useState<BaselineValues | null>(null);
   const [baselineLoaded, setBaselineLoaded] = React.useState(false);
+  const baselineRefreshRef = React.useRef<string | null>(null);
 
   const backLabel = "Back";
   const fallbackHash = returnHash ?? "dashboard";
@@ -220,6 +219,10 @@ export function OfferView({
       setSuccessState(null);
     }
   }, [isEdit, existingOffer]);
+
+  React.useEffect(() => {
+    baselineRefreshRef.current = null;
+  }, [existingOffer?.id]);
 
   React.useEffect(() => {
     fieldTouchedRef.current = {
@@ -303,22 +306,31 @@ export function OfferView({
 
     const contractKey = existingOffer.contractKey;
 
-    if (!adapter || !contractKey) {
+    if (!contractKey) {
       fallbackBaseline();
+      return;
+    }
+
+    if (baselineRefreshRef.current === existingOffer.id) {
       return;
     }
 
     let cancelled = false;
     setBaselineLoaded(false);
+    baselineRefreshRef.current = existingOffer.id;
 
     (async () => {
       try {
-        const onchain = await adapter.getOffer(contractKey);
+        const refreshed = await refreshOffer(existingOffer);
         if (cancelled) return;
+
+        const source = refreshed ?? existingOffer;
+        const onchain = source.contract;
         if (!onchain) {
           fallbackBaseline();
           return;
         }
+
         const priceScaled = BigInt(onchain.priceFiatPerToken);
         const minScaled = onchain.minAmount;
         const maxScaled = onchain.maxAmount;
@@ -328,7 +340,7 @@ export function OfferView({
         setBaselineLoaded(true);
       } catch (error) {
         if (!cancelled) {
-          logError("offer-view", "failed to fetch on-chain baseline", error);
+          logError("offer-view", "failed to refresh baseline", error);
           fallbackBaseline();
         }
       }
@@ -337,7 +349,7 @@ export function OfferView({
     return () => {
       cancelled = true;
     };
-  }, [adapter, existingOffer, isEdit, sortedTokens]);
+  }, [existingOffer, isEdit, refreshOffer, sortedTokens]);
 
   React.useEffect(() => {
     if (!isEdit || !baseline) return;

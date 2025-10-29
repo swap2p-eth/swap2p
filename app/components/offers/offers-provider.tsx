@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useChainId, usePublicClient } from "wagmi";
-import { formatUnits, getAddress, parseUnits, type Hash } from "viem";
+import { getAddress, parseUnits, type Hash } from "viem";
 
 import { useUser } from "@/context/user-context";
 import { FIAT_INFOS, type FiatInfo, type TokenConfig } from "@/config";
@@ -22,6 +22,7 @@ import {
   sanitizeRequirements,
   sanitizeTokenSymbol,
 } from "@/lib/validation";
+import { mergeOfferWithOnchain } from "@/lib/offers/normalize";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -37,6 +38,7 @@ interface OffersContextValue {
   fiats: FiatInfo[];
   refresh: () => Promise<void>;
   refreshMakerOffers: () => Promise<void>;
+  refreshOffer: (offer: OfferRow) => Promise<OfferRow | null>;
   createOffer: (input: CreateOfferInput) => Promise<OfferRow>;
   updateOffer: (offer: OfferRow, updates: OfferUpdateInput) => Promise<OfferRow>;
   removeOffer: (offer: OfferRow) => Promise<void>;
@@ -107,7 +109,8 @@ const mapOffer = (
   const fiatInfo = getFiatInfoByCountry(countryCode);
   const fiatLabel = fiatInfo?.shortLabel ?? (countryCode || "??");
   const currencyCode = fiatInfo?.currencyCode ?? (countryCode || "");
-  return {
+
+  const baseRow: OfferRow = {
     id: entry.id,
     side: toSideLabel(offer.side),
     maker: key.maker,
@@ -116,11 +119,11 @@ const mapOffer = (
     fiat: fiatLabel,
     countryCode,
     currencyCode,
-    price: Number(offer.priceFiatPerToken) / PRICE_SCALE,
-    minAmount: Number(formatUnits(offer.minAmount, options.tokenDecimals)),
-    maxAmount: Number(formatUnits(offer.maxAmount, options.tokenDecimals)),
-    paymentMethods: offer.paymentMethods ?? "",
-    requirements: offer.requirements ?? "",
+    price: 0,
+    minAmount: 0,
+    maxAmount: 0,
+    paymentMethods: "",
+    requirements: "",
     updatedAt: new Date(timestampMs || Date.now()).toISOString(),
     contractKey: entry.key,
     contract: offer,
@@ -128,6 +131,8 @@ const mapOffer = (
     contractId: entry.id,
     online: entry.online,
   };
+
+  return mergeOfferWithOnchain(baseRow, offer, options.tokenDecimals);
 };
 
 const makeCacheKey = (tokenAddress: string, side: SwapSide, fiat: number) =>
@@ -418,6 +423,123 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
     }
     void loadMakerOffers(true);
   }, [adapter, address, isSupported, loadMakerOffers]);
+
+  const updateOfferInCaches = React.useCallback((updated: OfferRow) => {
+    let mutated = false;
+
+    cacheRef.current.forEach((bucket, key) => {
+      const index = bucket.items.findIndex(item => item.id === updated.id);
+      if (index !== -1) {
+        const items = [...bucket.items];
+        items[index] = updated;
+        cacheRef.current.set(key, { items, fetchedAt: bucket.fetchedAt });
+        mutated = true;
+      }
+    });
+
+    if (makerCacheRef.current) {
+      const index = makerCacheRef.current.items.findIndex(item => item.id === updated.id);
+      if (index !== -1) {
+        const items = [...makerCacheRef.current.items];
+        items[index] = updated;
+        makerCacheRef.current = { items, fetchedAt: makerCacheRef.current.fetchedAt };
+        mutated = true;
+      }
+    }
+
+    setMakerChainOffers(prev => {
+      const index = prev.findIndex(item => item.id === updated.id);
+      if (index === -1) return prev;
+      mutated = true;
+      const next = [...prev];
+      next[index] = updated;
+      return next;
+    });
+
+    setDraftOffers(prev => {
+      const index = prev.findIndex(item => item.id === updated.id);
+      if (index === -1) return prev;
+      mutated = true;
+      const next = [...prev];
+      next[index] = updated;
+      return next;
+    });
+
+    if (mutated) {
+      setCacheVersion(version => version + 1);
+    }
+  }, []);
+
+  const removeOfferFromCaches = React.useCallback((id: string) => {
+    let mutated = false;
+
+    cacheRef.current.forEach((bucket, key) => {
+      const filtered = bucket.items.filter(item => item.id !== id);
+      if (filtered.length !== bucket.items.length) {
+        cacheRef.current.set(key, { items: filtered, fetchedAt: bucket.fetchedAt });
+        mutated = true;
+      }
+    });
+
+    if (makerCacheRef.current) {
+      const filtered = makerCacheRef.current.items.filter(item => item.id !== id);
+      if (filtered.length !== makerCacheRef.current.items.length) {
+        makerCacheRef.current = { items: filtered, fetchedAt: makerCacheRef.current.fetchedAt };
+        mutated = true;
+      }
+    }
+
+    setMakerChainOffers(prev => {
+      const filtered = prev.filter(item => item.id !== id);
+      if (filtered.length === prev.length) return prev;
+      mutated = true;
+      return filtered;
+    });
+
+    setDraftOffers(prev => {
+      const filtered = prev.filter(item => item.id !== id);
+      if (filtered.length === prev.length) return prev;
+      mutated = true;
+      return filtered;
+    });
+
+    if (mutated) {
+      setCacheVersion(version => version + 1);
+    }
+  }, []);
+
+  const refreshOffer = React.useCallback(
+    async (target: OfferRow) => {
+      if (!adapter || !target.contractKey) {
+        return null;
+      }
+
+      try {
+        const onchain = await adapter.getOffer(target.contractKey);
+        if (!onchain) {
+          removeOfferFromCaches(target.id);
+          return null;
+        }
+
+        const tokenDecimals =
+          target.tokenDecimals ??
+          (() => {
+            const tokenAddress = target.contractKey?.token?.toLowerCase();
+            if (!tokenAddress) return 18;
+            const token = tokenConfigs.find(entry => entry.address.toLowerCase() === tokenAddress);
+            return token?.decimals ?? 18;
+          })();
+
+        const updated = mergeOfferWithOnchain(target, onchain, tokenDecimals);
+        updateOfferInCaches(updated);
+        return updated;
+      } catch (error) {
+        logError("offers-provider", "failed to refresh offer", { id: target.id }, error);
+        return null;
+      }
+    },
+    [adapter, removeOfferFromCaches, tokenConfigs, updateOfferInCaches]
+  );
 
   const ensureMarket = React.useCallback(
     async ({
@@ -898,6 +1020,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       fiats: fiatInfos,
       refresh,
       refreshMakerOffers,
+      refreshOffer,
       createOffer,
       updateOffer,
       removeOffer,
@@ -917,6 +1040,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       fiatInfos,
       refresh,
       refreshMakerOffers,
+      refreshOffer,
       createOffer,
       updateOffer,
       removeOffer,

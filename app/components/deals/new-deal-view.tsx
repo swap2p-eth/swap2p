@@ -20,6 +20,7 @@ import { useOffers } from "@/components/offers/offers-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { buildDealMetaItems } from "@/hooks/use-deal-meta";
+import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
 import type { ApprovalMode } from "./token-approval-button";
@@ -62,13 +63,17 @@ const formatOfferSubtitle = (offer: OfferRow) =>
     : "Review offer details and provide amount.";
 
 export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers" }: NewDealViewProps) {
-  const { offers, isLoading: offersLoading } = useOffers();
-  const offer = React.useMemo(() => offers.find(item => item.id === offerId), [offers, offerId]);
+  const { offers, isLoading: offersLoading, refreshOffer } = useOffers();
+  const baseOffer = React.useMemo(() => offers.find(item => item.id === offerId), [offers, offerId]);
+  const [freshOffer, setFreshOffer] = React.useState<OfferRow | null>(null);
+  const [offerUnavailable, setOfferUnavailable] = React.useState(false);
+  const offer = freshOffer ?? baseOffer;
   const { createDeal } = useDeals();
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient({ chainId });
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
+  const { adapter } = useSwap2pAdapter();
   const ownerAddress = React.useMemo(() => {
     const account = walletClient?.account;
     if (!account) return null;
@@ -102,21 +107,58 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const [allowanceNonce, setAllowanceNonce] = React.useState(0);
   const [tokenAllowance, setTokenAllowance] = React.useState<bigint | null>(null);
   const [termsAccepted, setTermsAccepted] = React.useState(false);
+  const lastRefreshedOfferRef = React.useRef<string | null>(null);
 
   const handlePaymentDetailsChange = React.useCallback((value: string) => {
     setPaymentDetails(sanitizeDealNote(value));
   }, []);
 
   React.useEffect(() => {
-    if (!offer) return;
+    if (!baseOffer) return;
     setAmountKind("crypto");
-    setAmount(offer.minAmount.toString());
-    const options = withBankTransferFirst(parsePaymentMethods(offer.paymentMethods));
+    setAmount(baseOffer.minAmount.toString());
+    const options = withBankTransferFirst(parsePaymentMethods(baseOffer.paymentMethods));
     setPaymentMethod(options.length === 1 ? sanitizePaymentMethod(options[0]) : "");
     setPaymentDetails("");
     setActionError(null);
     setTermsAccepted(false);
-  }, [offerId, offer]);
+  }, [offerId, baseOffer]);
+
+  React.useEffect(() => {
+    setFreshOffer(null);
+    setOfferUnavailable(false);
+    lastRefreshedOfferRef.current = null;
+  }, [baseOffer?.id]);
+
+  React.useEffect(() => {
+    if (!baseOffer || !baseOffer.contractKey) return;
+    if (lastRefreshedOfferRef.current === baseOffer.id) return;
+
+    let cancelled = false;
+    lastRefreshedOfferRef.current = baseOffer.id;
+
+    (async () => {
+      try {
+        const updated = await refreshOffer(baseOffer);
+        if (cancelled) return;
+        if (updated) {
+          setFreshOffer(updated);
+          setOfferUnavailable(false);
+        } else {
+          setFreshOffer(null);
+          setOfferUnavailable(true);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          logError("new-deal", "offer refresh failed", error);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [baseOffer, refreshOffer]);
 
   React.useEffect(() => {
     setActionError(null);
@@ -158,7 +200,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     };
   }, [offer?.contractKey?.token, ownerAddress, publicClient, network.swap2pAddress, allowanceNonce]);
 
-  if (offersLoading) {
+  if (offersLoading && !offer) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
         <Skeleton className="h-10 w-48 rounded-full" />
@@ -168,7 +210,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     );
   }
 
-  if (!offer) {
+  if (!offer || offerUnavailable) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offer not found</h1>

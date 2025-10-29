@@ -17,6 +17,7 @@ import { MAX_MESSAGE_LENGTH } from "@/components/chat/chat-utils";
 import {
   ChatMessageSchema,
   DealRequestSchema,
+  PAYMENT_DETAILS_MIN_LENGTH,
   sanitizeChatMessage,
   sanitizeDealNote,
   sanitizePaymentMethod,
@@ -512,6 +513,11 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       const decimals = offer.tokenDecimals ?? 18;
       const sanitizedPaymentMethod = sanitizePaymentMethod(paymentMethod);
       const sanitizedPaymentDetails = sanitizeDealNote(paymentDetails);
+      const makerSide = offer.side.toUpperCase();
+      const takerSide = makerSide === "SELL" ? "BUY" : "SELL";
+      if (takerSide === "SELL" && sanitizedPaymentDetails.length < PAYMENT_DETAILS_MIN_LENGTH) {
+        throw new Error(`Payment details must be at least ${PAYMENT_DETAILS_MIN_LENGTH} characters.`);
+      }
       const validation = DealRequestSchema.safeParse({
         amount,
         paymentMethod: sanitizedPaymentMethod,
