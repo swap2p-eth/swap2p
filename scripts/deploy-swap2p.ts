@@ -89,11 +89,13 @@ if (!isLocalNetwork) {
   console.log("Verifying Swap2p with Hardhat verify task...");
 
   try {
-    await hardhat.run("verify:verify", {
-      address: swap.address,
-      constructorArguments,
+    const verify = hardhat.tasks.getTask("verify:verify");
+    await verify.run({
+        address: swap.address,
+        constructorArguments,
     });
     console.log("Swap2p verification completed.");
+
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (message.includes("Already Verified")) {
