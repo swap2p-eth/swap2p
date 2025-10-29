@@ -95,10 +95,8 @@ export const DEAL_SCENARIO_MAP: ScenarioMap = {
         instructions:
           "Enter the trade amount. The contract locks tokens equal to the trade amount as your collateral. The collateral returns after the deal completes or if it is canceled.",
         comment: {
-          label: "Payment details (required)",
-          placeholder: "Provide the merchant with the fiat payment details",
-          helperText: "Include precise payment instructions so the merchant can pay you.",
-          required: true
+          label: "Comment (optional)",
+          placeholder: "Add a note for the merchant (optional)"
         },
         primaryAction: { type: "REQUEST", label: "REQUEST" },
         secondaryAction: { type: "CANCEL", label: "CANCEL", variant: "outline" }

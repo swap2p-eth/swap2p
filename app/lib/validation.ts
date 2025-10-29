@@ -60,8 +60,11 @@ export const DealRequestSchema = z
       .max(PAYMENT_METHOD_MAX_LENGTH, "Payment method is too long."),
     paymentDetails: z
       .string()
-      .min(PAYMENT_DETAILS_MIN_LENGTH, `Payment details must be at least ${PAYMENT_DETAILS_MIN_LENGTH} characters.`)
-      .max(PAYMENT_DETAILS_MAX_LENGTH, "Payment details are too long."),
+      .max(PAYMENT_DETAILS_MAX_LENGTH, "Payment details are too long.")
+      .refine(
+        value => value.length === 0 || value.length >= PAYMENT_DETAILS_MIN_LENGTH,
+        `Payment details must be at least ${PAYMENT_DETAILS_MIN_LENGTH} characters.`
+      ),
   })
   .strict();
 

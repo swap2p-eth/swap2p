@@ -26,7 +26,7 @@ import type { ApprovalMode } from "./token-approval-button";
 import { BANK_TRANSFER_LABEL, getNetworkConfigForChain } from "@/config";
 import { isUserRejectedError } from "@/lib/errors";
 import { error as logError, warn as logWarn } from "@/lib/logger";
-import { DealRequestSchema, sanitizeDealNote, sanitizePaymentMethod } from "@/lib/validation";
+import { DealRequestSchema, PAYMENT_DETAILS_MIN_LENGTH, sanitizeDealNote, sanitizePaymentMethod } from "@/lib/validation";
 
 type AmountKind = "crypto" | "fiat";
 type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
@@ -224,10 +224,14 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   })();
   const depositMultiplier = offer.side === "BUY" ? 2n : 1n;
   const requiredAllowance = baseTokenUnits !== null ? baseTokenUnits * depositMultiplier : null;
+  const merchantSide = offer.side.toUpperCase();
+  const userSide = merchantSide === "SELL" ? "BUY" : "SELL";
+  const userAction = userSide === "SELL" ? "sell" : "buy";
   const amountValid =
     tokenAmount !== null && tokenAmount >= offer.minAmount && tokenAmount <= offer.maxAmount;
   const paymentMethodValid = !hasPaymentOptions || paymentMethod.trim().length > 0;
-  const paymentDetailsValid = paymentDetails.trim().length >= 5;
+  const paymentDetailsRequired = userSide === "SELL";
+  const paymentDetailsValid = paymentDetailsRequired ? paymentDetails.trim().length >= PAYMENT_DETAILS_MIN_LENGTH : true;
   const isFormValid = amountValid && paymentMethodValid && paymentDetailsValid;
   const amountHeadingClass = cn(
     "text-xs uppercase tracking-[0.2em] text-muted-foreground/70",
@@ -237,9 +241,6 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     "text-xs uppercase tracking-[0.2em] text-muted-foreground/70",
     paymentMethodValid && hasPaymentOptions ? "text-emerald-500" : undefined
   );
-  const merchantSide = offer.side.toUpperCase();
-  const userSide = merchantSide === "SELL" ? "BUY" : "SELL";
-  const userAction = userSide === "SELL" ? "sell" : "buy";
   const minLabel = `${formatTokenAmount(offer.minAmount, displayTokenDecimals)} ${offer.token}`;
   const maxLabel = `${formatTokenAmount(offer.maxAmount, displayTokenDecimals)} ${offer.token}`;
   let amountError: string | null = null;
@@ -258,7 +259,9 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   }
   const paymentMethodError =
     hasPaymentOptions && !paymentMethod ? "Choose a payment method." : null;
-  const paymentDetailsError = paymentDetailsValid ? null : "Payment details must be at least 5 characters.";
+  const paymentDetailsError = paymentDetailsRequired && !paymentDetailsValid
+    ? `Payment details must be at least ${PAYMENT_DETAILS_MIN_LENGTH} characters.`
+    : null;
   const hasSufficientAllowance =
     requiredAllowance !== null && tokenAllowance !== null && tokenAllowance >= requiredAllowance;
   const approvalRequested = Boolean(requiredAllowance !== null && offer.contractKey?.token && ownerAddress);
@@ -623,8 +626,8 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         beforeActions={termsConsent}
         comment={paymentDetails}
         commentName="new-deal-comment"
-        commentError={paymentDetailsValid ? undefined : paymentDetailsError ?? "Payment details must be at least 5 characters."}
-        commentErrorTone={paymentDetailsValid ? undefined : "warning"}
+        commentError={paymentDetailsError ?? undefined}
+        commentErrorTone={paymentDetailsError ? "warning" : undefined}
         onCommentChange={handlePaymentDetailsChange}
         onRequest={handleRequest}
         onCancel={handleCancel}
