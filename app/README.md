@@ -29,6 +29,10 @@ The dev server will start on `http://localhost:3000`. Connect the wallet to **Ha
 
 - Prefer the helpers exported from `@/lib/logger` (`debug`, `info`, `warn`, `error`) instead of calling `console.*` directly. The logger scopes output automatically and only emits debug logs when `NEXT_PUBLIC_SWAP2P_DEBUG=1`.
 
+## UI fallbacks
+
+- `ResourceFallback` (`@/components/resource-fallback`) centralizes the loading/not-found layouts shared across offer/deal flows. Pass `status="loading"` to render the skeletons, or provide `title`, `description`, and an optional `action` when the resource is unavailable. This keeps empty/error states consistent and avoids duplicating skeleton markup inside feature components.
+
 ## Next steps
 
 - Wire deal fetching to your Hardhat deployments or a viem client that calls `Swap2p`.

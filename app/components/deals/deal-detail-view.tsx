@@ -4,7 +4,6 @@ import * as React from "react";
 import { useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { erc20Abi, getAddress, maxUint256, parseUnits, type Address } from "viem";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { DealChatCard, DealHeader, DealStatusPanel, DealSummaryCard, ParticipantPill } from "@/components/deals";
 import { useDeals } from "./deals-provider";
 import { useDeal } from "@/hooks/use-deal";
@@ -19,6 +18,7 @@ import type { ApprovalMode } from "./token-approval-button";
 import { useNetworkConfig } from "@/hooks/use-network-config";
 import { isUserRejectedError } from "@/lib/errors";
 import { error as logError, warn as logWarn } from "@/lib/logger";
+import { ResourceFallback } from "@/components/resource-fallback";
 
 export interface DealDetailViewProps {
   dealId: string;
@@ -180,43 +180,26 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
   })();
 
   if (isLoading || (dealLoading && !deal)) {
-    return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
-        <Skeleton className="h-10 w-40 rounded-full" />
-        <div className="space-y-6">
-          <Skeleton className="h-12 w-2/3 rounded-full" />
-          <Skeleton className="h-40 w-full rounded-3xl" />
-        </div>
-        <Skeleton className="h-[360px] w-full rounded-3xl" />
-      </div>
-    );
+    return <ResourceFallback status="loading" skeletonVariant="detail" />;
   }
 
   if (!deal && dealNotFound) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Deal not found</h1>
-        <p className="text-sm text-muted-foreground">
-          The requested deal is not part of the dataset yet. Try returning to the deals overview.
-        </p>
-        <Button type="button" className="mx-auto rounded-full px-6" onClick={onBack}>
-          Back to deals
-        </Button>
-      </div>
+      <ResourceFallback
+        status="not-found"
+        title="Deal not found"
+        description="The requested deal is not part of the dataset yet. Try returning to the deals overview."
+        action={
+          <Button type="button" className="mx-auto rounded-full px-6" onClick={onBack}>
+            Back to deals
+          </Button>
+        }
+      />
     );
   }
 
   if (!deal) {
-    return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
-        <Skeleton className="h-10 w-40 rounded-full" />
-        <div className="space-y-6">
-          <Skeleton className="h-12 w-2/3 rounded-full" />
-          <Skeleton className="h-40 w-full rounded-3xl" />
-        </div>
-        <Skeleton className="h-[360px] w-full rounded-3xl" />
-      </div>
-    );
+    return <ResourceFallback status="loading" skeletonVariant="detail" />;
   }
 
   const summary = getDealSideCopy(deal.side);

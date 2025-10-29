@@ -17,7 +17,6 @@ import { DealSummaryCard } from "./deal-summary-card";
 import { DealStatusPanel } from "./deal-status-panel";
 import { useDeals } from "./deals-provider";
 import { useOffer } from "@/hooks/use-offer";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ParticipantPill } from "@/components/deals/participant-pill";
 import { buildDealMetaItems } from "@/hooks/use-deal-meta";
 import { formatFiatAmount, formatPrice, formatTokenAmount } from "@/lib/number-format";
@@ -27,6 +26,7 @@ import { BANK_TRANSFER_LABEL, getNetworkConfigForChain } from "@/config";
 import { isUserRejectedError } from "@/lib/errors";
 import { error as logError, warn as logWarn } from "@/lib/logger";
 import { DealRequestSchema, PAYMENT_DETAILS_MIN_LENGTH, sanitizeDealNote, sanitizePaymentMethod } from "@/lib/validation";
+import { ResourceFallback } from "@/components/resource-fallback";
 
 type AmountKind = "crypto" | "fiat";
 type ValidationField = "amount" | "paymentMethod" | "paymentDetails";
@@ -164,31 +164,26 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   }, [offer?.contractKey?.token, ownerAddress, publicClient, network.swap2pAddress, allowanceNonce]);
 
   if (offerLoading && !offer) {
-    return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
-        <Skeleton className="h-10 w-48 rounded-full" />
-        <Skeleton className="h-40 w-full rounded-3xl" />
-        <Skeleton className="h-72 w-full rounded-3xl" />
-      </div>
-    );
+    return <ResourceFallback status="loading" skeletonVariant="form" />;
   }
 
   if (!offer || offerUnavailable) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offer not found</h1>
-        <p className="text-sm text-muted-foreground">
-          This offer is no longer available. Return to the previous section to pick another one.
-        </p>
-        <Button
-          type="button"
-          variant="default"
-          onClick={() => onCancel?.()}
-          className="mx-auto rounded-full px-6"
-        >
-          {returnHash === "dashboard" ? "Back to dashboard" : "Back to offers"}
-        </Button>
-      </div>
+      <ResourceFallback
+        status="not-found"
+        title="Offer not found"
+        description="This offer is no longer available. Return to the previous section to pick another one."
+        action={
+          <Button
+            type="button"
+            variant="default"
+            onClick={() => onCancel?.()}
+            className="mx-auto rounded-full px-6"
+          >
+            {returnHash === "dashboard" ? "Back to dashboard" : "Back to offers"}
+          </Button>
+        }
+      />
     );
   }
 

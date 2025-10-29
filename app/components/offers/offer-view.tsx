@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { FIAT_BY_COUNTRY, FIAT_INFOS, getNetworkConfigForChain, getPaymentMethodsForCountry } from "@/config";
 import { useOffers } from "./offers-provider";
@@ -30,6 +29,7 @@ import {
   sanitizeTokenSymbol,
 } from "@/lib/validation";
 import { PRICE_SCALE_BI, scalePrice } from "@/lib/pricing";
+import { ResourceFallback } from "@/components/resource-fallback";
 
 const TOKEN_STORAGE_KEY = "swap2p:offer:last-token";
 const FIAT_STORAGE_KEY = "swap2p:offer:last-fiat";
@@ -664,25 +664,20 @@ export function OfferView({
   if (isEdit && !existingOffer) {
     if (offerNotFound) {
       return (
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
-          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offer not found</h1>
-          <p className="text-sm text-muted-foreground">
-            This offer is no longer available. Return to the previous section to pick another one.
-          </p>
-          <Button type="button" onClick={navigateBack} className="mx-auto rounded-full px-6">
-            {backLabel}
-          </Button>
-        </div>
+        <ResourceFallback
+          status="not-found"
+          title="Offer not found"
+          description="This offer is no longer available. Return to the previous section to pick another one."
+          action={
+            <Button type="button" onClick={navigateBack} className="mx-auto rounded-full px-6">
+              {backLabel}
+            </Button>
+          }
+        />
       );
     }
 
-    return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 sm:px-8">
-        <Skeleton className="h-10 w-48 rounded-full" />
-        <Skeleton className="h-40 w-full rounded-3xl" />
-        <Skeleton className="h-72 w-full rounded-3xl" />
-      </div>
-    );
+    return <ResourceFallback status="loading" skeletonVariant="form" />;
   }
 
   const canSubmit = isEdit || termsAccepted;
