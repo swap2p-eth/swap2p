@@ -801,7 +801,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       const refreshed = await refreshOffer(fallbackEntry);
       return refreshed ?? fallbackEntry;
     },
-    [adapter, address, isSupported, loadMakerOffers, publicClient, refresh, tokenConfigs, makerProfile],
+    [adapter, address, isSupported, makerProfile, publicClient, refreshOffer, tokenConfigs],
   );
 
   const updateOffer = React.useCallback(
@@ -947,7 +947,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       updateOfferInCaches(fallbackUpdated);
       return fallbackUpdated;
     },
-    [adapter, address, isSupported, loadMakerOffers, publicClient, refresh, tokenConfigs],
+    [adapter, address, isSupported, publicClient, refreshOffer, tokenConfigs, updateOfferInCaches],
   );
 
   const removeOffer = React.useCallback(

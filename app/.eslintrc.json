@@ -3,6 +3,33 @@
   "extends": ["next"],
   "rules": {
     "no-console": "off",
-    "@next/next/no-html-link-for-pages": "off"
-  }
+    "@next/next/no-html-link-for-pages": "off",
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@/lib/swap2p",
+            "message": "Use the data providers (useOffers/useDeals) instead of importing the adapter directly."
+          },
+          {
+            "name": "@/lib/swap2p/index",
+            "message": "Use the data providers (useOffers/useDeals) instead of importing the adapter directly."
+          },
+          {
+            "name": "@/lib/swap2p/viem-adapter",
+            "message": "Use the data providers (useOffers/useDeals) instead of importing the adapter directly."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["hooks/use-swap2p-adapter.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
 }

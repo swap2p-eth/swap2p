@@ -351,7 +351,7 @@ export function OfferView({
     return () => {
       cancelled = true;
     };
-  }, [existingOffer, isEdit, refreshCurrentOffer]);
+  }, [existingOffer, isEdit, refreshCurrentOffer, sortedTokens]);
 
   React.useEffect(() => {
     if (!isEdit || !baseline) return;
