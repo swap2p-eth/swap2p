@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DealChatCard, DealHeader, DealStatusPanel, DealSummaryCard, ParticipantPill } from "@/components/deals";
 import { useDeals } from "./deals-provider";
+import { useDeal } from "@/hooks/use-deal";
 import { RelativeTime } from "@/components/relative-time";
 import { buildDealMetaItems } from "@/hooks/use-deal-meta";
 import { PriceMetaValue } from "@/components/deals/price-meta-value";
@@ -34,6 +35,12 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     releaseDeal,
     sendMessage
   } = useDeals();
+  const {
+    deal: hydratedDeal,
+    baseDeal,
+    isLoading: dealLoading,
+    notFound: dealNotFound
+  } = useDeal(dealId);
   const chainId = useChainId();
   const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient({ chainId });
@@ -57,7 +64,11 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     }
     return null;
   }, [walletClient]);
-  const deal = deals.find(item => item.id === dealId);
+  const fallbackDeal = React.useMemo(
+    () => deals.find(item => item.id === dealId),
+    [deals, dealId]
+  );
+  const deal = hydratedDeal ?? baseDeal ?? fallbackDeal ?? null;
   const { address } = useUser();
   const perspective = useDealPerspective(deal ?? null, address);
   const [actionBusy, setActionBusy] = React.useState(false);
@@ -168,7 +179,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     return undefined;
   })();
 
-  if (isLoading) {
+  if (isLoading || (dealLoading && !deal)) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
         <Skeleton className="h-10 w-40 rounded-full" />
@@ -181,7 +192,7 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
     );
   }
 
-  if (!deal) {
+  if (!deal && dealNotFound) {
     return (
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Deal not found</h1>
@@ -191,6 +202,19 @@ export function DealDetailView({ dealId, onBack }: DealDetailViewProps) {
         <Button type="button" className="mx-auto rounded-full px-6" onClick={onBack}>
           Back to deals
         </Button>
+      </div>
+    );
+  }
+
+  if (!deal) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-8">
+        <Skeleton className="h-10 w-40 rounded-full" />
+        <div className="space-y-6">
+          <Skeleton className="h-12 w-2/3 rounded-full" />
+          <Skeleton className="h-40 w-full rounded-3xl" />
+        </div>
+        <Skeleton className="h-[360px] w-full rounded-3xl" />
       </div>
     );
   }

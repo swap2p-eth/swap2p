@@ -29,13 +29,12 @@ import {
   sanitizeRequirements,
   sanitizeTokenSymbol,
 } from "@/lib/validation";
+import { PRICE_SCALE_BI, scalePrice } from "@/lib/pricing";
 
 const TOKEN_STORAGE_KEY = "swap2p:offer:last-token";
 const FIAT_STORAGE_KEY = "swap2p:offer:last-fiat";
 const DEFAULT_TOKEN_SYMBOL = "USDT";
 const DEFAULT_FIAT_CODE = "US";
-const PRICE_SCALE = 1_000_000;
-const PRICE_SCALE_BI = BigInt(PRICE_SCALE);
 
 type BaselineValues = {
   priceScaled: bigint;
@@ -293,7 +292,7 @@ export function OfferView({
 
     const fallbackBaseline = () => {
       try {
-        const priceScaled = BigInt(Math.round(existingOffer.price * PRICE_SCALE));
+        const priceScaled = scalePrice(existingOffer.price);
         const minScaled = parseUnits(String(existingOffer.minAmount), decimalsValue);
         const maxScaled = parseUnits(String(existingOffer.maxAmount), decimalsValue);
         const methods = parseMethods(existingOffer.paymentMethods);
@@ -395,7 +394,7 @@ export function OfferView({
     if (!value || !value.trim()) return null;
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return null;
-    return BigInt(Math.round(numeric * PRICE_SCALE));
+    return scalePrice(numeric);
   }, []);
 
   const getAmountScaled = React.useCallback(

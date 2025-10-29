@@ -9,7 +9,6 @@ import { useNetworkConfig } from "@/hooks/use-network-config";
 import { debug, error as logError } from "@/lib/logger";
 import { ZERO_ADDRESS, type NetworkConfig } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
-import { decodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import { formatFiatAmount } from "@/lib/number-format";
 import { normalizeAddress } from "@/lib/deal-utils";
 import { sanitizeDisplayText } from "@/lib/utils";
@@ -31,6 +30,8 @@ import { CHAT_MESSAGE_STATE_LABELS } from "@/lib/chat/chat-state";
 import { ChatToast } from "@/components/notifications/chat-toast";
 import { FiatAmountCell } from "@/components/deals/fiat-amount-cell";
 import { resolvePartnerAddress } from "@/lib/partner";
+import { resolveTokenMetadata, deriveFiatMetadataFromEncoded } from "@/lib/offers/normalize";
+import { descaledPrice, scalePrice } from "@/lib/pricing";
 
 type AmountKind = "crypto" | "fiat";
 export type DealParticipant = "MAKER" | "TAKER";
@@ -47,6 +48,7 @@ interface DealsContextValue {
   deals: DealRow[];
   isLoading: boolean;
   createDeal: (input: CreateDealInput) => Promise<DealRow>;
+  refreshDeal: (deal: DealRow) => Promise<DealRow | null>;
   acceptDeal: (dealId: string, comment?: string) => Promise<void>;
   cancelDeal: (dealId: string, actor: DealParticipant, comment?: string) => Promise<void>;
   markDealPaid: (dealId: string, actor: DealParticipant, comment?: string) => Promise<void>;
@@ -57,7 +59,6 @@ interface DealsContextValue {
 
 const DealsContext = React.createContext<DealsContextValue | null>(null);
 
-const PRICE_SCALE = 1_000_000;
 const DEAL_FETCH_LIMIT = 100;
 
 const stateMap: Record<SwapDealState, DealState> = {
@@ -97,14 +98,13 @@ const toDealRow = (
   },
 ): DealRow => {
   const amount = Number(formatUnits(deal.amount, options.tokenDecimals));
-  const price = Number(deal.price) / PRICE_SCALE;
+  const price = descaledPrice(deal.price);
   // Fiat values arriving from the contract are ISO country codes (uint16)
   const encoded = Number(deal.fiat ?? 0);
-  const decoded = decodeCountryCode(encoded);
-  const countryCode = decoded ? decoded.toUpperCase() : "";
-  const fiatInfo = getFiatInfoByCountry(countryCode);
-  const fiatLabel = fiatInfo?.shortLabel ?? (countryCode || "??");
-  const currencyCode = fiatInfo?.currencyCode ?? (countryCode || "");
+  const fiatMeta = deriveFiatMetadataFromEncoded(encoded);
+  const countryCode = fiatMeta.countryCode;
+  const fiatLabel = fiatMeta.fiatLabel || (countryCode || "??");
+  const currencyCode = fiatMeta.currencyCode || (countryCode || "");
   const fiatAmount = Number.isFinite(price) ? price * amount : undefined;
   const updatedAtIso = new Date((deal.updatedAt ?? 0) * 1000 || Date.now()).toISOString();
   const normalizedUser = normalizeAddress(options.userAddress);
@@ -215,6 +215,33 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   const [draftDeals, setDraftDeals] = React.useState<DealRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const seenChatToastsRef = React.useRef<Set<string>>(new Set());
+  const tokenConfigs = React.useMemo(
+    () => network.tokens.map(token => ({ ...token, address: getAddress(token.address) })),
+    [network.tokens]
+  );
+
+  const updateDealInState = React.useCallback((updated: DealRow) => {
+    setChainDeals(prev => {
+      const index = prev.findIndex(item => item.id === updated.id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      next[index] = updated;
+      return next;
+    });
+
+    setDraftDeals(prev => {
+      const index = prev.findIndex(item => item.id === updated.id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      next[index] = updated;
+      return next;
+    });
+  }, []);
+
+  const removeDealFromState = React.useCallback((id: string) => {
+    setChainDeals(prev => prev.filter(item => item.id !== id));
+    setDraftDeals(prev => prev.filter(item => item.id !== id));
+  }, []);
 
   const decodeChatPayload = React.useCallback((payload: string | undefined): string => {
     if (!payload) return "";
@@ -344,6 +371,50 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false);
     }
   }, [adapter, currentUserAddress, fetchAndSetDeals]);
+
+  const refreshDeal = React.useCallback(
+    async (target: DealRow) => {
+      if (!adapter) return null;
+
+      const contractId = target.contractId ?? (() => {
+        try {
+          return BigInt(target.id);
+        } catch {
+          return null;
+        }
+      })();
+
+      if (contractId === null) {
+        return null;
+      }
+
+      try {
+        const onchain = await adapter.getDeal(contractId);
+        if (!onchain) {
+          removeDealFromState(target.id);
+          return null;
+        }
+
+        const tokenMeta = resolveTokenMetadata(tokenConfigs, {
+          address: onchain.token,
+          symbol: target.token
+        });
+
+        const mapped = toDealRow(onchain, {
+          tokenSymbol: tokenMeta.symbol || target.token,
+          tokenDecimals: tokenMeta.decimals,
+          userAddress: currentUserAddress ?? target.maker
+        });
+
+        updateDealInState(mapped);
+        return mapped;
+      } catch (error) {
+        logError("deals-provider", "failed to refresh deal", { id: target.id }, error);
+        return null;
+      }
+    },
+    [adapter, currentUserAddress, removeDealFromState, tokenConfigs, updateDealInState]
+  );
 
   React.useEffect(() => {
     let isMounted = true;
@@ -530,7 +601,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       const validated = validation.data;
       const takerAccount = getAddress(currentUserAddress);
       const amountScaled = parseUnits(String(amount), decimals);
-      const expectedPrice = BigInt(Math.round(offer.price * PRICE_SCALE));
+      const expectedPrice = scalePrice(offer.price);
       const previousIds = new Set(chainDeals.map(deal => deal.id.toLowerCase()));
       const partnerAddress = resolvePartnerAddress();
 
@@ -768,6 +839,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     () => ({
       deals,
       createDeal,
+      refreshDeal,
       acceptDeal,
       cancelDeal,
       markDealPaid,
@@ -776,7 +848,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       refresh,
     }),
-    [deals, createDeal, acceptDeal, cancelDeal, markDealPaid, releaseDeal, sendMessage, isLoading, refresh],
+    [deals, createDeal, refreshDeal, acceptDeal, cancelDeal, markDealPaid, releaseDeal, sendMessage, isLoading, refresh],
   );
 
   return <DealsContext.Provider value={value}>{children}</DealsContext.Provider>;

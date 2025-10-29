@@ -1,11 +1,10 @@
-import { formatUnits } from "viem";
+import { formatUnits, getAddress } from "viem";
 
 import type { TokenConfig } from "@/config";
 import { decodeCountryCode, encodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
 import type { Offer } from "@/lib/swap2p/types";
 import type { OfferRow } from "@/lib/types/market";
-
-const PRICE_SCALE = 1_000_000;
+import { descaledPrice } from "@/lib/pricing";
 
 export function mergeOfferWithOnchain(
   base: OfferRow,
@@ -19,7 +18,7 @@ export function mergeOfferWithOnchain(
 
   return {
     ...base,
-    price: Number(onchain.priceFiatPerToken) / PRICE_SCALE,
+    price: descaledPrice(onchain.priceFiatPerToken),
     minAmount: Number(formatUnits(onchain.minAmount, tokenDecimals)),
     maxAmount: Number(formatUnits(onchain.maxAmount, tokenDecimals)),
     paymentMethods: onchain.paymentMethods ?? "",
@@ -57,7 +56,7 @@ export function deriveFiatMetadataFromEncoded(encoded: number) {
 export function resolveTokenMetadata(
   tokenConfigs: TokenConfig[],
   params: { symbol?: string; address?: string }
-) {
+): { symbol: string; address?: `0x${string}`; decimals: number } {
   const address = params.address?.toLowerCase();
   const symbol = params.symbol;
 
@@ -70,16 +69,20 @@ export function resolveTokenMetadata(
   }
 
   if (match) {
-    return {
-      symbol: match.symbol,
-      address: match.address,
-      decimals: match.decimals ?? 18
-    };
+    try {
+      return {
+        symbol: match.symbol,
+        address: getAddress(match.address),
+        decimals: match.decimals ?? 18
+      };
+    } catch {
+      // fall through to fallback
+    }
   }
 
   return {
     symbol: symbol ?? "",
-    address: address ?? "",
+    address: undefined,
     decimals: 18
   };
 }

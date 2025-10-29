@@ -28,6 +28,7 @@ import {
   mergeOfferWithOnchain,
   resolveTokenMetadata
 } from "@/lib/offers/normalize";
+import { scalePrice } from "@/lib/pricing";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -74,7 +75,6 @@ interface OfferUpdateInput {
 
 const OffersContext = React.createContext<OffersContextValue | null>(null);
 
-const PRICE_SCALE = 1_000_000;
 const OFFER_FETCH_LIMIT = 100;
 const OFFER_CACHE_TTL_MS = 60_000;
 const toSideLabel = (side: SwapSide): OfferRow["side"] =>
@@ -772,7 +772,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       const makerAccount = getAddress(address);
       const sideValue = validated.side === "SELL" ? SwapSide.SELL : SwapSide.BUY;
-      const priceScaled = BigInt(Math.round(validated.price * PRICE_SCALE));
+      const priceScaled = scalePrice(validated.price);
       const minAmountScaled = parseUnits(String(validated.minAmount), decimals);
       const maxAmountScaled = parseUnits(String(validated.maxAmount), decimals);
       const requirementsValue = validated.requirements;
@@ -798,21 +798,8 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       setCacheVersion(version => version + 1);
       makerCacheRef.current = null;
 
-      const makerList = await loadMakerOffers(true);
-      await refresh();
-
-      const created = makerList.find(entry => {
-        const key = entry.contractKey;
-        if (!key) return false;
-        return (
-          key.maker.toLowerCase() === makerAccount.toLowerCase() &&
-          key.token.toLowerCase() === tokenInfo.address.toLowerCase() &&
-          key.side === sideValue &&
-          key.fiat === contractFiatCode
-        );
-      });
-
-      return created ?? fallbackEntry;
+      const refreshed = await refreshOffer(fallbackEntry);
+      return refreshed ?? fallbackEntry;
     },
     [adapter, address, isSupported, loadMakerOffers, publicClient, refresh, tokenConfigs, makerProfile],
   );
@@ -863,7 +850,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         logWarn("offers-provider", "failed to fetch on-chain offer before update", error);
       }
 
-      const priceToScaled = (value: number) => BigInt(Math.round(value * PRICE_SCALE));
+      const priceToScaled = (value: number) => scalePrice(value);
       const existingPriceScaled = onchainOffer
         ? BigInt(onchainOffer.priceFiatPerToken)
         : priceToScaled(offer.price);
@@ -943,15 +930,12 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       setCacheVersion(version => version + 1);
       makerCacheRef.current = null;
 
-      const makerList = await loadMakerOffers(true);
-      await refresh();
-
-      const updated = makerList.find(entry => entry.id.toLowerCase() === offer.id.toLowerCase());
-      if (updated) {
-        return updated;
+      const refreshed = await refreshOffer(offer);
+      if (refreshed) {
+        return refreshed;
       }
 
-      return {
+      const fallbackUpdated: OfferRow = {
         ...offer,
         price: validatedUpdates.price ?? offer.price,
         minAmount: validatedUpdates.minAmount ?? offer.minAmount,
@@ -960,6 +944,8 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         requirements: desiredRequirementsValue,
         updatedAt: new Date().toISOString(),
       };
+      updateOfferInCaches(fallbackUpdated);
+      return fallbackUpdated;
     },
     [adapter, address, isSupported, loadMakerOffers, publicClient, refresh, tokenConfigs],
   );
