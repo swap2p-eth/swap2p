@@ -26,9 +26,9 @@ if (isDev) {
   );
 }
 
-const scriptSrc = ["'self'"];
+const scriptSrc = ["'self'", "'unsafe-inline'"];
 if (isDev) {
-  scriptSrc.push("'unsafe-eval'", "'unsafe-inline'");
+  scriptSrc.push("'unsafe-eval'");
 }
 
 const cspDirectives = [
