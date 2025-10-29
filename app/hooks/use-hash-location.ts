@@ -2,6 +2,11 @@
 
 import * as React from "react";
 
+const DEFAULT_FALLBACK = "offers";
+
+const listeners = new Set<() => void>();
+let currentHash = "";
+
 function sanitizeHash(value: string) {
   return value.replace(/[^a-zA-Z0-9/_-]+/g, "").slice(0, 160);
 }
@@ -11,7 +16,7 @@ function normalizeHash(value: string) {
   return sanitizeHash(stripped);
 }
 
-function readHash(fallback: string) {
+function readHashFromWindow(fallback: string) {
   if (typeof window === "undefined") {
     return fallback;
   }
@@ -19,43 +24,83 @@ function readHash(fallback: string) {
   return raw || fallback;
 }
 
-export function useHashLocation(defaultHash = "offers") {
-  const [hash, setHashValue] = React.useState(defaultHash);
+function ensureCurrentHash(fallback: string) {
+  if (!currentHash) {
+    currentHash = readHashFromWindow(fallback);
+  }
+  return currentHash || fallback;
+}
 
-  React.useEffect(() => {
+function updateCurrentHash(next: string) {
+  if (currentHash === next) {
+    return;
+  }
+  currentHash = next;
+  listeners.forEach(listener => listener());
+}
+
+function subscribeToHash(listener: () => void, fallback: string) {
+  listeners.add(listener);
+  ensureCurrentHash(fallback);
+
+  if (typeof window !== "undefined") {
     const handleHashChange = () => {
-      setHashValue(readHash(defaultHash));
+      const next = readHashFromWindow(fallback);
+      updateCurrentHash(next);
     };
-    if (typeof window !== "undefined") {
-      window.addEventListener("hashchange", handleHashChange);
-      // Ensure initial sync if hash existed before hydration.
-      handleHashChange();
-    }
+    window.addEventListener("hashchange", handleHashChange);
     return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("hashchange", handleHashChange);
-      }
+      listeners.delete(listener);
+      window.removeEventListener("hashchange", handleHashChange);
     };
-  }, [defaultHash]);
+  }
 
-  const setHash = React.useCallback(
-    (next: string) => {
-      const normalized = normalizeHash(next) || defaultHash;
-      setHashValue(normalized);
-      if (typeof window !== "undefined") {
-        if (window.location.hash === `#${normalized}`) {
-          // Force a hashchange-style update if value is the same.
-          window.dispatchEvent(new HashChangeEvent("hashchange"));
-        } else {
-          window.location.hash = normalized;
-        }
-      }
-    },
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function getCurrentHash(fallback: string) {
+  return ensureCurrentHash(fallback);
+}
+
+export function setHash(next: string, fallback = DEFAULT_FALLBACK) {
+  const normalizedFallback = normalizeHash(fallback) || DEFAULT_FALLBACK;
+  const normalized = normalizeHash(next) || normalizedFallback;
+  updateCurrentHash(normalized);
+
+  if (typeof window !== "undefined") {
+    if (window.location.hash !== `#${normalized}`) {
+      window.location.hash = normalized;
+    }
+  }
+}
+
+export function useHashLocation(defaultHash = DEFAULT_FALLBACK) {
+  const fallback = React.useMemo(
+    () => normalizeHash(defaultHash) || DEFAULT_FALLBACK,
     [defaultHash]
+  );
+
+  const subscribe = React.useCallback(
+    (listener: () => void) => subscribeToHash(listener, fallback),
+    [fallback]
+  );
+  const getSnapshot = React.useCallback(
+    () => getCurrentHash(fallback),
+    [fallback]
+  );
+  const getServerSnapshot = React.useCallback(() => fallback, [fallback]);
+
+  const hash = React.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  const setHashValue = React.useCallback(
+    (next: string) => setHash(next, fallback),
+    [fallback]
   );
 
   return {
     hash,
-    setHash
+    setHash: setHashValue
   };
 }

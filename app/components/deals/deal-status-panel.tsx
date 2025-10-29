@@ -21,11 +21,13 @@ interface DealStatusPanelProps {
   side: DealSideValue;
   role: DealUserRole;
   detailsContent?: React.ReactNode;
+  beforeActions?: React.ReactNode;
   disabled?: boolean;
   busy?: boolean;
   comment?: string;
   commentName?: string;
   commentError?: string;
+  commentErrorTone?: "error" | "warning";
   onCommentChange?: (value: string) => void;
   onRequest?: (comment: string) => void;
   onAccept?: (comment: string) => void;
@@ -95,10 +97,12 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
     side,
     role,
     detailsContent,
+    beforeActions,
     disabled,
     busy,
     comment,
     commentError,
+    commentErrorTone = "error",
     onCommentChange,
     commentName,
     onAccept,
@@ -276,13 +280,22 @@ export function DealStatusPanel(props: DealStatusPanelProps) {
                     <p className="text-xs text-muted-foreground">{scenario.comment.helperText}</p>
                   ) : null}
                   {commentError ? (
-                    <p className="text-xs text-red-500">{commentError}</p>
+                    <p
+                      className={cn(
+                        "text-xs",
+                        commentErrorTone === "warning" ? "text-orange-500" : "text-red-500"
+                      )}
+                    >
+                      {commentError}
+                    </p>
                   ) : null}
                   {showCommentError ? (
                     <p className="text-xs text-red-500">Comment is required for this action.</p>
                   ) : null}
                 </div>
               ) : null}
+
+              {beforeActions ? <div className="mt-2">{beforeActions}</div> : null}
 
               {(scenario.primaryAction || scenario.secondaryAction) ? (
                 <div className="mt-2 flex flex-col gap-2">

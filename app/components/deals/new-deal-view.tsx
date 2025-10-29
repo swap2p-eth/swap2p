@@ -101,6 +101,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const [allowanceLoading, setAllowanceLoading] = React.useState(false);
   const [allowanceNonce, setAllowanceNonce] = React.useState(0);
   const [tokenAllowance, setTokenAllowance] = React.useState<bigint | null>(null);
+  const [termsAccepted, setTermsAccepted] = React.useState(false);
 
   const handlePaymentDetailsChange = React.useCallback((value: string) => {
     setPaymentDetails(sanitizeDealNote(value));
@@ -114,11 +115,12 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     setPaymentMethod(options.length === 1 ? sanitizePaymentMethod(options[0]) : "");
     setPaymentDetails("");
     setActionError(null);
+    setTermsAccepted(false);
   }, [offerId, offer]);
 
   React.useEffect(() => {
     setActionError(null);
-  }, [amount, paymentMethod, paymentDetails]);
+  }, [amount, paymentMethod, paymentDetails, termsAccepted]);
 
   React.useEffect(() => {
     if (!offer?.contractKey?.token || !ownerAddress || !publicClient) {
@@ -260,13 +262,14 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
   const hasSufficientAllowance =
     requiredAllowance !== null && tokenAllowance !== null && tokenAllowance >= requiredAllowance;
   const approvalRequested = Boolean(requiredAllowance !== null && offer.contractKey?.token && ownerAddress);
-  const approvalButtonVisible = Boolean(requiredAllowance !== null && offer.contractKey?.token && ownerAddress);
+  const approvalButtonVisible = Boolean(offer.contractKey?.token && ownerAddress);
   const approvalApproved = approvalButtonVisible && hasSufficientAllowance;
   const primaryDisabled = Boolean(
     !ownerAddress ||
     (approvalRequested && !hasSufficientAllowance) ||
       allowanceLoading ||
-      approvalBusy,
+      approvalBusy ||
+      !termsAccepted,
   );
   const primaryDisabledHint = (() => {
     if (!ownerAddress) {
@@ -372,6 +375,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
 
   const handleCancel = (note: string) => {
     void note;
+    setTermsAccepted(false);
     onCancel?.();
   };
 
@@ -384,15 +388,19 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
       setActionError("Connect your wallet to approve tokens.");
       return;
     }
-    if (!requiredAllowance) {
-      setActionError("Enter a valid amount before approving tokens.");
-      focusField("amount");
-      return;
-    }
-
     const tokenAddress = offer.contractKey.token as Address;
     const spender = network.swap2pAddress as Address;
-    const allowanceTarget = mode === "max" ? maxUint256 : requiredAllowance;
+    let allowanceTarget: bigint;
+    if (mode === "max") {
+      allowanceTarget = maxUint256;
+    } else {
+      if (!requiredAllowance) {
+        setActionError("Enter a valid amount before approving tokens.");
+        focusField("amount");
+        return;
+      }
+      allowanceTarget = requiredAllowance;
+    }
 
     setApprovalBusy(true);
     setActionError(null);
@@ -552,19 +560,30 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
           {paymentMethodError ? <p className="text-xs text-orange-500">{paymentMethodError}</p> : null}
         </div>
       </div>
-      {!isFormValid ? (
-        <div className="rounded-2xl bg-orange-400/10 p-4 text-sm text-orange-600">
-          <p className="font-medium">Finish the following before requesting a deal:</p>
-          <ol className="mt-2 list-decimal space-y-1 pl-4">
-            {validationIssues.map(issue => (
-              <li key={issue.field} onClick={() => focusField(issue.field)} className="cursor-pointer">
-                {issue.message}
-              </li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
     </form>
+  );
+
+  const termsConsent = (
+    <label className="flex items-start gap-3 text-sm text-muted-foreground">
+      <input
+        type="checkbox"
+        className="mt-1 h-4 w-4 accent-primary"
+        checked={termsAccepted}
+        onChange={event => setTermsAccepted(event.target.checked)}
+      />
+      <span>
+        By requesting this deal, I agree to the{" "}
+        <a
+          href="/#terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary underline-offset-4 transition hover:underline"
+        >
+          Swap2p Terms of Use
+        </a>
+        .
+      </span>
+    </label>
   );
 
   return (
@@ -601,9 +620,11 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
         side={offer.side}
         role="TAKER"
         detailsContent={requestDetails}
+        beforeActions={termsConsent}
         comment={paymentDetails}
         commentName="new-deal-comment"
         commentError={paymentDetailsValid ? undefined : paymentDetailsError ?? "Payment details must be at least 5 characters."}
+        commentErrorTone={paymentDetailsValid ? undefined : "warning"}
         onCommentChange={handlePaymentDetailsChange}
         onRequest={handleRequest}
         onCancel={handleCancel}

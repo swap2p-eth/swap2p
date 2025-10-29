@@ -26,51 +26,50 @@ type ViewState =
   | { type: "profile"; address?: string }
   | { type: "legal"; page: LegalPage };
 
+const LEGAL_PAGES: ReadonlySet<LegalPage> = new Set(["terms", "policy"]);
+
+type RouteMatcher = (hash: string) => ViewState | null;
+
+const ROUTE_MATCHERS: RouteMatcher[] = [
+  hash => {
+    if (hash === "profile") {
+      return { type: "profile" };
+    }
+    const match = hash.match(/^profile\/(.+)$/);
+    if (!match) return null;
+    const address = normalizeEvmAddress(decodeURIComponent(match[1] ?? ""));
+    return { type: "profile", address: address ?? undefined };
+  },
+  hash => (hash === "deals" || hash === "dashboard" ? { type: "dashboard" } : null),
+  hash => {
+    const match = hash.match(/^new-deal\/(.+)$/);
+    if (!match) return null;
+    const offerId = decodeURIComponent(match[1] ?? "").trim();
+    return offerId.length > 0 ? { type: "new-deal", offerId } : null;
+  },
+  hash => {
+    const match = hash.match(/^deal\/(.+)$/);
+    if (!match) return null;
+    const dealId = decodeURIComponent(match[1] ?? "").trim();
+    return dealId.length > 0 ? { type: "deal-detail", dealId } : { type: "dashboard" };
+  },
+  hash => (hash === "offer" ? { type: "offer" } : null),
+  hash => {
+    const match = hash.match(/^offer\/(.+)$/);
+    if (!match) return null;
+    const offerId = decodeURIComponent(match[1] ?? "").trim();
+    return offerId.length > 0 ? { type: "offer", offerId } : null;
+  },
+  hash => (LEGAL_PAGES.has(hash as LegalPage) ? { type: "legal", page: hash as LegalPage } : null)
+];
+
 function parseHash(hash: string): ViewState {
   const normalized = hash || "offers";
-  if (normalized === "profile") {
-    return { type: "profile" };
-  }
-  if (normalized.startsWith("profile/")) {
-    const [, target] = normalized.split("/");
-    const address = normalizeEvmAddress(decodeURIComponent(target ?? ""));
-    if (address) {
-      return { type: "profile", address };
+  for (const matcher of ROUTE_MATCHERS) {
+    const result = matcher(normalized);
+    if (result) {
+      return result;
     }
-    return { type: "profile" };
-  }
-  if (normalized === "deals" || normalized === "dashboard") {
-    return { type: "dashboard" };
-  }
-  if (normalized.startsWith("new-deal/")) {
-    const [, idPart] = normalized.split("/");
-    const offerId = decodeURIComponent(idPart ?? "").trim();
-    if (offerId.length > 0) {
-      return { type: "new-deal", offerId };
-    }
-    return { type: "offers" };
-  }
-  if (normalized.startsWith("deal/")) {
-    const [, idPart] = normalized.split("/");
-    const dealId = decodeURIComponent(idPart ?? "").trim();
-    if (dealId.length > 0) {
-      return { type: "deal-detail", dealId };
-    }
-    return { type: "dashboard" };
-  }
-  if (normalized === "offer") {
-    return { type: "offer" };
-  }
-  if (normalized.startsWith("offer/")) {
-    const [, idPart] = normalized.split("/");
-    const offerId = decodeURIComponent(idPart ?? "").trim();
-    if (offerId.length > 0) {
-      return { type: "offer", offerId };
-    }
-    return { type: "offers" };
-  }
-  if (normalized === "terms" || normalized === "policy") {
-    return { type: "legal", page: normalized };
   }
   return { type: "offers" };
 }

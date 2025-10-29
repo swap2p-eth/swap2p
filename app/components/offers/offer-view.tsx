@@ -175,6 +175,7 @@ export function OfferView({
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [successState, setSuccessState] = React.useState<null | { message: string; summary: string }>(null);
+  const [termsAccepted, setTermsAccepted] = React.useState(isEdit);
   const fieldTouchedRef = React.useRef({
     price: false,
     minAmount: false,
@@ -481,6 +482,10 @@ export function OfferView({
     }
   }, [isEdit]);
 
+  React.useEffect(() => {
+    setTermsAccepted(isEdit);
+  }, [isEdit]);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -498,6 +503,11 @@ export function OfferView({
 
     if (!selectedFiatInfo) {
       setError("Select a fiat currency to continue.");
+      return;
+    }
+
+    if (!isEdit && !termsAccepted) {
+      setError("Please accept the Terms before publishing your offer.");
       return;
     }
 
@@ -542,6 +552,7 @@ export function OfferView({
       return;
     }
     const validated = validation.data;
+
     setTokenSymbol(validated.token);
     setFiat(validated.countryCode);
     setSelectedMethods(validated.paymentMethods);
@@ -650,6 +661,7 @@ export function OfferView({
     );
   }
 
+  const canSubmit = isEdit || termsAccepted;
   const submitLabel = isEdit ? (isSubmitting ? "Saving…" : "Save changes") : isSubmitting ? "Publishing…" : "Publish offer";
   const disableImmutable = isEdit;
 
@@ -885,9 +897,32 @@ export function OfferView({
               </div>
             )}
 
+            {!isEdit ? (
+              <label className="flex items-start gap-3 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 accent-primary"
+                  checked={termsAccepted}
+                  onChange={event => setTermsAccepted(event.target.checked)}
+                />
+                <span>
+                  By publishing this offer, I agree to the{" "}
+                  <a
+                    href="/#terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline-offset-4 transition hover:underline"
+                  >
+                    Swap2p Terms of Use
+                  </a>
+                  .
+                </span>
+              </label>
+            ) : null}
+
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                <Button type="submit" className="rounded-full px-6" disabled={isSubmitting || isDeleting}>
+                <Button type="submit" className="rounded-full px-6" disabled={!canSubmit || isSubmitting || isDeleting}>
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {submitLabel}
                 </Button>
