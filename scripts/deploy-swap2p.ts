@@ -25,7 +25,8 @@ const isLocalNetwork = LOCAL_NETWORKS.has(targetNetwork);
 console.log(`Deploying Swap2p using ${deployer.account.address} to ${targetNetwork}`);
 
 const confirmations = isLocalNetwork ? 1 : 3;
-const swap = await hreViem.deployContract("Swap2p", [AUTHOR_ADDRESS], { confirmations });
+const constructorArguments = [AUTHOR_ADDRESS];
+const swap = await hreViem.deployContract("Swap2p", constructorArguments, { confirmations });
 
 console.log(`Swap2p deployed at ${swap.address}`);
 
@@ -47,7 +48,7 @@ if (!isLocalNetwork) {
   try {
     await hardhat.run("verify:verify", {
       address: swap.address,
-      constructorArguments: [],
+      constructorArguments,
     });
     console.log("Swap2p verification completed.");
   } catch (error) {
