@@ -10,9 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { FIAT_BY_COUNTRY, FIAT_INFOS, getNetworkConfigForChain, getPaymentMethodsForCountry } from "@/config";
 import { useOffers } from "./offers-provider";
+import { useOffer } from "@/hooks/use-offer";
 import { DealHeader } from "@/components/deals/deal-header";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
@@ -104,7 +106,7 @@ export function OfferView({
   const chainId = useChainId();
   const network = React.useMemo(() => getNetworkConfigForChain(chainId), [chainId]);
   const defaultFiat = FIAT_INFOS[0]?.countryCode ?? "";
-  const { offers, makerOffers, createOffer, updateOffer, removeOffer, refreshOffer } = useOffers();
+  const { createOffer, updateOffer, removeOffer } = useOffers();
 
   const rawOfferId = React.useMemo(() => (typeof offerId === "string" ? offerId.trim() : ""), [offerId]);
   const normalizedOfferId = React.useMemo(() => {
@@ -119,13 +121,14 @@ export function OfferView({
   const hasInvalidOfferId = wantsEdit && rawOfferId.length > 0 && !normalizedOfferId;
   const isEdit = wantsEdit && Boolean(normalizedOfferId);
 
-  const existingOffer = React.useMemo<OfferRow | undefined>(
-    () =>
-      isEdit && normalizedOfferId
-        ? [...makerOffers, ...offers].find(entry => entry.id.toLowerCase() === normalizedOfferId)
-        : undefined,
-    [isEdit, normalizedOfferId, makerOffers, offers]
-  );
+  const {
+    offer: resolvedOffer,
+    baseOffer,
+    notFound: offerNotFound,
+    refresh: refreshCurrentOffer
+  } = useOffer(isEdit ? normalizedOfferId : null);
+
+  const existingOffer = isEdit ? resolvedOffer ?? baseOffer ?? undefined : undefined;
 
   const sortedTokens = React.useMemo(
     () => [...network.tokens].sort((a, b) => a.symbol.localeCompare(b.symbol)),
@@ -321,7 +324,7 @@ export function OfferView({
 
     (async () => {
       try {
-        const refreshed = await refreshOffer(existingOffer);
+        const refreshed = await refreshCurrentOffer();
         if (cancelled) return;
 
         const source = refreshed ?? existingOffer;
@@ -349,7 +352,7 @@ export function OfferView({
     return () => {
       cancelled = true;
     };
-  }, [existingOffer, isEdit, refreshOffer, sortedTokens]);
+  }, [existingOffer, isEdit, refreshCurrentOffer]);
 
   React.useEffect(() => {
     if (!isEdit || !baseline) return;
@@ -660,15 +663,25 @@ export function OfferView({
   }
 
   if (isEdit && !existingOffer) {
+    if (offerNotFound) {
+      return (
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
+          <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offer not found</h1>
+          <p className="text-sm text-muted-foreground">
+            This offer is no longer available. Return to the previous section to pick another one.
+          </p>
+          <Button type="button" onClick={navigateBack} className="mx-auto rounded-full px-6">
+            {backLabel}
+          </Button>
+        </div>
+      );
+    }
+
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 text-center sm:px-8">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Offer not found</h1>
-        <p className="text-sm text-muted-foreground">
-          This offer is no longer available. Return to the previous section to pick another one.
-        </p>
-        <Button type="button" onClick={navigateBack} className="mx-auto rounded-full px-6">
-          {backLabel}
-        </Button>
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-12 sm:px-8">
+        <Skeleton className="h-10 w-48 rounded-full" />
+        <Skeleton className="h-40 w-full rounded-3xl" />
+        <Skeleton className="h-72 w-full rounded-3xl" />
       </div>
     );
   }
