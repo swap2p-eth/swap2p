@@ -4,6 +4,7 @@ import "./globals.css";
 import "@rainbow-me/rainbowkit/styles.css";
 import { Providers } from "@/providers";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { DealsProvider } from "@/components/deals/deals-provider";
 import {Toaster} from "sonner";
 
@@ -45,6 +46,7 @@ export default function RootLayout({
               <main className="flex-1 bg-transparent">
                 {children}
               </main>
+              <SiteFooter />
             </div>
           </DealsProvider>
         </Providers>
