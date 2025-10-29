@@ -26,11 +26,16 @@ Networks: Hardhat uses simulated networks (hardhatMainnet, hardhatOp). For Sepol
   - Place Node.js tests in test/*.ts; name as feature.node.ts when helpful.
   - Write code comments and UI copy in English to keep the documentation consistent.
   - Use the scoped logger in `@/lib/logger` (`debug`, `info`, `warn`, `error`) instead of `console.*` in application code.
+  - UI components must not call chain adapters directly; always go through provider helpers (e.g. `refreshOffer`). This ensures fresh data passes through shared sanitizers (`mergeOfferWithOnchain`, token/fiat lookup helpers) before reaching the UI.
 
 ## Testing Guidelines
 - Solidity tests: Foundry‑style in contracts/tests/*.t.sol (executed by Hardhat).
 - Node tests: node:test runner via Hardhat (npx hardhat test nodejs). Use hre.network.connect().viem to interact.
 - Gas testing: test/gas.node.ts prints current gas, delta vs gas-baseline.json; update the baseline only when intentional.
+
+## Data Access Principles
+- UI code should never invoke low-level adapter reads directly. Use the offers/deals providers (e.g., `refreshOffer`) so every response passes through shared sanitizers and normalization helpers.
+- Whenever on-chain data is mapped into `OfferRow` or similar DTOs, reuse the helpers in `app/lib/offers/normalize.ts` to derive price/amount/fiat metadata. This keeps token decimals, fiat labels, and sanitization consistent across the app.
 
 ## Commit & Pull Request Guidelines
 - Commits: concise, imperative, scoped (e.g., gas: tighten cleanup loop; tests(gas): show delta).

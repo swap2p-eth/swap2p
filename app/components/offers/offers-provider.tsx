@@ -8,7 +8,7 @@ import { useUser } from "@/context/user-context";
 import { FIAT_INFOS, type FiatInfo, type TokenConfig } from "@/config";
 import { useSwap2pAdapter } from "@/hooks/use-swap2p-adapter";
 import { useNetworkConfig } from "@/hooks/use-network-config";
-import { decodeCountryCode, encodeCountryCode, getFiatInfoByCountry } from "@/lib/fiat";
+import { encodeCountryCode } from "@/lib/fiat";
 import type { OfferRow } from "@/lib/types/market";
 import { SwapSide, type OfferWithKey, type MakerProfile, type Offer } from "@/lib/swap2p/types";
 import { ANY_FILTER_OPTION, readStoredFilters } from "@/components/offers/filter-storage";
@@ -22,7 +22,12 @@ import {
   sanitizeRequirements,
   sanitizeTokenSymbol,
 } from "@/lib/validation";
-import { mergeOfferWithOnchain } from "@/lib/offers/normalize";
+import {
+  deriveFiatMetadataFromCountry,
+  deriveFiatMetadataFromEncoded,
+  mergeOfferWithOnchain,
+  resolveTokenMetadata
+} from "@/lib/offers/normalize";
 
 interface OffersContextValue {
   offers: OfferRow[];
@@ -103,12 +108,7 @@ const mapOffer = (
 ): OfferRow => {
   const { offer, key } = entry;
   const timestampMs = (offer.updatedAt ?? 0) * 1000;
-  const encoded = offer.fiat;
-  const decoded = decodeCountryCode(encoded);
-  const countryCode = decoded ? decoded.toUpperCase() : "";
-  const fiatInfo = getFiatInfoByCountry(countryCode);
-  const fiatLabel = fiatInfo?.shortLabel ?? (countryCode || "??");
-  const currencyCode = fiatInfo?.currencyCode ?? (countryCode || "");
+  const fiatMeta = deriveFiatMetadataFromEncoded(offer.fiat);
 
   const baseRow: OfferRow = {
     id: entry.id,
@@ -116,9 +116,9 @@ const mapOffer = (
     maker: key.maker,
     token: options.tokenSymbol,
     tokenDecimals: options.tokenDecimals,
-    fiat: fiatLabel,
-    countryCode,
-    currencyCode,
+    fiat: fiatMeta.fiatLabel,
+    countryCode: fiatMeta.countryCode,
+    currencyCode: fiatMeta.currencyCode,
     price: 0,
     minAmount: 0,
     maxAmount: 0,
@@ -521,16 +521,18 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
           return null;
         }
 
-        const tokenDecimals =
-          target.tokenDecimals ??
-          (() => {
-            const tokenAddress = target.contractKey?.token?.toLowerCase();
-            if (!tokenAddress) return 18;
-            const token = tokenConfigs.find(entry => entry.address.toLowerCase() === tokenAddress);
-            return token?.decimals ?? 18;
-          })();
+        const tokenMeta = resolveTokenMetadata(tokenConfigs, {
+          address: target.contractKey.token,
+          symbol: target.token
+        });
 
-        const updated = mergeOfferWithOnchain(target, onchain, tokenDecimals);
+        const baseRow: OfferRow = {
+          ...target,
+          token: tokenMeta.symbol || target.token,
+          tokenDecimals: tokenMeta.decimals
+        };
+
+        const updated = mergeOfferWithOnchain(baseRow, onchain, tokenMeta.decimals);
         updateOfferInCaches(updated);
         return updated;
       } catch (error) {
@@ -733,34 +735,30 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       }
       const validated = formValidation.data;
 
-      const tokenInfo = tokenConfigs.find(item => item.symbol === validated.token);
-      if (!tokenInfo) {
+      const tokenMeta = resolveTokenMetadata(tokenConfigs, { symbol: validated.token });
+      if (!tokenMeta.address) {
         throw new Error(`Unsupported token ${validated.token}.`);
       }
-      const decimals = tokenInfo.decimals ?? 18;
-      const normalizedCountry = validated.countryCode;
-      const fiatInfo = getFiatInfoByCountry(normalizedCountry);
-      let contractFiatCode: number | undefined;
+      const decimals = tokenMeta.decimals;
+
+      let fiatMeta;
       try {
-        contractFiatCode = encodeCountryCode(normalizedCountry);
-      } catch {
-        contractFiatCode = undefined;
-      }
-      if (contractFiatCode === undefined) {
-        throw new Error(`Unsupported fiat currency ${normalizedCountry}.`);
+        fiatMeta = deriveFiatMetadataFromCountry(validated.countryCode);
+      } catch (error) {
+        throw new Error(`Unsupported fiat currency ${validated.countryCode.toUpperCase()}.`);
       }
 
-      const fiatLabel = fiatInfo?.shortLabel ?? normalizedCountry;
-      const currencyCode = fiatInfo?.currencyCode ?? normalizedCountry;
+      const fiatLabel = fiatMeta.fiatLabel;
+      const currencyCode = fiatMeta.currencyCode;
       const paymentMethodsValue = formatMethodList(validated.paymentMethods);
       const fallbackEntry: OfferRow = {
         id: generateOfferId(),
         side: validated.side,
         maker: address,
-        token: validated.token,
+        token: tokenMeta.symbol || validated.token,
         tokenDecimals: decimals,
         fiat: fiatLabel,
-        countryCode: normalizedCountry,
+        countryCode: fiatMeta.countryCode,
         currencyCode,
         price: validated.price,
         minAmount: validated.minAmount,
@@ -768,7 +766,7 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         paymentMethods: paymentMethodsValue,
         requirements: validated.requirements,
         updatedAt: new Date().toISOString(),
-        contractFiatCode,
+        contractFiatCode: fiatMeta.encodedFiat,
         online: makerProfile?.online,
       };
 
@@ -783,9 +781,9 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
       const txHash: Hash = await adapter.makerMakeOffer({
         account: makerAccount,
-        token: tokenInfo.address,
+        token: tokenMeta.address,
         side: sideValue,
-        fiat: contractFiatCode,
+        fiat: fiatMeta.encodedFiat,
         price: priceScaled,
         minAmount: minAmountScaled,
         maxAmount: maxAmountScaled,

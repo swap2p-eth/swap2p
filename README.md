@@ -77,3 +77,8 @@ npm run compile:app
 ```
 
 This command force-compiles with Hardhat, regenerates the viem-friendly ABI/types (in `typechain-types/`), and copies the artifacts into `app/lib/swap2p/generated/` for the Next.js app.
+
+### Frontend data access
+
+- UI components should not call viem adapters (e.g. `getOffer`) directly. Use the provider helpers (such as `useOffers().refreshOffer`) to load data.  
+- Every adapter response is normalised via shared utilities (token/fiat lookup, sanitizers, `mergeOfferWithOnchain`) before hitting the UI. Reuse these helpers when adding new data flows.
