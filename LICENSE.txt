@@ -1,7 +1,7 @@
 Business Source License 1.1
 
 License date: 2025-11-11
-Change date: 2028-11-11
+Change date: 2030-11-11
 Change license: GNU General Public License v3.0
 
 The Licensed Work is (c) 2025 Swap2p Team.

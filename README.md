@@ -1,84 +1,68 @@
-# Sample Hardhat 3 Beta Project (`node:test` and `viem`)
+<img align="right" src="app/public/swap2p-icon.svg" alt="Swap2p icon" width="96" height="96" />
 
-This project showcases a Hardhat 3 Beta project using the native Node.js test runner (`node:test`) and the `viem` library for Ethereum interactions.
+# Swap2p
+_On-chain rails for cross-border P2P market makers._
 
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+Swap2p is a P2P swap protocol focused on off-ramp/on-ramp market makers. This repository contains the Solidity contracts, Hardhat tooling, seeding scripts, and supporting TypeScript tests that power the on-chain side of the project. The web UI lives in `app/` (see `app/README.md` for full details) and consumes the generated artifacts from this workspace.
 
-## Project Overview
+## Project Layout
 
-This example project includes:
+- `contracts/`: Solidity sources for Swap2p and test fixtures.
+- `contracts/tests/*.t.sol`: Foundry-style tests executed through Hardhat.
+- `scripts/`: Node scripts for deployment, seeding, and artifact syncing.
+- `test/`: TypeScript integration tests run with Node's native `node:test` runner.
+- `app/`: Swap2p frontend (Next.js) that uses the compiled artifacts from this repo.
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using [`node:test`](nodejs.org/api/test.html), the new Node.js native test runner, and [`viem`](https://viem.sh/).
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
-
-## Usage
-
-### Running Tests
-
-To run all the tests in the project, execute the following command:
+## Getting Started
 
 ```shell
-npx hardhat test
+npm install
+cp .env.example .env    # optional – override seed addresses or network keys
 ```
 
-You can also selectively run the Solidity or `node:test` tests:
+Environment overrides:
 
-```shell
-npx hardhat test solidity
-npx hardhat test nodejs
-```
+- `HARDHAT_SEED_ADDRESS_0`, `HARDHAT_SEED_ADDRESS_1`: maker addresses used when seeding the local Hardhat network. Defaults are kept for convenience when the variables are unset.
 
-### Make a deployment to Sepolia
+## Local Development
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+| Command | Description |
+| --- | --- |
+| `npm run compile` | Force-compile contracts with Hardhat 3 (solc 0.8.28). |
+| `npm run typechain` | Regenerate TypeScript typings for the contracts. |
+| `npm run sync:app-contracts` | Copy fresh ABIs/addresses into `app/lib/swap2p/generated/`. |
+| `npm test` | Run Solidity tests and Node TypeScript tests. |
+| `npm run test-gas` | Execute gas benchmark (`test/gas.node.ts`). |
+| `npm run test-gas:update` | Same as above but refresh `gas-baseline.json`. |
+| `npm run test-gas:sol` | Run the Solidity gas harness (`contracts/tests/Swap2p_Gas.t.sol`). |
+| `npm run coverage` | Produce coverage report. |
+| `npm run echidna` | Launch Echidna invariant fuzzing harness. |
+| `npm run medusa` | Launch Medusa fuzzer with the provided config. |
+| `npm run local:node` | Start a verbose Hardhat node for local workflows. |
+| `npm run local:seed` | Seed the local Hardhat node with makers, offers, and deals. |
+| `npm run deploy:hardhat` | Broadcast Swap2p deployment to the in-process Hardhat network. |
+| `npm run deploy:mezo` | Broadcast Swap2p deployment to the configured Mezo network. |
+| `npm run compile:app` | Rebuild contracts, run TypeChain, and sync artifacts into the frontend. |
 
-To run the deployment to a local chain:
+## Testing the UI Locally
 
-```shell
-npx hardhat ignition deploy ignition/modules/Counter.ts
-```
+The frontend is located under `app/` and has its own README with full instructions. To preview the UI against a seeded Hardhat network:
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+1. In the repository root, start the local node: `npm run local:node`.
+2. With the node running, seed it in a second terminal: `npm run local:seed`.
+3. Open a third terminal, `cd app`, and run `npm run dev` to launch the UI.
+4. In the web app, switch the network selector to `hardhat` to connect to the seeded environment.
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
+This flow spawns mock tokens, registers maker profiles, and populates offers/deals so the UI surfaces realistic data (including revoked allowances for the first maker to test the Approve flow).
 
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
+## Deploying Swap2p
 
-```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
-
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
-```
-
-### Deploy and verify Swap2p
-
-Use the Hardhat script at `scripts/deploy-swap2p.ts` to deploy the main contract:
+When you're ready to deploy:
 
 ```shell
 npx hardhat run --network sepolia scripts/deploy-swap2p.ts
 ```
 
-The script deploys from the first configured account and skips verification on local networks. For Sepolia make sure the `SEPOLIA_RPC_URL`, `SEPOLIA_PRIVATE_KEY`, and `ETHERSCAN_API_KEY` configuration variables are set. Hardhat's `verify:verify` task handles retries, so you can rerun the script if the explorer indexing lags.
+Ensure `SEPOLIA_RPC_URL`, `SEPOLIA_PRIVATE_KEY`, and `ETHERSCAN_API_KEY` are configured (via `.env` or Hardhat config vars). The script deploys the main contract and logs the address. Use `npm run deploy:hardhat` for local broadcast or `npm run deploy:mezo` for other configured networks.
 
-Alternatively, run `npm run deploy:sepolia`, which wraps the same command.
-
-### Sync frontend contracts
-
-After changing the Solidity contracts, run:
-
-```shell
-npm run compile:app
-```
-
-This command force-compiles with Hardhat, regenerates the viem-friendly ABI/types (in `typechain-types/`), and copies the artifacts into `app/lib/swap2p/generated/` for the Next.js app.
-
-### Frontend data access
-
-- UI components should not call viem adapters (e.g. `getOffer`) directly. Use the provider helpers (such as `useOffers().refreshOffer`) to load data.  
-- Every adapter response is normalised via shared utilities (token/fiat lookup, sanitizers, `mergeOfferWithOnchain`) before hitting the UI. Reuse these helpers when adding new data flows.
+To sync fresh artifacts into the UI after any contract change or deployment, rerun `npm run compile:app`.
