@@ -49,7 +49,7 @@ const HARDHAT_TOKEN_DECIMALS: Record<string, number> = {
 };
 
 export const APP_CONFIG: AppConfigShape = {
-  defaultNetwork: "hardhat",
+  defaultNetwork: "mezo",
   networks: {
     hardhat: {
       chainId: hardhatChain.id,
