@@ -4,7 +4,7 @@ import { getFiatData } from "@/lib/fiat-data";
 import { BANK_TRANSFER_LABEL, PAYMENT_METHODS, getPaymentMethodsForCountry } from "@/payment-methods";
 export { PAYMENT_METHODS, BANK_TRANSFER_LABEL, getPaymentMethodsForCountry };
 import type { FiatInfo } from "@/lib/fiat-data";
-export type NetworkKey = "hardhat" | "ethereum" | "optimism";
+export type NetworkKey = "hardhat" | "mezo";
 
 export interface TokenConfig {
   symbol: string;
@@ -67,57 +67,30 @@ export const APP_CONFIG: AppConfigShape = {
           }) satisfies TokenConfig,
       ),
     },
-    ethereum: {
-      chainId: 1,
-      name: "Ethereum Mainnet",
-      swap2pAddress: "0x111111111111111111111111111111111111aAaA" as `0x${string}`,
+    mezo: {
+      chainId: 31612,
+      name: "Mezo",
+      swap2pAddress: "0xb79277c27461ad9cfFdf98D43bbCE904fb678097" as `0x${string}`,
       tokens: [
+        {
+          symbol: "BTC",
+          address: "0x7b7C000000000000000000000000000000000000" as `0x${string}`,
+          decimals: 18,
+        },
+        {
+          symbol: "MUSD",
+          address: "0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186" as `0x${string}`,
+          decimals: 18,
+        },
         {
           symbol: "USDC",
-          address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`,
+          address: "0x04671C72Aab5AC02A03c1098314b1BB6B560c197" as `0x${string}`,
           decimals: 6,
         },
         {
           symbol: "USDT",
-          address: "0xdAC17F958D2ee523a2206206994597C13D831ec7" as `0x${string}`,
+          address: "0xeB5a5d39dE4Ea42C2Aa6A57EcA2894376683bB8E" as `0x${string}`,
           decimals: 6,
-        },
-        {
-          symbol: "DAI",
-          address: "0x6B175474E89094C44Da98b954EedeAC495271d0F" as `0x${string}`,
-          decimals: 18,
-        },
-        {
-          symbol: "WETH",
-          address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2" as `0x${string}`,
-          decimals: 18,
-        },
-      ] satisfies TokenConfig[],
-    },
-    optimism: {
-      chainId: 10,
-      name: "Optimism",
-      swap2pAddress: "0x222222222222222222222222222222222222aAaA" as `0x${string}`,
-      tokens: [
-        {
-          symbol: "USDC.e",
-          address: "0x7F5c764cBc14f9669B88837ca1490cCa17c31607" as `0x${string}`,
-          decimals: 6,
-        },
-        {
-          symbol: "USDT",
-          address: "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58" as `0x${string}`,
-          decimals: 6,
-        },
-        {
-          symbol: "DAI",
-          address: "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1" as `0x${string}`,
-          decimals: 18,
-        },
-        {
-          symbol: "OP",
-          address: "0x4200000000000000000000000000000000000042" as `0x${string}`,
-          decimals: 18,
         },
       ] satisfies TokenConfig[],
     },
