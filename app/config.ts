@@ -23,7 +23,7 @@ export interface NetworkConfig {
 
 export interface AppConfigShape {
   defaultNetwork: NetworkKey;
-  networks: Record<NetworkKey, NetworkConfig>;
+  networks: Partial<Record<NetworkKey, NetworkConfig>>;
   paymentMethods: Record<string, readonly string[]>;
 }
 
@@ -48,64 +48,85 @@ const HARDHAT_TOKEN_DECIMALS: Record<string, number> = {
   WETH: 18,
 };
 
+const isLocalEnvironment = process.env.NODE_ENV !== "production";
+
+const networks: Partial<Record<NetworkKey, NetworkConfig>> = {};
+
+if (isLocalEnvironment) {
+  networks.hardhat = {
+    chainId: hardhatChain.id,
+    name: "Hardhat",
+    swap2pAddress:
+      typeof hardhatDeployment.swap2p === "string"
+        ? asAddress(hardhatDeployment.swap2p)
+        : ZERO_ADDRESS,
+    tokens: Object.entries(hardhatDeployment.tokens ?? {}).map(
+      ([symbol, address]) =>
+        ({
+          symbol,
+          address: asAddress(address),
+          decimals: HARDHAT_TOKEN_DECIMALS[symbol] ?? 18,
+        }) satisfies TokenConfig,
+    ),
+  };
+}
+
+networks.mezo = {
+  chainId: 31612,
+  name: "Mezo",
+  swap2pAddress: "0xb79277c27461ad9cffdf98d43bbce904fb678097" as `0x${string}`,
+  tokens: [
+    {
+      symbol: "BTC",
+      address: "0x7b7C000000000000000000000000000000000000" as `0x${string}`,
+      decimals: 18,
+    },
+    {
+      symbol: "MUSD",
+      address: "0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186" as `0x${string}`,
+      decimals: 18,
+    },
+    {
+      symbol: "USDC",
+      address: "0x04671C72Aab5AC02A03c1098314b1BB6B560c197" as `0x${string}`,
+      decimals: 6,
+    },
+    {
+      symbol: "USDT",
+      address: "0xeB5a5d39dE4Ea42C2Aa6A57EcA2894376683bB8E" as `0x${string}`,
+      decimals: 6,
+    },
+  ] satisfies TokenConfig[],
+};
+
+const defaultNetwork: NetworkKey = isLocalEnvironment ? "hardhat" : "mezo";
+
 export const APP_CONFIG: AppConfigShape = {
-  defaultNetwork: "mezo",
-  networks: {
-    hardhat: {
-      chainId: hardhatChain.id,
-      name: "Hardhat (local)",
-      swap2pAddress:
-        typeof hardhatDeployment.swap2p === "string"
-          ? asAddress(hardhatDeployment.swap2p)
-          : ZERO_ADDRESS,
-      tokens: Object.entries(hardhatDeployment.tokens ?? {}).map(
-        ([symbol, address]) =>
-          ({
-            symbol,
-            address: asAddress(address),
-            decimals: HARDHAT_TOKEN_DECIMALS[symbol] ?? 18,
-          }) satisfies TokenConfig,
-      ),
-    },
-    mezo: {
-      chainId: 31612,
-      name: "Mezo",
-      swap2pAddress: "0xb79277c27461ad9cfFdf98D43bbCE904fb678097" as `0x${string}`,
-      tokens: [
-        {
-          symbol: "BTC",
-          address: "0x7b7C000000000000000000000000000000000000" as `0x${string}`,
-          decimals: 18,
-        },
-        {
-          symbol: "MUSD",
-          address: "0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186" as `0x${string}`,
-          decimals: 18,
-        },
-        {
-          symbol: "USDC",
-          address: "0x04671C72Aab5AC02A03c1098314b1BB6B560c197" as `0x${string}`,
-          decimals: 6,
-        },
-        {
-          symbol: "USDT",
-          address: "0xeB5a5d39dE4Ea42C2Aa6A57EcA2894376683bB8E" as `0x${string}`,
-          decimals: 6,
-        },
-      ] satisfies TokenConfig[],
-    },
-  },
+  defaultNetwork,
+  networks,
   paymentMethods: PAYMENT_METHODS,
 };
 
 export function getNetworkConfig(key?: NetworkKey): NetworkConfig {
   const target = key ?? APP_CONFIG.defaultNetwork;
-  return APP_CONFIG.networks[target];
+  const config = APP_CONFIG.networks[target];
+  if (config) {
+    return config;
+  }
+  const firstAvailable = Object.values(APP_CONFIG.networks).find(
+    (entry): entry is NetworkConfig => Boolean(entry),
+  );
+  if (!firstAvailable) {
+    throw new Error("Swap2p networks are not configured.");
+  }
+  return firstAvailable;
 }
 
 export function getNetworkConfigForChain(chainId?: number): NetworkConfig {
   if (typeof chainId === "number") {
-    const match = Object.values(APP_CONFIG.networks).find(cfg => cfg.chainId === chainId);
+    const match = Object.values(APP_CONFIG.networks).find(
+      (cfg): cfg is NetworkConfig => Boolean(cfg) && cfg.chainId === chainId,
+    );
     if (match) return match;
 
     const fallback = getNetworkConfig(APP_CONFIG.defaultNetwork);

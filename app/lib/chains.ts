@@ -6,7 +6,7 @@ const hardhatRpcUrl = hardhatNetwork.rpcUrl ?? "http://127.0.0.1:8545";
 
 export const hardhatChain = defineChain({
   id: 31337,
-  name: "Hardhat (local)",
+  name: "Hardhat",
   network: "hardhat",
   nativeCurrency: {
     name: "Test Ether",
