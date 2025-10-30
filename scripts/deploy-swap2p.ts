@@ -1,5 +1,6 @@
 import hardhat from "hardhat";
 import { defineChain } from "viem";
+import { verifyContract } from "@nomicfoundation/hardhat-verify/verify";
 
 const { network } = hardhat;
 
@@ -89,11 +90,14 @@ if (!isLocalNetwork) {
   console.log("Verifying Swap2p with Hardhat verify task...");
 
   try {
-    const verify = hardhat.tasks.getTask("verify:verify");
-    await verify.run({
+    await verifyContract(
+      {
         address: swap.address,
-        constructorArguments,
-    });
+        constructorArgs: constructorArguments,
+        // provider: "blockscout", //  (etherscan / blockscout)
+      },
+      hardhat
+    );
     console.log("Swap2p verification completed.");
 
   } catch (error) {
