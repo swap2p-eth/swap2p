@@ -707,6 +707,23 @@ for (const maker of makerContexts) {
   }
 }
 
+const makerToRevoke = makerContexts.find(
+  (context) => context.profile.address.toLowerCase() === makerProfiles[0].address.toLowerCase(),
+);
+
+if (makerToRevoke) {
+  for (const token of tokens.values()) {
+    await writeWith(makerToRevoke.client, {
+      address: token.address,
+      abi: mintableArtifact.abi,
+      functionName: "approve",
+      args: [swap.address, 0n],
+    }, `revoke ${token.config.symbol} allowance for ${makerToRevoke.profile.nickname}`);
+  }
+} else {
+  console.log(`Maker profile ${makerProfiles[0].address} not found, skipping allowance revocation.`);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
