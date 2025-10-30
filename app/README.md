@@ -1,11 +1,10 @@
-# Swap2p App (web console)
+# Swap2p App (web3 console)
 
 This is a Next.js 14 app router project that lives alongside the core `Swap2p` contracts. It ships with:
 
 - **shadcn/ui** primitives wired with Tailwind CSS and theming.
 - **TanStack Query + Table** for data fetching/state and tabular views.
 - **@tanstack/react-virtual** powering the chat timeline.
-- **react-day-picker** for range selections.
 - **lucide-react** icons.
 - Minimal chat widget hooked up to bytes-first messaging and a theme toggle (light/dark/system).
 
@@ -17,7 +16,7 @@ npm install
 npm run dev
 ```
 
-The dev server will start on `http://localhost:3000`. Connect the wallet to **Hardhat (local)** to use the deployment snapshot from `app/networks/hardhat.json`, or pick another network after wiring its metadata into `app/config.ts`.
+The dev server will start on `http://localhost:3333`. Connect the wallet to **Hardhat (local)** to use the deployment snapshot from `app/networks/hardhat.json`, or pick another network after wiring its metadata into `app/config.ts`.
 
 ## Contract bindings & adapters
 
