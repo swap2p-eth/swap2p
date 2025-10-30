@@ -1,8 +1,10 @@
+import "dotenv/config";
 import hardhat from "hardhat";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  isAddress,
   maxUint256,
   parseEther,
   parseUnits,
@@ -46,20 +48,46 @@ const encodeBytes32 = (value: string): Hex => {
   return padHex(trimmed, { size: 32, dir: "right" }) as Hex;
 };
 
-const makerProfiles = [
+type MakerProfileSeed = {
+  fallbackAddress: Address;
+  nickname: string;
+  paymentNotes: string;
+  requirements: string;
+};
+
+const makerProfileSeed: MakerProfileSeed[] = [
   {
-    address: "0x1Ffa68359Fc14d9296503Ff99c2f6dF6Be28B12f" as Address,
+    fallbackAddress: "0x1Ffa68359Fc14d9296503Ff99c2f6dF6Be28B12f" as Address,
     nickname: "desk-atlas",
     paymentNotes: "Wise USD, Fedwire, PromptPay",
     requirements: "Government ID + liveness selfie",
   },
   {
-    address: "0x96a8fa7F568Bc9CA474201727483954F6d0CC2c1" as Address,
+    fallbackAddress: "0x96a8fa7F568Bc9CA474201727483954F6d0CC2c1" as Address,
     nickname: "liquidity-hub",
     paymentNotes: "SEPA Instant, Kasikorn, Revolut Business",
     requirements: "Business account statement <30 days",
   },
 ];
+
+function resolveMakerAddress(index: number, fallback: Address): Address {
+  const envKey = `HARDHAT_SEED_ADDRESS_${index}`;
+  const rawAddress = process.env[envKey]?.trim();
+  if (!rawAddress) {
+    return fallback;
+  }
+  if (!isAddress(rawAddress)) {
+    throw new Error(`Invalid address provided for ${envKey}: ${rawAddress}`);
+  }
+  return rawAddress as Address;
+}
+
+const makerProfiles = makerProfileSeed.map((config, index) => ({
+  address: resolveMakerAddress(index, config.fallbackAddress),
+  nickname: config.nickname,
+  paymentNotes: config.paymentNotes,
+  requirements: config.requirements,
+}));
 
 const tokenConfigs = [
   {
