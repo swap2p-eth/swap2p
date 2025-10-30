@@ -47,6 +47,13 @@ const config: HardhatUserConfig = {
       url: process.env.MEZO_RPC_URL ?? "https://mainnet.mezo.public.validationcloud.io",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
+    "mezo-testnet": {
+      type: "http",
+      chainType: "l1",
+      chainId: 31611,
+      url: process.env.MEZO_TESTNET_RPC_URL ?? "https://rpc.test.mezo.org",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+    },
   },
 /*  etherscan: {
     apiKey: {
@@ -66,6 +73,16 @@ const config: HardhatUserConfig = {
           name: "Mezo Explorer",
           url: "https://explorer.mezo.org/",
           apiUrl: "https://api.explorer.mezo.org/api"
+        }
+      }
+    },
+    31611: {
+      name: "mezo-testnet",
+      blockExplorers: {
+        blockscout: {
+          name: "Mezo Explorer",
+          url: "https://explorer.test.mezo.org/",
+          apiUrl: "https://api.explorer.test.mezo.org/api"
         }
       }
     },
