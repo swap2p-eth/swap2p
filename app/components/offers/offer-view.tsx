@@ -698,7 +698,7 @@ export function OfferView({
           <div className="space-y-2">
             <CardTitle className="text-xl">Offer parameters</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Configure price, limits, rails, and taker requirements for this offer.
+              Do you want to buy or sell crypto?
             </p>
           </div>
           <div className="flex flex-col items-end gap-3">
