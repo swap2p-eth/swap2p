@@ -24,26 +24,6 @@ Environment overrides:
 
 - `SEED_KEY_1`, `SEED_KEY_2`: private keys for the two maker wallets used by the seeding script. The script funds each wallet with native gas and deploys using these accounts.
 
-## Local Development
-
-| Command | Description |
-| --- | --- |
-| `npm run compile` | Force-compile contracts with Hardhat 3 (solc 0.8.28). |
-| `npm run typechain` | Regenerate TypeScript typings for the contracts. |
-| `npm run sync:app-contracts` | Copy fresh ABIs/addresses into `app/lib/swap2p/generated/`. |
-| `npm test` | Run Solidity tests and Node TypeScript tests. |
-| `npm run test-gas` | Execute gas benchmark (`test/gas.node.ts`). |
-| `npm run test-gas:update` | Same as above but refresh `gas-baseline.json`. |
-| `npm run test-gas:sol` | Run the Solidity gas harness (`contracts/tests/Swap2p_Gas.t.sol`). |
-| `npm run coverage` | Produce coverage report. |
-| `npm run echidna` | Launch Echidna invariant fuzzing harness. |
-| `npm run medusa` | Launch Medusa fuzzer with the provided config. |
-| `npm run local:node` | Start a verbose Hardhat node for local workflows. |
-| `npm run local:seed` | Seed the local Hardhat node with makers, offers, and deals. |
-| `npm run deploy:hardhat` | Broadcast Swap2p deployment to the in-process Hardhat network. |
-| `npm run deploy:mezo` | Broadcast Swap2p deployment to the configured Mezo network. |
-| `npm run compile:app` | Rebuild contracts, run TypeChain, and sync artifacts into the frontend. |
-
 ## Testing the UI Locally
 
 The frontend is located under `app/` and has its own README with full instructions. To preview the UI against a seeded Hardhat network:
@@ -77,14 +57,32 @@ Or you can mint some USDT to your address: https://explorer.test.mezo.org/addres
 2. Open https://swap2p.org 
 3. In the web app, switch the network selector to `Mezo Testnet` to connect to the test environment.
 
+## Local Development
+
+| Command | Description |
+| --- | --- |
+| `npm run compile` | Force-compile contracts with Hardhat 3 (solc 0.8.28). |
+| `npm run typechain` | Regenerate TypeScript typings for the contracts. |
+| `npm run sync:app-contracts` | Copy fresh ABIs/addresses into `app/lib/swap2p/generated/`. |
+| `npm test` | Run Solidity tests and Node TypeScript tests. |
+| `npm run test-gas` | Execute gas benchmark (`test/gas.node.ts`). |
+| `npm run test-gas:update` | Same as above but refresh `gas-baseline.json`. |
+| `npm run test-gas:sol` | Run the Solidity gas harness (`contracts/tests/Swap2p_Gas.t.sol`). |
+| `npm run coverage` | Produce coverage report. |
+| `npm run echidna` | Launch Echidna invariant fuzzing harness. |
+| `npm run medusa` | Launch Medusa fuzzer with the provided config. |
+| `npm run local:node` | Start a verbose Hardhat node for local workflows. |
+| `npm run local:seed` | Seed the local Hardhat node with makers, offers, and deals. |
+| `npm run deploy:hardhat` | Broadcast Swap2p deployment to the in-process Hardhat network. |
+| `npm run deploy:mezo` | Broadcast Swap2p deployment to the configured Mezo network. |
+| `npm run compile:app` | Rebuild contracts, run TypeChain, and sync artifacts into the frontend. |
+
 ## Deploying Swap2p
 
 When you're ready to deploy:
 
 ```shell
-npx hardhat run --network sepolia scripts/deploy-swap2p.ts
+npx hardhat run --network mezo scripts/deploy-swap2p.ts
 ```
-
-Ensure `SEPOLIA_RPC_URL`, `SEPOLIA_PRIVATE_KEY`, and `ETHERSCAN_API_KEY` are configured (via `.env` or Hardhat config vars). The script deploys the main contract and logs the address. Use `npm run deploy:hardhat` for local broadcast or `npm run deploy:mezo` for other configured networks.
 
 To sync fresh artifacts into the UI after any contract change or deployment, rerun `npm run compile:app`.
