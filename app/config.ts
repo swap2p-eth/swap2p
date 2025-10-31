@@ -4,7 +4,7 @@ import { getFiatData } from "@/lib/fiat-data";
 import { BANK_TRANSFER_LABEL, PAYMENT_METHODS, getPaymentMethodsForCountry } from "@/payment-methods";
 export { PAYMENT_METHODS, BANK_TRANSFER_LABEL, getPaymentMethodsForCountry };
 import type { FiatInfo } from "@/lib/fiat-data";
-export type NetworkKey = "hardhat" | "mezo";
+export type NetworkKey = "hardhat" | "mezo" | "testnet";
 
 export interface TokenConfig {
   symbol: string;
@@ -94,6 +94,24 @@ networks.mezo = {
     {
       symbol: "USDT",
       address: "0xeB5a5d39dE4Ea42C2Aa6A57EcA2894376683bB8E" as `0x${string}`,
+      decimals: 6,
+    },
+  ] satisfies TokenConfig[],
+};
+
+networks.testnet = {
+  chainId: 31611,
+  name: "Mezo Testnet",
+  swap2pAddress: "0xf410b11A6a00DBc51bF9f86785B3C0F1E6187C91" as `0x${string}`,
+  tokens: [
+    {
+      symbol: "MUSD",
+      address: "0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503" as `0x${string}`,
+      decimals: 18,
+    },
+    {
+      symbol: "USDT",
+      address: "0x44a1A403D28d1551D6B814107fD3250CDDbfA5E0" as `0x${string}`,
       decimals: 6,
     },
   ] satisfies TokenConfig[],

@@ -6,13 +6,12 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RainbowKitProvider, lightTheme, midnightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider, useAccount } from "wagmi";
 import { getConfig } from "@mezo-org/passport/dist/src/config";
-import { RPC_BY_NETWORK, mezoMainnet } from "@mezo-org/passport/dist/src/constants";
+import {RPC_BY_NETWORK, mezoMainnet, mezoTestnet} from "@mezo-org/passport/dist/src/constants";
 import { ThemeProvider } from "@/components/theme-provider";
 import { UserProvider } from "@/context/user-context";
 import { useTheme } from "next-themes";
 import { http } from "viem";
 import type { Chain } from "viem/chains";
-import { Toaster } from "sonner";
 
 import { hardhatChain, hardhatTransport } from "@/lib/chains";
 import { APP_CONFIG, type NetworkKey, type NetworkConfig } from "@/config";
@@ -47,10 +46,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const networkKeys = networkEntries.map(([key]) => key);
     const chainRegistry: Partial<Record<NetworkKey, Chain>> = {
       hardhat: hardhatChain,
+      testnet: mezoTestnet,
       mezo: mezoMainnet,
     };
     const transportRegistry: Partial<Record<NetworkKey, ReturnType<typeof http>>> = {
       hardhat: hardhatTransport,
+      testnet: http(RPC_BY_NETWORK.testnet.http),
       mezo: http(RPC_BY_NETWORK.mainnet.http),
     };
 

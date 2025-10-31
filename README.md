@@ -1,4 +1,4 @@
-<img align="right" src="app/public/swap2p-icon.svg" alt="Swap2p icon" width="96" height="96" />
+<img style="float:right" src="app/public/swap2p-icon.svg" alt="Swap2p icon" width="96" height="96" />
 
 # Swap2p
 _On-chain rails for cross-border P2P market makers._
@@ -54,11 +54,28 @@ The frontend is located under `app/` and has its own README with full instructio
 4. In the web app, switch the network selector to `hardhat` to connect to the seeded environment.
 5. Import seed private keys into two different browsers / profiles 
 ```
+address: 0x111105e09533e5A9120579517e2C532e1CaD022A
 SEED_KEY_1=0x4f3edf983ac636a65a842ce7c78d9aa706d3b113b37d8d7a593c2b912b9b0df
+
+address: 0x222202a7e49088fc50FaF552ec60f992e813863E
 SEED_KEY_2=0x6c3699283bda56ad74f6bc422a28c05fe1a30aa03d1c0e54796d312fcf1f5b1
 ```
+6. Play with the app.
 
-This flow spawns mock tokens, registers maker profiles, and populates offers/deals so the UI surfaces realistic data (including revoked allowances for the first maker to test the Approve flow).
+## Testing the UI on Mezo Testnet
+
+1. Import seed private keys into two different browsers / profiles
+```
+address: 0x111105e09533e5A9120579517e2C532e1CaD022A
+SEED_KEY_1=0x4f3edf983ac636a65a842ce7c78d9aa706d3b113b37d8d7a593c2b912b9b0df
+
+address: 0x222202a7e49088fc50FaF552ec60f992e813863E
+SEED_KEY_2=0x6c3699283bda56ad74f6bc422a28c05fe1a30aa03d1c0e54796d312fcf1f5b1
+```
+These addresses has some test USDT and BTC prefilled.
+Or you can mint some USDT to your address: https://explorer.test.mezo.org/address/0x44a1A403D28d1551D6B814107fD3250CDDbfA5E0?tab=write_contract#40c10f19 
+2. Open https://swap2p.org 
+3. In the web app, switch the network selector to `Mezo Testnet` to connect to the test environment.
 
 ## Deploying Swap2p
 
