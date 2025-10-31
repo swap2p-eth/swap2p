@@ -52,6 +52,11 @@ The frontend is located under `app/` and has its own README with full instructio
 2. With the node running, seed it in a second terminal: `npm run local:seed`.
 3. Open a third terminal, `cd app`, and run `npm run dev` to launch the UI.
 4. In the web app, switch the network selector to `hardhat` to connect to the seeded environment.
+5. Import seed private keys into two different browsers / profiles 
+```
+SEED_KEY_1=0x4f3edf983ac636a65a842ce7c78d9aa706d3b113b37d8d7a593c2b912b9b0df
+SEED_KEY_2=0x6c3699283bda56ad74f6bc422a28c05fe1a30aa03d1c0e54796d312fcf1f5b1
+```
 
 This flow spawns mock tokens, registers maker profiles, and populates offers/deals so the UI surfaces realistic data (including revoked allowances for the first maker to test the Approve flow).
 
