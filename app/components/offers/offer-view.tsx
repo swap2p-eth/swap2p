@@ -17,7 +17,6 @@ import { useOffer } from "@/hooks/use-offer";
 import { DealHeader } from "@/components/deals/deal-header";
 import { TokenIcon } from "@/components/token-icon";
 import { FiatFlag } from "@/components/fiat-flag";
-import type { OfferRow } from "@/lib/types/market";
 import { SideToggle } from "@/components/deals/side-toggle";
 import { error as logError } from "@/lib/logger";
 import {
@@ -693,7 +692,7 @@ export function OfferView({
         onBack={navigateBack}
       />
 
-      <Card className="rounded-3xl border bg-gradient-to-br from-background/70 to-background/30 shadow-lg shadow-primary/5">
+      <Card className="rounded-3xl bg-gradient-to-br from-background/70 to-background/30 shadow-lg shadow-primary/5">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-2">
             <CardTitle className="text-xl">Offer parameters</CardTitle>
