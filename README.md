@@ -22,7 +22,7 @@ cp .env.example .env    # optional – override seed addresses or network keys
 
 Environment overrides:
 
-- `HARDHAT_SEED_ADDRESS_0`, `HARDHAT_SEED_ADDRESS_1`: maker addresses used when seeding the local Hardhat network. Defaults are kept for convenience when the variables are unset.
+- `SEED_KEY_1`, `SEED_KEY_2`: private keys for the two maker wallets used by the seeding script. The script funds each wallet with native gas and deploys using these accounts.
 
 ## Local Development
 

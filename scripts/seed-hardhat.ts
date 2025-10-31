@@ -4,7 +4,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  isAddress,
+  createWalletClient,
+  http,
   maxUint256,
   parseEther,
   parseUnits,
@@ -14,6 +15,7 @@ import {
   type Address,
   type Hex,
 } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 
 const { network, artifacts } = hardhat;
 
@@ -48,46 +50,62 @@ const encodeBytes32 = (value: string): Hex => {
   return padHex(trimmed, { size: 32, dir: "right" }) as Hex;
 };
 
-type MakerProfileSeed = {
-  fallbackAddress: Address;
+type MakerSeedConfig = {
+  envVar: string;
   nickname: string;
   paymentNotes: string;
   requirements: string;
 };
 
-const makerProfileSeed: MakerProfileSeed[] = [
+const makerSeedConfigs: MakerSeedConfig[] = [
   {
-    fallbackAddress: "0x1Ffa68359Fc14d9296503Ff99c2f6dF6Be28B12f" as Address,
+    envVar: "SEED_KEY_1",
     nickname: "desk-atlas",
     paymentNotes: "Wise USD, Fedwire, PromptPay",
     requirements: "Government ID + liveness selfie",
   },
   {
-    fallbackAddress: "0x96a8fa7F568Bc9CA474201727483954F6d0CC2c1" as Address,
+    envVar: "SEED_KEY_2",
     nickname: "liquidity-hub",
     paymentNotes: "SEPA Instant, Kasikorn, Revolut Business",
     requirements: "Business account statement <30 days",
   },
 ];
 
-function resolveMakerAddress(index: number, fallback: Address): Address {
-  const envKey = `HARDHAT_SEED_ADDRESS_${index}`;
-  const rawAddress = process.env[envKey]?.trim();
-  if (!rawAddress) {
-    return fallback;
+function readSeedPrivateKey(envVar: string): `0x${string}` {
+  const rawKey = process.env[envVar];
+  if (!rawKey) {
+    throw new Error(`Missing ${envVar} environment variable for maker seeding.`);
   }
-  if (!isAddress(rawAddress)) {
-    throw new Error(`Invalid address provided for ${envKey}: ${rawAddress}`);
+  const trimmed = rawKey.trim();
+  const normalized = trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`;
+  try {
+    return padHex(normalized as Hex, { size: 32, dir: "left" }) as `0x${string}`;
+  } catch (error) {
+    throw new Error(`Invalid private key provided for ${envVar}: ${(error as Error).message}`);
   }
-  return rawAddress as Address;
 }
 
-const makerProfiles = makerProfileSeed.map((config, index) => ({
-  address: resolveMakerAddress(index, config.fallbackAddress),
-  nickname: config.nickname,
-  paymentNotes: config.paymentNotes,
-  requirements: config.requirements,
+const makerSeedDetails = makerSeedConfigs.map(seed => {
+  const privateKey = readSeedPrivateKey(seed.envVar);
+  const account = privateKeyToAccount(privateKey);
+  return {
+    ...seed,
+    privateKey,
+    account,
+  };
+});
+
+const makerProfiles = makerSeedDetails.map(detail => ({
+  address: detail.account.address as Address,
+  nickname: detail.nickname,
+  paymentNotes: detail.paymentNotes,
+  requirements: detail.requirements,
 }));
+
+if (makerSeedDetails.length < 2) {
+  throw new Error("At least two SEED_KEY_* environment variables are required to seed makers.");
+}
 
 const tokenConfigs = [
   {
@@ -210,11 +228,36 @@ if (!hreViem) {
 }
 
 const publicClient = await hreViem.getPublicClient();
-const testClient = await hreViem.getTestClient();
-const walletClients = await hreViem.getWalletClients();
+const chain = publicClient.chain;
 
-type WalletArray = typeof walletClients;
-type WalletClientType = WalletArray[number];
+if (!chain) {
+  throw new Error("Public client chain configuration is unavailable.");
+}
+
+const activeNetworkName =
+  network.name ??
+  chain?.name ??
+  (chain?.id ? `chain-${chain.id}` : "unknown");
+const activeNetworkSlug =
+  activeNetworkName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || "network";
+
+const networkConfig = network.config as { url?: string };
+const rpcUrlFromNetwork = typeof networkConfig?.url === "string" ? networkConfig.url : undefined;
+const rpcUrlFromConnection =
+  typeof (connection as { url?: string })?.url === "string" ? (connection as { url?: string }).url : undefined;
+const transportInfo = publicClient.transport as { url?: string; value?: { url?: string } };
+const rpcUrlFromTransport = transportInfo?.url ?? transportInfo?.value?.url;
+const rpcUrl = rpcUrlFromNetwork ?? rpcUrlFromConnection ?? rpcUrlFromTransport ?? "http://127.0.0.1:8545";
+
+const walletClients = await hreViem.getWalletClients();
+const testClient = await hreViem
+  .getTestClient()
+  .catch(() => null);
+
+type WalletClientType = Awaited<ReturnType<typeof hreViem.getWalletClients>>[number];
 
 type MakerContext = {
   profile: (typeof makerProfiles)[number];
@@ -237,6 +280,41 @@ if (walletClients.length === 0) {
   throw new Error("Hardhat wallet clients are unavailable.");
 }
 const [deployer] = walletClients as [WalletClientType, ...WalletClientType[]];
+
+const makerContexts: MakerContext[] = [];
+
+if (testClient) {
+  for (const detail of makerSeedDetails) {
+    await testClient.setBalance({ address: detail.account.address as Address, value: parseEther("500") });
+    await testClient.impersonateAccount({ address: detail.account.address as Address });
+  }
+  for (const profile of makerProfiles) {
+    const client = await hreViem.getWalletClient(profile.address);
+    makerContexts.push({ profile, client, offers: [] });
+  }
+} else {
+  const sharedTransport = http(rpcUrl);
+  for (const [index, profile] of makerProfiles.entries()) {
+    const detail = makerSeedDetails[index];
+    const client = createWalletClient({
+      chain,
+      account: detail.account,
+      transport: sharedTransport,
+    }) as unknown as WalletClientType;
+    makerContexts.push({ profile, client, offers: [] });
+  }
+}
+
+const seedFundingAmount = parseEther("0.02");
+for (const [index, detail] of makerSeedDetails.entries()) {
+  const profile = makerProfiles[index];
+  await sendNative(
+    deployer,
+    detail.account.address as Address,
+    seedFundingAmount,
+    `fund ${profile.nickname} (${detail.account.address})`,
+  );
+}
 
 function parseAmount(value: string, decimals: number): bigint {
   return parseUnits(value, decimals);
@@ -262,12 +340,24 @@ async function writeWith(
   return hash;
 }
 
+async function sendNative(
+  client: WalletClientType,
+  to: Address,
+  value: bigint,
+  label: string,
+) {
+  if (value === 0n) return;
+  const hash = await client.sendTransaction({ to, value });
+  console.log(`→ ${label}: ${hash}`);
+  await waitTx(hash);
+}
+
 const mintableArtifact = await artifacts.readArtifact("MintableToken");
 const swapArtifact = await artifacts.readArtifact("Swap2p");
 
 const tokens = new Map<string, TokenInstance>();
 
-console.log("Deploying Swap2p and mock tokens for local Hardhat network...");
+console.log(`Deploying Swap2p and mock tokens for ${activeNetworkName} network...`);
 
 const swap = await hreViem.deployContract("Swap2p", [deployer.account.address], { confirmations: 1 });
 console.log(`Swap2p deployed at ${swap.address}`);
@@ -280,15 +370,6 @@ for (const config of tokenConfigs) {
     decimals: config.decimals,
   });
   console.log(`${config.symbol} deployed at ${token.address}`);
-}
-
-const makerContexts: MakerContext[] = [];
-
-for (const profile of makerProfiles) {
-  await testClient.setBalance({ address: profile.address, value: parseEther("500") });
-  await testClient.impersonateAccount({ address: profile.address });
-  const client = await hreViem.getWalletClient(profile.address);
-  makerContexts.push({ profile, client, offers: [] });
 }
 
 if (makerContexts.length < 2) {
@@ -735,9 +816,7 @@ for (const maker of makerContexts) {
   }
 }
 
-const makerToRevoke = makerContexts.find(
-  (context) => context.profile.address.toLowerCase() === makerProfiles[0].address.toLowerCase(),
-);
+const makerToRevoke = makerContexts[0];
 
 if (makerToRevoke) {
   for (const token of tokens.values()) {
@@ -749,7 +828,18 @@ if (makerToRevoke) {
     }, `revoke ${token.config.symbol} allowance for ${makerToRevoke.profile.nickname}`);
   }
 } else {
-  console.log(`Maker profile ${makerProfiles[0].address} not found, skipping allowance revocation.`);
+  console.log("No maker profile available, skipping allowance revocation.");
+}
+
+console.log("\nDeployed contract addresses:");
+console.log(`  Swap2p: ${swap.address}`);
+for (const [symbol, tokenInstance] of tokens.entries()) {
+  console.log(`  ${symbol}: ${tokenInstance.address}`);
+}
+
+console.log("\nSeed maker wallets:");
+for (const maker of makerProfiles) {
+  console.log(`  ${maker.nickname}: ${maker.address}`);
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -757,15 +847,15 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const appDir = path.join(rootDir, "app");
 const netsDir = path.join(appDir, "networks");
-const outputPath = path.join(netsDir, "hardhat.json");
+const outputPath = path.join(netsDir, `${activeNetworkSlug}.json`);
 
-await mkdir(appDir, { recursive: true });
+await mkdir(netsDir, { recursive: true });
 
 const chainId = await publicClient.getChainId();
 
 const output = {
   chainId,
-  rpcUrl: "http://127.0.0.1:8545",
+  rpcUrl,
   swap2p: swap.address,
   tokens: Object.fromEntries(
     [...tokens.entries()].map(([key, value]) => [key, value.address])
@@ -779,4 +869,4 @@ const output = {
 await writeFile(outputPath, JSON.stringify(output, null, 2), "utf8");
 
 console.log(`Seed data written to ${path.relative(rootDir, outputPath)}`);
-console.log("Local Hardhat network is now populated with offers and deals.");
+console.log(`${activeNetworkName} network is now populated with offers and deals.`);
