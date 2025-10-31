@@ -80,6 +80,8 @@ const OFFER_CACHE_TTL_MS = 60_000;
 const toSideLabel = (side: SwapSide): OfferRow["side"] =>
   side === SwapSide.SELL ? "SELL" : "BUY";
 
+const DEFAULT_COUNTRY = "US";
+
 const EMPTY_PROFILE: MakerProfile = {
   online: false,
   nickname: "",
@@ -196,10 +198,12 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
 
   const fiatInfos = React.useMemo(() => fiatEntries.map(entry => entry.info), [fiatEntries]);
 
-  const defaultFiat = React.useMemo(
-    () => (fiatCodes[0] ?? "US").toUpperCase(),
-    [fiatCodes],
-  );
+  const defaultFiat = React.useMemo(() => {
+    if (fiatCodes.includes(DEFAULT_COUNTRY)) {
+      return DEFAULT_COUNTRY;
+    }
+    return fiatCodes[0] ?? DEFAULT_COUNTRY;
+  }, [fiatCodes]);
 
   const [activeMarket, setActiveMarket] = React.useState<{
     side: "BUY" | "SELL";
