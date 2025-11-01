@@ -408,23 +408,23 @@ function IntroSection({ onShowTerms }: { onShowTerms: () => void }) {
     <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
       <div className="space-y-6">
         <SectionHeading
-          eyebrow="Built for revenue teams"
-          title="Escrow first, UX obsessed"
-          description="Swap2p wraps smart-contract guarantees with dashboards that make managing a live OTC desk delightful."
+          eyebrow="Built for users"
+          title="Peer-to-peer escrow with user-first guardrails"
+          description="Swap2p guides everyday traders from deposit to release with guardrails that keep both sides protected."
           align="left"
         />
         <ul className="space-y-4 text-sm text-muted-foreground">
           <li className="flex items-start gap-3">
             <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-            Auto-sync on-chain status, messaging, and KYC snippets so deal context stays in one place.
+            Step-by-step checklists clarify the tasks, deadlines, and confirmations each side owes.
           </li>
           <li className="flex items-start gap-3">
             <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-            Integrate programmatically through adapters, or manage volume manually with dashboards.
+            Dual escrow locks both deposits and releases only after each party signs off on completion.
           </li>
           <li className="flex items-start gap-3">
             <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-            Escrow logic is fully transparent. Review audits and protocol docs before your first trade.
+            Live status updates and alerts keep you informed without chasing chats or spreadsheets.
           </li>
         </ul>
         <div>
@@ -439,19 +439,19 @@ function IntroSection({ onShowTerms }: { onShowTerms: () => void }) {
       </div>
       <Card className="mt-12 rounded-3xl pt-8 bg-gradient-to-br from-primary/10 via-card to-background shadow-[0_28px_60px_-40px_rgba(14,116,144,0.45)]">
         <CardContent className="space-y-6">
-          <h3 className="text-2xl font-semibold text-foreground">Why teams adopt Swap2p</h3>
+          <h3 className="text-2xl font-semibold text-foreground">Why users choose Swap2p</h3>
           <dl className="space-y-5 text-sm text-muted-foreground">
             <div className="space-y-1">
-              <dt className="font-medium text-foreground">Predictable margins</dt>
-              <dd>Flat fees, predictable escrow flow, and no unexpected clawbacks from arbiters.</dd>
+              <dt className="font-medium text-foreground">Keep custody</dt>
+              <dd>Funds stay in your wallet until both deposits are locked and settlement conditions are satisfied.</dd>
             </div>
             <div className="space-y-1">
-              <dt className="font-medium text-foreground">Operational simplicity</dt>
-              <dd>Turnkey dashboards, on-chain APIs, and referral analytics keep teams in sync.</dd>
+              <dt className="font-medium text-foreground">Clear milestones</dt>
+              <dd>Guided milestones and reminders reduce miscommunication so you always know the next step.</dd>
             </div>
             <div className="space-y-1">
-              <dt className="font-medium text-foreground">Compliance clarity</dt>
-              <dd>We never custody funds and publish the protocol logic so your counsel signs off faster.</dd>
+              <dt className="font-medium text-foreground">Transparent protection</dt>
+              <dd>Open-source contracts, published audits, and dispute flows you can verify before trading.</dd>
             </div>
           </dl>
         </CardContent>
