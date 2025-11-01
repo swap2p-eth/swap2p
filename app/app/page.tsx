@@ -102,13 +102,13 @@ const HOME_HIGHLIGHTS: ReadonlyArray<HomeHighlight> = [
   },
   {
     icon: Lock,
-    title: "Plug into any payment rail",
-    description: "List banking, fintech, and cash-in-hand rails worldwide. Takers filter and match instantly.",
+    title: "Choose your ideal payment rail",
+    description: "Bank transfer, fintech, or cash-in-hand—filter and match with the rail that suits you.",
   },
   {
     icon: Users,
-    title: "Designed for market makers",
-    description: "Manage inventory, automate availability, and earn recurring referral revenue.",
+    title: "Stay organized as volume grows",
+    description: "Track deals, automate windows, and keep repeat trades flowing without spreadsheets.",
   },
 ];
 
@@ -126,7 +126,25 @@ const HOME_STEPS: ReadonlyArray<HomeHighlight> = [
   {
     icon: ShieldCheck,
     title: "3. Crypto settles instantly",
-    description: "Confirmation triggers on-chain release and refunds both deposits so everyone walks away balanced.",
+    description: "Confirmation triggers on-chain release and both deposits return to their owners immediately after.",
+  },
+];
+
+const HOME_USER_FEATURES: ReadonlyArray<HomeHighlight> = [
+  {
+    icon: CheckCircle2,
+    title: "Guided checklists stay ahead",
+    description: "Spell out exactly what to submit and when so every swap stays on track.",
+  },
+  {
+    icon: Lock,
+    title: "Dual escrow enforces settlement",
+    description: "Locks both deposits and only releases once confirmations match the agreed milestones.",
+  },
+  {
+    icon: Users,
+    title: "Realtime updates keep teams synced",
+    description: "Status alerts and evidence uploads live in one view, eliminating chat and spreadsheet scramble.",
   },
 ];
 
@@ -134,7 +152,7 @@ const HOME_AFFILIATE: ReadonlyArray<HomeHighlight> = [
   {
     icon: HandCoins,
     title: "Earn on both sides",
-    description: "0.25% revenue share split across every trade: 0.10% on taker volume and 0.15% on maker fills.",
+    description: "0.25% revenue share on every trade: 0.10% from taker volume and 0.15% from maker fills—for example, earn $25 on a $10k swap.",
   },
   {
     icon: Users,
@@ -251,26 +269,33 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
   return (
     <main className="relative isolate flex flex-1 flex-col overflow-hidden bg-gradient-to-b from-background via-background to-background">
       <Hero onBrowseOffers={onBrowseOffers} onCreateOffer={onCreateOffer} />
+
       <SectionShell>
         <IntroSection onShowTerms={onShowTerms} />
       </SectionShell>
       <SectionShell>
-        <div className="grid items-center gap-10 lg:grid-cols-[1.2fr_1fr]">
-          <div className="space-y-6">
-            <SectionHeading
-              eyebrow="How escrow settles every deal"
-              title="Three enforced checkpoints, zero support bottlenecks"
-              description="Each step in the swap is guarded by the contract so neither party can skip ahead or stall the payout."
-              align="left"
-            />
-            <div className="space-y-4">
-              {HOME_STEPS.map(step => (
-                <StepCard key={step.title} step={step} />
-              ))}
-            </div>
-          </div>
-          <Card className="mt-12 rounded-3xl pt-8 bg-gradient-to-br from-primary/10 via-card to-background shadow-[0_28px_60px_-40px_rgba(14,116,144,0.45)]">
-            <CardContent className="space-y-6 px-10">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="flex h-full pt-6 flex-col rounded-3xl bg-gradient-to-br from-primary/10 via-card to-background shadow-[0_28px_60px_-40px_rgba(14,116,144,0.45)]">
+            <CardContent className="flex h-full flex-col gap-6 px-8 pt-8">
+              <h3 className="text-2xl font-semibold text-foreground">Why users choose Swap2p</h3>
+              <dl className="space-y-5 text-sm text-muted-foreground">
+                <div className="space-y-1">
+                  <dt className="font-medium text-foreground">Stay in control</dt>
+                  <dd>Funds remain in your wallet until the contract locks both deposits and verifies settlement steps.</dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="font-medium text-foreground">Know the next step</dt>
+                  <dd>Milestones, reminders, and evidence uploads live in one view so nothing slips.</dd>
+                </div>
+                <div className="space-y-1">
+                  <dt className="font-medium text-foreground">Trust what you can verify</dt>
+                  <dd>Open-source contracts, and transparent dispute flows you can review anytime.</dd>
+                </div>
+              </dl>
+            </CardContent>
+          </Card>
+          <Card className="flex h-full pt-6 flex-col rounded-3xl bg-gradient-to-br from-primary/10 via-card to-background shadow-[0_28px_60px_-40px_rgba(14,116,144,0.45)]">
+            <CardContent className="flex h-full flex-col gap-6 px-8 pt-8">
               <h3 className="text-2xl font-semibold text-foreground">What you control</h3>
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li className="flex items-start gap-3">
@@ -279,18 +304,34 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-                  Fiat acceptance rails with localized instructions per market.
+                  Shared access without sharing keys, perfect for agents or co-pilots.
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-                  Referral share and delegated access for sales partners.
+                  Fiat acceptance rails with localized instructions per market.
                 </li>
               </ul>
-              <Button size="lg" className="w-full rounded-full" onClick={onBrowseOffers}>
+              <Button size="lg"
+                      className="mt-auto rounded-full bg-card/80 px-10 py-5 text-base text-primary shadow-[0_16px_40px_-28px_rgba(59,130,246,0.55)] transition hover:bg-primary/10"
+                      onClick={onBrowseOffers}>
                 List my inventory
               </Button>
             </CardContent>
           </Card>
+        </div>
+      </SectionShell>
+      <SectionShell>
+        <div className="space-y-6">
+          <SectionHeading
+            eyebrow="How escrow settles every deal"
+            title="Three enforced checkpoints, zero support bottlenecks"
+            description="Each step in the swap is guarded by the contract so neither party can skip ahead or stall the payout."
+          />
+          <div className="grid gap-4 md:grid-cols-3">
+            {HOME_STEPS.map(step => (
+              <StepCard key={step.title} step={step} />
+            ))}
+          </div>
         </div>
       </SectionShell>
       <SectionShell>
@@ -318,7 +359,7 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
         </div>
       </SectionShell>
       <SectionShell>
-        <Card className="mt-12 rounded-3xl pt-8 bg-gradient-to-br from-primary/15 via-card to-background shadow-[0_32px_64px_-40px_rgba(37,99,235,0.4)]">
+        <Card className="mt-0 rounded-3xl pt-8 bg-gradient-to-br from-primary/15 via-card to-background shadow-[0_32px_64px_-40px_rgba(37,99,235,0.4)]">
           <CardContent className="flex flex-col items-center gap-6 px-6 py-14 text-center sm:px-12">
             <SectionHeading
               eyebrow="Ready when you are"
@@ -376,10 +417,10 @@ function Hero({
           </span>
         </div>
         <p className="max-w-4xl text-4xl font-extralight tracking-wide text-foreground sm:text-6xl">
-          Close crypto-to-fiat deals without trusting the counterparty
+          Trade crypto &#8596; fiat with dual-deposit safety
         </p>
         <p className="max-w-3xl text-lg text-muted-foreground sm:text-xl">
-          Dual escrow locks both deposits, walks each side through the milestones, and only releases funds once everyone signs off.
+          Both sides lock funds, guided milestones keep the deal moving, and escrow only releases when confirmations match.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Button size="lg" onClick={onBrowseOffers} className="rounded-full px-10 py-5 text-base">
@@ -393,6 +434,7 @@ function Hero({
             Create offer
           </Button>
         </div>
+
         <div className="grid w-full max-w-4xl gap-4 rounded-3xl bg-card/70 p-6 text-left shadow-[0_24px_58px_-36px_rgba(28,100,242,0.35)] sm:grid-cols-3">
           {HOME_HIGHLIGHTS.map(item => (
             <HeroHighlight key={item.title} highlight={item} />
@@ -405,48 +447,17 @@ function Hero({
 
 function IntroSection({ onShowTerms: _onShowTerms }: { onShowTerms: () => void }) {
   return (
-    <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-      <div className="space-y-6">
-        <SectionHeading
-          eyebrow="Built for users"
-          title="Peer-to-peer escrow made intuitive"
-          description="Swap2p walks both sides through every deposit, confirmation, and release so trades close without second-guessing."
-          align="left"
-        />
-        <ul className="space-y-4 text-sm text-muted-foreground">
-          <li className="flex items-start gap-3">
-            <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-            Guided checklists outline the actions and proofs each side needs to complete.
-          </li>
-          <li className="flex items-start gap-3">
-            <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-            Dual escrow locks both deposits and only releases funds once confirmations match.
-          </li>
-          <li className="flex items-start gap-3">
-            <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-            Realtime status updates and alerts remove the scramble across chats and spreadsheets.
-          </li>
-        </ul>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <SectionHeading
+        eyebrow="Built for users"
+        title="Peer-to-peer escrow made intuitive"
+        description="Swap2p walks both sides through every deposit, confirmation, and release so trades close without second-guessing."
+      />
+      <div className="grid gap-4 md:grid-cols-3">
+        {HOME_USER_FEATURES.map(feature => (
+          <StepCard key={feature.title} step={feature} />
+        ))}
       </div>
-      <Card className="mt-12 rounded-3xl pt-8 bg-gradient-to-br from-primary/10 via-card to-background shadow-[0_28px_60px_-40px_rgba(14,116,144,0.45)]">
-        <CardContent className="space-y-6">
-          <h3 className="text-2xl font-semibold text-foreground">Why users choose Swap2p</h3>
-          <dl className="space-y-5 text-sm text-muted-foreground">
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">Stay in control</dt>
-              <dd>Funds remain in your wallet until the contract locks both deposits and verifies settlement steps.</dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">Know the next step</dt>
-              <dd>Milestones, reminders, and evidence uploads live in one view so nothing slips.</dd>
-            </div>
-            <div className="space-y-1">
-              <dt className="font-medium text-foreground">Trust what you can verify</dt>
-              <dd>Open-source contracts, published audits, and transparent dispute flows you can review anytime.</dd>
-            </div>
-          </dl>
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -523,7 +534,7 @@ function HighlightCard({ highlight }: { highlight: HomeHighlight }) {
 function StepCard({ step }: { step: HomeHighlight }) {
   const Icon = step.icon;
   return (
-    <div className="rounded-3xl bg-background/60 p-5 shadow-[0_22px_46px_-38px_rgba(59,130,246,0.35)]">
+    <div className="flex h-full flex-col rounded-3xl bg-background/60 p-5 shadow-[0_22px_46px_-38px_rgba(59,130,246,0.35)]">
       <div className="flex items-start gap-4">
         <Icon className="h-10 w-10 shrink-0 text-primary" />
         <div className="space-y-2">
