@@ -126,7 +126,7 @@ const HOME_STEPS: ReadonlyArray<HomeHighlight> = [
   {
     icon: ShieldCheck,
     title: "3. Crypto settles instantly",
-    description: "Confirmation triggers on-chain release and refunds both deposits. Misbehavior burns collateral.",
+    description: "Confirmation triggers on-chain release and refunds both deposits so everyone walks away balanced.",
   },
 ];
 
@@ -134,7 +134,7 @@ const HOME_AFFILIATE: ReadonlyArray<HomeHighlight> = [
   {
     icon: HandCoins,
     title: "Earn on both sides",
-    description: "0.25% revenue share split across maker and taker flows. One invite unlocks lifetime upside.",
+    description: "0.25% revenue share split across every trade: 0.10% on taker volume and 0.15% on maker fills.",
   },
   {
     icon: Users,
@@ -283,7 +283,7 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
                 </li>
                 <li className="flex items-start gap-3">
                   <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-                  Referral share and team access for sales partners.
+                  Referral share and delegated access for sales partners.
                 </li>
               </ul>
               <Button size="lg" className="w-full rounded-full" onClick={onBrowseOffers}>
@@ -379,7 +379,7 @@ function Hero({
           Close crypto-to-fiat deals without trusting the counterparty
         </p>
         <p className="max-w-3xl text-lg text-muted-foreground sm:text-xl">
-          Dual deposits enforce honest settlement. Makers control rails and availability, takers exit with funds secured - all through secure smart contracts.
+          Dual escrow locks both deposits, walks each side through the milestones, and only releases funds once everyone signs off.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Button size="lg" onClick={onBrowseOffers} className="rounded-full px-10 py-5 text-base">
@@ -403,55 +403,46 @@ function Hero({
   );
 }
 
-function IntroSection({ onShowTerms }: { onShowTerms: () => void }) {
+function IntroSection({ onShowTerms: _onShowTerms }: { onShowTerms: () => void }) {
   return (
     <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
       <div className="space-y-6">
         <SectionHeading
           eyebrow="Built for users"
-          title="Peer-to-peer escrow with user-first guardrails"
-          description="Swap2p guides everyday traders from deposit to release with guardrails that keep both sides protected."
+          title="Peer-to-peer escrow made intuitive"
+          description="Swap2p walks both sides through every deposit, confirmation, and release so trades close without second-guessing."
           align="left"
         />
         <ul className="space-y-4 text-sm text-muted-foreground">
           <li className="flex items-start gap-3">
             <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-            Step-by-step checklists clarify the tasks, deadlines, and confirmations each side owes.
+            Guided checklists outline the actions and proofs each side needs to complete.
           </li>
           <li className="flex items-start gap-3">
             <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-            Dual escrow locks both deposits and releases only after each party signs off on completion.
+            Dual escrow locks both deposits and only releases funds once confirmations match.
           </li>
           <li className="flex items-start gap-3">
             <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
-            Live status updates and alerts keep you informed without chasing chats or spreadsheets.
+            Realtime status updates and alerts remove the scramble across chats and spreadsheets.
           </li>
         </ul>
-        <div>
-          <button
-            type="button"
-            onClick={onShowTerms}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary underline decoration-primary/60 underline-offset-4 transition hover:text-primary/80"
-          >
-            View protocol docs
-          </button>
-        </div>
       </div>
       <Card className="mt-12 rounded-3xl pt-8 bg-gradient-to-br from-primary/10 via-card to-background shadow-[0_28px_60px_-40px_rgba(14,116,144,0.45)]">
         <CardContent className="space-y-6">
           <h3 className="text-2xl font-semibold text-foreground">Why users choose Swap2p</h3>
           <dl className="space-y-5 text-sm text-muted-foreground">
             <div className="space-y-1">
-              <dt className="font-medium text-foreground">Keep custody</dt>
-              <dd>Funds stay in your wallet until both deposits are locked and settlement conditions are satisfied.</dd>
+              <dt className="font-medium text-foreground">Stay in control</dt>
+              <dd>Funds remain in your wallet until the contract locks both deposits and verifies settlement steps.</dd>
             </div>
             <div className="space-y-1">
-              <dt className="font-medium text-foreground">Clear milestones</dt>
-              <dd>Guided milestones and reminders reduce miscommunication so you always know the next step.</dd>
+              <dt className="font-medium text-foreground">Know the next step</dt>
+              <dd>Milestones, reminders, and evidence uploads live in one view so nothing slips.</dd>
             </div>
             <div className="space-y-1">
-              <dt className="font-medium text-foreground">Transparent protection</dt>
-              <dd>Open-source contracts, published audits, and dispute flows you can verify before trading.</dd>
+              <dt className="font-medium text-foreground">Trust what you can verify</dt>
+              <dd>Open-source contracts, published audits, and transparent dispute flows you can review anytime.</dd>
             </div>
           </dl>
         </CardContent>
@@ -534,9 +525,7 @@ function StepCard({ step }: { step: HomeHighlight }) {
   return (
     <div className="rounded-3xl bg-background/60 p-5 shadow-[0_22px_46px_-38px_rgba(59,130,246,0.35)]">
       <div className="flex items-start gap-4">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
-        </span>
+        <Icon className="h-10 w-10 shrink-0 text-primary" />
         <div className="space-y-2">
           <h3 className="text-base font-semibold text-foreground">{step.title}</h3>
           <p className="text-sm text-muted-foreground">{step.description}</p>
