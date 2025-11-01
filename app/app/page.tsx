@@ -121,12 +121,12 @@ const HOME_STEPS: ReadonlyArray<HomeHighlight> = [
   {
     icon: Vault,
     title: "1. Both lock escrow deposits",
-    description: "Maker stakes 2x, taker stakes 1x of the trade. The contract guards the deal from kickoff.",
+    description: "Seller stakes 2x, buyer stakes 1x of the trade. The contract guards the deal from kickoff.",
   },
   {
     icon: Send,
     title: "2. Fiat moves off-chain",
-    description: "The payer sends fiat via the agreed rail. Maker confirms once funds are visible.",
+    description: "The payer sends fiat via the agreed rail. Seller confirms once funds are visible.",
   },
   {
     icon: Sparkles,
