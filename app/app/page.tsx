@@ -351,13 +351,17 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
           ))}
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-          <Button size="lg" onClick={onShowProfile} className="rounded-full px-8 py-5 text-base">
+          <Button
+            size="lg"
+            onClick={onShowProfile}
+            className="rounded-full bg-sky-500 px-8 py-5 text-base text-white shadow-[0_16px_38px_-28px_rgba(14,165,233,0.45)] transition hover:bg-sky-500/90"
+          >
             Get my partner link
           </Button>
           <Button
             size="lg"
             onClick={onBrowseOffers}
-            className="rounded-full bg-card/80 px-8 py-5 text-base text-primary shadow-[0_16px_38px_-28px_rgba(59,130,246,0.45)] transition hover:bg-primary/10"
+            className="rounded-full bg-orange-500 px-8 py-5 text-base text-white shadow-[0_16px_38px_-28px_rgba(249,115,22,0.45)] transition hover:bg-orange-500/90"
           >
             See live inventory
           </Button>
@@ -372,13 +376,17 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
               description="Connect a wallet, pick your rail, and let escrow enforce the handshake your revenue depends on."
             />
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <Button size="lg" onClick={onBrowseOffers} className="rounded-full px-10 py-5 text-base">
+              <Button
+                size="lg"
+                onClick={onBrowseOffers}
+                className="rounded-full bg-sky-500 px-10 py-5 text-base text-white shadow-[0_16px_40px_-28px_rgba(14,165,233,0.55)] transition hover:bg-sky-500/90"
+              >
                 Browse offers
               </Button>
               <Button
                 size="lg"
                 onClick={onCreateOffer}
-                className="rounded-full bg-card/80 px-10 py-5 text-base text-primary shadow-[0_16px_40px_-28px_rgba(59,130,246,0.55)] transition hover:bg-primary/10"
+                className="rounded-full bg-orange-500 px-10 py-5 text-base text-white shadow-[0_16px_40px_-28px_rgba(249,115,22,0.55)] transition hover:bg-orange-500/90"
               >
                 Create offer
               </Button>
@@ -428,13 +436,17 @@ function Hero({
           Both sides lock funds, guided milestones keep the deal moving, and escrow only releases when confirmations match.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          <Button size="lg" onClick={onBrowseOffers} className="rounded-full px-10 py-5 text-base">
+          <Button
+            size="lg"
+            onClick={onBrowseOffers}
+            className="rounded-full bg-sky-500 px-10 py-5 text-base text-white shadow-[0_16px_40px_-28px_rgba(14,165,233,0.55)] transition hover:bg-sky-500/90"
+          >
             Browse offers
           </Button>
           <Button
             size="lg"
             onClick={onCreateOffer}
-            className="rounded-full bg-card/80 px-10 py-5 text-base text-primary shadow-[0_16px_40px_-28px_rgba(59,130,246,0.55)] transition hover:bg-primary/10"
+            className="rounded-full bg-orange-500 px-10 py-5 text-base text-white shadow-[0_16px_40px_-28px_rgba(249,115,22,0.55)] transition hover:bg-orange-500/90"
           >
             Create offer
           </Button>
