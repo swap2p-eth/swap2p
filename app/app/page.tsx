@@ -207,6 +207,7 @@ function HomePageRouter() {
           onShowProfile={() => setHash("profile")}
           onShowTerms={() => setHash("terms")}
           onCreateOffer={() => setHash("offer")}
+          onShowDashboard={() => setHash("dashboard")}
         />
       );
     case "dashboard":
@@ -268,9 +269,16 @@ interface HomeLandingProps {
   onShowProfile: () => void;
   onShowTerms: () => void;
   onCreateOffer: () => void;
+  onShowDashboard: () => void;
 }
 
-function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer }: HomeLandingProps) {
+function HomeLanding({
+  onBrowseOffers,
+  onShowProfile,
+  onShowTerms,
+  onCreateOffer,
+  onShowDashboard,
+}: HomeLandingProps) {
   return (
     <main className="relative isolate flex flex-1 flex-col overflow-hidden bg-gradient-to-b from-background via-background to-background">
       <Hero onBrowseOffers={onBrowseOffers} onCreateOffer={onCreateOffer} />
@@ -318,7 +326,7 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
               </ul>
               <Button size="lg"
                       className="mt-auto rounded-full bg-card/80 px-10 py-5 text-base text-primary shadow-[0_16px_40px_-28px_rgba(59,130,246,0.55)] transition hover:bg-primary/10"
-                      onClick={onBrowseOffers}>
+                      onClick={onShowDashboard}>
                 List my inventory
               </Button>
             </CardContent>
