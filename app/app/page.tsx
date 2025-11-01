@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 
 import { DealDetailView } from "@/components/deals/deal-detail-view";
 import { DealsView } from "@/components/deals/deals-view";
@@ -18,12 +19,10 @@ import { normalizeEvmAddress } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertOctagon,
-  Banknote,
   CheckCircle2,
   HandCoins,
   Lock,
   ShieldCheck,
-  TimerOff,
   Users,
 } from "lucide-react";
 
@@ -75,7 +74,7 @@ const ROUTE_MATCHERS: RouteMatcher[] = [
     const offerId = decodeURIComponent(match[1] ?? "").trim();
     return offerId.length > 0 ? { type: "offer", offerId } : null;
   },
-  hash => (LEGAL_PAGES.has(hash as LegalPage) ? { type: "legal", page: hash as LegalPage } : null)
+  hash => (LEGAL_PAGES.has(hash as LegalPage) ? { type: "legal", page: hash as LegalPage } : null),
 ];
 
 function parseHash(hash: string): ViewState {
@@ -95,199 +94,54 @@ interface HomeHighlight {
   description: string;
 }
 
-const HOME_PROBLEMS: ReadonlyArray<HomeHighlight> = [
+const HOME_HIGHLIGHTS: ReadonlyArray<HomeHighlight> = [
   {
     icon: AlertOctagon,
-    title: "No More Scams",
-    description:
-      "Every trade is backed by a smart contract. Cheating equals losing your collateral. No second chances.",
+    title: "Escrow that enforces honesty",
+    description: "Smart contracts hold both sides accountable. Your funds never touch a custodial wallet.",
   },
   {
-    icon: TimerOff,
-    title: "Zero Delays",
-    description:
-      "Instant crypto release once both sides confirm payment. No support tickets. No waiting games.",
+    icon: Lock,
+    title: "Plug into any payment rail",
+    description: "List banking, fintech, and cash-in-hand rails worldwide. Takers filter and match instantly.",
   },
   {
-    icon: Banknote,
-    title: "Low Fees",
-    description: "Only 0.5% fee per trade. No hidden costs, no platform bloat. You keep what's yours.",
+    icon: Users,
+    title: "Designed for market makers",
+    description: "Manage inventory, automate availability, and earn recurring referral revenue.",
   },
 ];
 
 const HOME_STEPS: ReadonlyArray<HomeHighlight> = [
   {
     icon: Lock,
-    title: "1. Both Lock Deposits",
-    description: "Seller locks 2x the trade amount. Buyer locks 1x. All via smart contract.",
+    title: "1. Both lock escrow deposits",
+    description: "Maker stakes 2x, taker stakes 1x of the trade. The contract guards the deal from kickoff.",
   },
   {
     icon: CheckCircle2,
-    title: "2. Payment & Release",
-    description:
-      "Buyer pays off-chain. Once confirmed, smart contract releases crypto and refunds deposits.",
+    title: "2. Fiat moves off-chain",
+    description: "The payer sends fiat via the agreed rail. Maker confirms once funds are visible.",
   },
   {
     icon: ShieldCheck,
-    title: "3. Protected by Design",
-    description: "Misbehave and lose your deposit. Fair trades only - or nobody wins.",
+    title: "3. Crypto settles instantly",
+    description: "Confirmation triggers on-chain release and refunds both deposits. Misbehavior burns collateral.",
   },
 ];
 
 const HOME_AFFILIATE: ReadonlyArray<HomeHighlight> = [
   {
-    icon: Users,
-    title: "0.15% from Maker",
-    description: "You earn from every merchant you invite - forever.",
+    icon: HandCoins,
+    title: "Earn on both sides",
+    description: "0.25% revenue share split across maker and taker flows. One invite unlocks lifetime upside.",
   },
   {
-    icon: HandCoins,
-    title: "0.1% from Taker",
-    description: "You also earn from client side. Yes, both sides pay you.",
+    icon: Users,
+    title: "Scale with warm introductions",
+    description: "Send clients, influencers, or OTC desks. The contract tracks your referrals automatically.",
   },
 ];
-
-interface HomeLandingProps {
-  onBrowseOffers: () => void;
-  onShowProfile: () => void;
-  onShowTerms: () => void;
-}
-
-function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms }: HomeLandingProps) {
-  return (
-    <main className="relative isolate flex flex-1 flex-col overflow-hidden bg-gradient-to-b from-background via-background to-background">
-      <div className="pointer-events-none absolute inset-x-0 top-[-20%] z-0 h-[480px] bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.18),_transparent_65%)]" />
-      <section className="relative z-10 mx-auto flex w-full max-w-5xl flex-col items-center gap-8 px-4 py-20 text-center sm:px-8 sm:py-28">
-        <span className="rounded-full border border-emerald-400/50 bg-emerald-500/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-emerald-200">
-          Decentralized Escrow Exchange
-        </span>
-        <h1 className="text-4xl font-extrabold tracking-tight text-emerald-300 sm:text-5xl">Swap2p</h1>
-        <p className="max-w-2xl text-lg text-muted-foreground">
-          Trustless. Secure. Peer-to-peer crypto-to-fiat swaps, powered by dual-deposit smart contracts.
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-4">
-          <Button size="lg" onClick={onBrowseOffers} className="px-8 py-5 text-base">
-            Start a Deal
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={onShowProfile}
-            className="border-emerald-500/50 px-8 py-5 text-base text-emerald-300 hover:bg-emerald-500/10"
-          >
-            Become a Partner
-          </Button>
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8 sm:pb-16">
-        <SectionHeading
-          title="Problems We're Solving"
-          description="Swap2p removes the single points of failure that plague traditional OTC desks and chat-based escrow."
-        />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {HOME_PROBLEMS.map(problem => (
-            <HighlightCard key={problem.title} highlight={problem} />
-          ))}
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8 sm:pb-16">
-        <SectionHeading
-          title="How It Works"
-          description="Escrow logic enforces fair trades without intermediaries. Each step protects both parties from fraud or delays."
-        />
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {HOME_STEPS.map((step, index) => (
-            <HighlightCard key={step.title} highlight={step} badgeLabel={`0${index + 1}`} />
-          ))}
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-auto w-full max-w-6xl px-4 pb-12 sm:px-8 sm:pb-16">
-        <SectionHeading
-          title="Earn Forever. Our Affiliate Program"
-          description="Invite traders and earn up to 0.25% on every future deal. One-time referral = lifetime payouts."
-        />
-        <div className="grid gap-6 sm:grid-cols-2">
-          {HOME_AFFILIATE.map(item => (
-            <HighlightCard key={item.title} highlight={item} />
-          ))}
-        </div>
-        <div className="mt-8 flex justify-center">
-          <Button size="lg" onClick={onShowProfile} className="px-8 py-5 text-base">
-            Get My Partner Link
-          </Button>
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-auto w-full max-w-5xl px-4 pb-12 sm:px-8 sm:pb-16">
-        <SectionHeading
-          title="Terms & Protocol Info"
-          description="All trades are executed by smart contracts on EVM networks. We never custody your funds."
-        />
-        <Card className="border-border/60 bg-card/80 backdrop-blur">
-          <CardContent className="space-y-6 p-6 sm:p-10">
-            <p className="text-base text-muted-foreground">
-              For details on supported chains, audit reports, and dispute logic —{" "}
-              <button
-                type="button"
-                onClick={onShowTerms}
-                className="font-semibold text-emerald-300 underline decoration-emerald-400/60 underline-offset-4 transition hover:text-emerald-200"
-              >
-                read the docs
-              </button>
-              .
-            </p>
-          </CardContent>
-        </Card>
-      </section>
-
-      <footer className="relative z-10 border-t border-border/60 bg-background/80">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 px-4 py-10 text-center text-xs text-muted-foreground sm:text-sm">
-          <span>Copyright 2025 Swap2p. Built for trustless, global commerce.</span>
-        </div>
-      </footer>
-    </main>
-  );
-}
-
-function SectionHeading({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="mb-8 flex flex-col gap-3 text-center sm:mb-12">
-      <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">{title}</h2>
-      <p className="mx-auto max-w-2xl text-sm text-muted-foreground sm:text-base">{description}</p>
-    </div>
-  );
-}
-
-function HighlightCard({
-  highlight,
-  badgeLabel,
-}: {
-  highlight: HomeHighlight;
-  badgeLabel?: string;
-}) {
-  const Icon = highlight.icon;
-  return (
-    <div className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card/70 p-6 shadow-[0_22px_50px_-40px_rgba(15,23,42,0.8)] transition hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-[0_28px_60px_-38px_rgba(16,185,129,0.55)]">
-      <div className="flex items-start gap-4">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-300">
-          <Icon className="h-6 w-6" />
-        </span>
-        {badgeLabel ? (
-          <span className="absolute right-4 top-4 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-200">
-            {badgeLabel}
-          </span>
-        ) : null}
-      </div>
-      <div className="mt-6 space-y-3">
-        <h3 className="text-lg font-semibold text-foreground">{highlight.title}</h3>
-        <p className="text-sm text-muted-foreground">{highlight.description}</p>
-      </div>
-    </div>
-  );
-}
 
 export default function HomePage() {
   return (
@@ -329,6 +183,7 @@ function HomePageRouter() {
           onBrowseOffers={() => setHash("offers")}
           onShowProfile={() => setHash("profile")}
           onShowTerms={() => setHash("terms")}
+          onCreateOffer={() => setHash("offer")}
         />
       );
     case "dashboard":
@@ -385,6 +240,313 @@ function HomePageRouter() {
   }
 }
 
+interface HomeLandingProps {
+  onBrowseOffers: () => void;
+  onShowProfile: () => void;
+  onShowTerms: () => void;
+  onCreateOffer: () => void;
+}
+
+function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer }: HomeLandingProps) {
+  return (
+    <main className="relative isolate flex flex-1 flex-col overflow-hidden bg-gradient-to-b from-background via-background to-background">
+      <Hero onBrowseOffers={onBrowseOffers} onCreateOffer={onCreateOffer} />
+      <SectionShell tone="light">
+        <IntroSection onShowTerms={onShowTerms} />
+      </SectionShell>
+      <SectionShell>
+        <div className="grid items-center gap-10 lg:grid-cols-[1.2fr_1fr]">
+          <div className="space-y-6">
+            <SectionHeading
+              eyebrow="How escrow settles every deal"
+              title="Three enforced checkpoints, zero support bottlenecks"
+              description="Each step in the swap is guarded by the contract so neither party can skip ahead or stall the payout."
+              align="left"
+            />
+            <div className="space-y-4">
+              {HOME_STEPS.map(step => (
+                <StepCard key={step.title} step={step} />
+              ))}
+            </div>
+          </div>
+          <Card className="mt-12 rounded-3xl pt-8 bg-gradient-to-br from-primary/10 via-card to-background shadow-[0_28px_60px_-40px_rgba(14,116,144,0.45)]">
+            <CardContent className="space-y-6 px-10">
+              <h3 className="text-2xl font-semibold text-foreground">What you control</h3>
+              <ul className="space-y-3 text-sm text-muted-foreground">
+                <li className="flex items-start gap-3">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
+                  Custom spreads, inventory caps, and automated availability windows.
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
+                  Fiat acceptance rails with localized instructions per market.
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
+                  Referral share and team access for sales partners.
+                </li>
+              </ul>
+              <Button size="lg" className="w-full rounded-full" onClick={onBrowseOffers}>
+                List my inventory
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </SectionShell>
+      <SectionShell tone="light">
+        <SectionHeading
+          eyebrow="Monetize introductions"
+          title="Turn warm intros into lifetime revenue"
+          description="Every referral is tracked on-chain. No spreadsheets, no renegotiation when volumes grow."
+        />
+        <div className="grid gap-6 sm:grid-cols-2">
+          {HOME_AFFILIATE.map(item => (
+            <HighlightCard key={item.title} highlight={item} />
+          ))}
+        </div>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <Button size="lg" onClick={onShowProfile} className="rounded-full px-8 py-5 text-base">
+            Get my partner link
+          </Button>
+          <Button
+            size="lg"
+            onClick={onBrowseOffers}
+            className="rounded-full bg-card/80 px-8 py-5 text-base text-primary shadow-[0_16px_38px_-28px_rgba(59,130,246,0.45)] transition hover:bg-primary/10"
+          >
+            See live inventory
+          </Button>
+        </div>
+      </SectionShell>
+      <SectionShell>
+        <Card className="mt-12 rounded-3xl bg-gradient-to-br from-primary/15 via-card to-background shadow-[0_32px_64px_-40px_rgba(37,99,235,0.4)]">
+          <CardContent className="flex flex-col items-center gap-6 px-6 py-14 text-center sm:px-12">
+            <SectionHeading
+              eyebrow="Ready when you are"
+              title="Launch your first collateral-backed deal in minutes"
+              description="Connect a wallet, pick your rail, and let escrow enforce the handshake your revenue depends on."
+            />
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <Button size="lg" onClick={onBrowseOffers} className="rounded-full px-10 py-5 text-base">
+                Browse offers
+              </Button>
+              <Button
+                size="lg"
+                onClick={onCreateOffer}
+                className="rounded-full bg-card/80 px-10 py-5 text-base text-primary shadow-[0_16px_40px_-28px_rgba(59,130,246,0.55)] transition hover:bg-primary/10"
+              >
+                Create offer
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </SectionShell>
+    </main>
+  );
+}
+
+function Hero({
+  onBrowseOffers,
+  onCreateOffer,
+}: {
+  onBrowseOffers: () => void;
+  onCreateOffer: () => void;
+}) {
+  return (
+    <section className="relative isolate overflow-hidden bg-gradient-to-b from-white via-background/40 to-background">
+      <div className="absolute inset-0 -z-10 opacity-80" aria-hidden="true">
+        <div className="absolute inset-x-0 top-[-20%] h-[520px] bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.28),_transparent_65%)]" />
+        <div className="absolute left-1/2 top-20 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-slate-400/20 blur-[160px]" />
+      </div>
+      <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-10 px-4 pb-24 pt-24 text-center sm:px-8 sm:pb-32 sm:pt-28">
+        <div className="flex flex-col items-center gap-4">
+          <Image
+            src="/swap2p-icon.svg"
+            alt="Swap2p logo"
+            width={180}
+            height={180}
+            priority
+            className="drop-shadow-[0_18px_32px_rgba(28,100,242,0.35)]"
+          />
+          <div className="flex items-center gap-3 rounded-full bg-card/80 px-6 py-2 shadow-[0_16px_38px_-24px_rgba(59,130,246,0.35)]">
+            <span className="text-lg font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+              SWAP2P
+            </span>
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-5 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] text-primary/90">
+            Decentralized Escrow Exchange
+          </span>
+        </div>
+        <h1 className="max-w-4xl text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl">
+          Close crypto-to-fiat deals without trusting the counterparty
+        </h1>
+        <p className="max-w-3xl text-lg text-muted-foreground sm:text-xl">
+          Dual deposits enforce honest settlement. Makers control rails and availability, takers exit with funds secured - all through audited smart contracts.
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-4">
+          <Button size="lg" onClick={onBrowseOffers} className="rounded-full px-10 py-5 text-base">
+            Browse offers
+          </Button>
+          <Button
+            size="lg"
+            onClick={onCreateOffer}
+            className="rounded-full bg-card/80 px-10 py-5 text-base text-primary shadow-[0_16px_40px_-28px_rgba(59,130,246,0.55)] transition hover:bg-primary/10"
+          >
+            Create offer
+          </Button>
+        </div>
+        <div className="grid w-full max-w-4xl gap-4 rounded-3xl bg-card/70 p-6 text-left shadow-[0_24px_58px_-36px_rgba(28,100,242,0.35)] sm:grid-cols-3">
+          {HOME_HIGHLIGHTS.map(item => (
+            <HeroHighlight key={item.title} highlight={item} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function IntroSection({ onShowTerms }: { onShowTerms: () => void }) {
+  return (
+    <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="space-y-6">
+        <SectionHeading
+          eyebrow="Built for revenue teams"
+          title="Escrow first, UX obsessed"
+          description="Swap2p wraps smart-contract guarantees with dashboards that make managing a live OTC desk delightful."
+          align="left"
+        />
+        <ul className="space-y-4 text-sm text-muted-foreground">
+          <li className="flex items-start gap-3">
+            <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
+            Auto-sync on-chain status, messaging, and KYC snippets so deal context stays in one place.
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
+            Integrate programmatically through adapters, or manage volume manually with dashboards.
+          </li>
+          <li className="flex items-start gap-3">
+            <span className="mt-1 h-2 w-2 rounded-full bg-primary/70" />
+            Escrow logic is fully transparent. Review audits and protocol docs before your first trade.
+          </li>
+        </ul>
+        <div>
+          <button
+            type="button"
+            onClick={onShowTerms}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-primary underline decoration-primary/60 underline-offset-4 transition hover:text-primary/80"
+          >
+            View protocol docs
+          </button>
+        </div>
+      </div>
+      <Card className="mt-12 rounded-3xl bg-card/70 pt-8 shadow-[0_28px_64px_-40px_rgba(8,47,73,0.55)]">
+        <CardContent className="space-y-6">
+          <h3 className="text-2xl font-semibold text-foreground">Why teams adopt Swap2p</h3>
+          <dl className="space-y-5 text-sm text-muted-foreground">
+            <div className="space-y-1">
+              <dt className="font-medium text-foreground">Predictable margins</dt>
+              <dd>Flat fees, predictable escrow flow, and no unexpected clawbacks from arbiters.</dd>
+            </div>
+            <div className="space-y-1">
+              <dt className="font-medium text-foreground">Operational simplicity</dt>
+              <dd>Turnkey dashboards, on-chain APIs, and referral analytics keep teams in sync.</dd>
+            </div>
+            <div className="space-y-1">
+              <dt className="font-medium text-foreground">Compliance clarity</dt>
+              <dd>We never custody funds and publish the protocol logic so your counsel signs off faster.</dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+function SectionShell({
+  children,
+  tone = "dark",
+}: {
+  children: React.ReactNode;
+  tone?: "dark" | "light";
+}) {
+  const base = "relative z-10 mx-auto w-full max-w-6xl px-4 py-16 sm:px-8 sm:py-20";
+  const toneClass =
+    tone === "light" ? "bg-gradient-to-br from-card/40 via-background to-background/80" : "";
+  return <section className={`${base} ${toneClass}`}>{children}</section>;
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+  align = "center",
+}: {
+  eyebrow?: string;
+  title: string;
+  description: string;
+  align?: "center" | "left";
+}) {
+  const alignment = align === "center" ? "text-center items-center" : "text-left items-start";
+  return (
+    <div className={`mb-10 flex flex-col gap-3 ${alignment}`}>
+      {eyebrow ? (
+        <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">
+          {eyebrow}
+        </span>
+      ) : null}
+      <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">{title}</h2>
+      <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">{description}</p>
+    </div>
+  );
+}
+
+function HeroHighlight({ highlight }: { highlight: HomeHighlight }) {
+  const Icon = highlight.icon;
+  return (
+    <div className="flex flex-col gap-3 rounded-3xl bg-background/80 p-6 shadow-[0_18px_42px_-30px_rgba(59,130,246,0.35)]">
+      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <Icon className="h-5 w-5" />
+      </span>
+      <h3 className="text-base font-semibold text-foreground">{highlight.title}</h3>
+      <p className="text-sm text-muted-foreground">{highlight.description}</p>
+    </div>
+  );
+}
+
+function HighlightCard({ highlight }: { highlight: HomeHighlight }) {
+  const Icon = highlight.icon;
+  return (
+    <div className="group relative overflow-hidden rounded-3xl bg-card/70 p-6 shadow-[0_22px_50px_-40px_rgba(15,23,42,0.8)] transition hover:-translate-y-1 hover:shadow-[0_28px_60px_-38px_rgba(59,130,246,0.45)]">
+      <div className="flex items-start gap-4">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Icon className="h-6 w-6" />
+        </span>
+      </div>
+      <div className="mt-6 space-y-3">
+        <h3 className="text-lg font-semibold text-foreground">{highlight.title}</h3>
+        <p className="text-sm text-muted-foreground">{highlight.description}</p>
+      </div>
+    </div>
+  );
+}
+
+function StepCard({ step }: { step: HomeHighlight }) {
+  const Icon = step.icon;
+  return (
+    <div className="rounded-3xl bg-background/60 p-5 shadow-[0_22px_46px_-38px_rgba(59,130,246,0.35)]">
+      <div className="flex items-start gap-4">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="space-y-2">
+          <h3 className="text-base font-semibold text-foreground">{step.title}</h3>
+          <p className="text-sm text-muted-foreground">{step.description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface LegalDocumentViewProps {
   page: LegalPage;
 }
@@ -435,7 +597,7 @@ function LegalDocumentView({ page }: LegalDocumentViewProps) {
             </div>
           ) : null}
           {state.status === "error" ? (
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+            <div className="rounded-lg bg-destructive/20 p-4 text-sm text-destructive">
               Could not load the document. Please try again later.
             </div>
           ) : null}
