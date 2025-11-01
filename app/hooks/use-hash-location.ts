@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-const DEFAULT_FALLBACK = "offers";
+const DEFAULT_FALLBACK = "home";
 
 const listeners = new Set<() => void>();
 let currentHash = "";
@@ -14,6 +14,16 @@ function sanitizeHash(value: string) {
 function normalizeHash(value: string) {
   const stripped = value.replace(/^#/, "");
   return sanitizeHash(stripped);
+}
+
+function clearHashFromWindow() {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const base = `${window.location.pathname}${window.location.search}`;
+  if (window.location.hash) {
+    window.history.replaceState(null, "", base);
+  }
 }
 
 function readHashFromWindow(fallback: string) {
@@ -70,6 +80,10 @@ export function setHash(next: string, fallback = DEFAULT_FALLBACK) {
   updateCurrentHash(normalized);
 
   if (typeof window !== "undefined") {
+    if (normalized === DEFAULT_FALLBACK) {
+      clearHashFromWindow();
+      return;
+    }
     if (window.location.hash !== `#${normalized}`) {
       window.location.hash = normalized;
     }

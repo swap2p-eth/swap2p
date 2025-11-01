@@ -10,22 +10,20 @@ import { useCurrentUserDeals } from "@/hooks/use-current-user-deals";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
-  { hash: "offers", label: "Offers" }
-] as const;
+const NAV_ITEMS = [{ hash: "offers", label: "Offers" }] as const;
 
 export function SiteHeader() {
-  const { hash, setHash } = useHashLocation("offers");
+  const { hash, setHash } = useHashLocation("home");
   const active = deriveActiveSection(hash);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/70 backdrop-blur">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-8">
         <Link
-          href="/#offers"
+          href="/#home"
           onClick={event => {
             event.preventDefault();
-            setHash("offers");
+            setHash("home");
           }}
           className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.24em] text-muted-foreground"
         >
@@ -87,7 +85,7 @@ function deriveActiveSection(hash: string) {
   if (hash === "profile" || hash.startsWith("profile/")) {
     return "profile";
   }
-  return hash || "offers";
+  return hash || "home";
 }
 
 interface DashboardNavItemProps {

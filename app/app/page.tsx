@@ -10,7 +10,8 @@ import { OffersProvider } from "@/components/offers/offers-provider";
 import { OffersView } from "@/components/offers/offers-view";
 import { ProfileView } from "@/components/profile/profile-view";
 import { MarkdownContent } from "@/components/markdown-content";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useHashLocation } from "@/hooks/use-hash-location";
 import { usePartnerReferralCapture } from "@/hooks/use-partner-referral";
 import { normalizeEvmAddress } from "@/lib/utils";
@@ -18,6 +19,7 @@ import { normalizeEvmAddress } from "@/lib/utils";
 type LegalPage = "terms" | "policy";
 
 type ViewState =
+  | { type: "home" }
   | { type: "offers" }
   | { type: "dashboard" }
   | { type: "new-deal"; offerId: string }
@@ -31,6 +33,8 @@ const LEGAL_PAGES: ReadonlySet<LegalPage> = new Set(["terms", "policy"]);
 type RouteMatcher = (hash: string) => ViewState | null;
 
 const ROUTE_MATCHERS: RouteMatcher[] = [
+  hash => (hash === "home" ? { type: "home" } : null),
+  hash => (hash === "offers" ? { type: "offers" } : null),
   hash => {
     if (hash === "profile") {
       return { type: "profile" };
@@ -64,14 +68,43 @@ const ROUTE_MATCHERS: RouteMatcher[] = [
 ];
 
 function parseHash(hash: string): ViewState {
-  const normalized = hash || "offers";
+  const normalized = hash || "home";
   for (const matcher of ROUTE_MATCHERS) {
     const result = matcher(normalized);
     if (result) {
       return result;
     }
   }
-  return { type: "offers" };
+  return { type: "home" };
+}
+
+interface HomeLandingProps {
+  onBrowseOffers: () => void;
+}
+
+function HomeLanding({ onBrowseOffers }: HomeLandingProps) {
+  return (
+    <section className="mx-auto flex w-full max-w-5xl flex-1 items-center px-4 py-10 sm:px-8">
+      <Card className="w-full border-border/60 bg-card/80 shadow-[0_26px_60px_-40px_rgba(15,23,42,0.65)] backdrop-blur">
+        <CardHeader>
+          <CardTitle className="text-4xl font-semibold tracking-tight text-foreground">
+            Peer-to-peer escrow for global fiat rails
+          </CardTitle>
+          <CardDescription className="text-base text-muted-foreground">
+            Swap2p lets crypto holders and merchants settle with off-chain fiat through a double-collateral escrow. Makers post inventory, takers fill orders, and both parties stay protected by on-chain guarantees instead of custodial middlemen.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="mt-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="text-sm text-muted-foreground">
+            Browse live offers to find matched liquidity or list your own terms to reach new payment networks. Full product copy coming soon.
+          </div>
+          <Button size="lg" onClick={onBrowseOffers}>
+            Explore offers
+          </Button>
+        </CardContent>
+      </Card>
+    </section>
+  );
 }
 
 export default function HomePage() {
@@ -84,7 +117,7 @@ export default function HomePage() {
 
 function HomePageRouter() {
   usePartnerReferralCapture();
-  const { hash, setHash } = useHashLocation("offers");
+  const { hash, setHash } = useHashLocation("home");
   const view = React.useMemo(() => parseHash(hash), [hash]);
   const lastStableHash = React.useRef<"offers" | "dashboard">("offers");
 
@@ -107,14 +140,9 @@ function HomePageRouter() {
     }
   }, [view]);
 
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!window.location.hash) {
-      setHash("offers");
-    }
-  }, [setHash]);
-
   switch (view.type) {
+    case "home":
+      return <HomeLanding onBrowseOffers={() => setHash("offers")} />;
     case "dashboard":
       return <DealsView onSelectDeal={dealId => setHash(`deal/${dealId}`)} />;
     case "deal-detail":
