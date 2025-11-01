@@ -251,7 +251,7 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
   return (
     <main className="relative isolate flex flex-1 flex-col overflow-hidden bg-gradient-to-b from-background via-background to-background">
       <Hero onBrowseOffers={onBrowseOffers} onCreateOffer={onCreateOffer} />
-      <SectionShell tone="light">
+      <SectionShell>
         <IntroSection onShowTerms={onShowTerms} />
       </SectionShell>
       <SectionShell>
@@ -293,9 +293,9 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
           </Card>
         </div>
       </SectionShell>
-      <SectionShell tone="light">
+      <SectionShell>
         <SectionHeading
-          eyebrow="Monetize introductions"
+          eyebrow="Partner program"
           title="Turn warm intros into lifetime revenue"
           description="Every referral is tracked on-chain. No spreadsheets, no renegotiation when volumes grow."
         />
@@ -318,7 +318,7 @@ function HomeLanding({ onBrowseOffers, onShowProfile, onShowTerms, onCreateOffer
         </div>
       </SectionShell>
       <SectionShell>
-        <Card className="mt-12 rounded-3xl bg-gradient-to-br from-primary/15 via-card to-background shadow-[0_32px_64px_-40px_rgba(37,99,235,0.4)]">
+        <Card className="mt-12 rounded-3xl pt-8 bg-gradient-to-br from-primary/15 via-card to-background shadow-[0_32px_64px_-40px_rgba(37,99,235,0.4)]">
           <CardContent className="flex flex-col items-center gap-6 px-6 py-14 text-center sm:px-12">
             <SectionHeading
               eyebrow="Ready when you are"
@@ -367,20 +367,19 @@ function Hero({
             priority
             className="drop-shadow-[0_18px_32px_rgba(28,100,242,0.35)]"
           />
-          <div className="flex items-center gap-3 rounded-full bg-card/80 px-6 py-2 shadow-[0_16px_38px_-24px_rgba(59,130,246,0.35)]">
-            <span className="text-lg font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-              SWAP2P
-            </span>
-          </div>
-          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-5 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] text-primary/90">
+          <h1 className="text-3xl pt-0 pb-6 font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+            SWAP2P
+          </h1>
+
+          <span className="inline-flex items-center gap-5 rounded-full bg-primary/10 px-5 py-1.5 text-xs font-semibold uppercase tracking-[0.3em] text-primary/90">
             Decentralized Escrow Exchange
           </span>
         </div>
-        <h1 className="max-w-4xl text-4xl font-extrabold tracking-tight text-foreground sm:text-6xl">
+        <p className="max-w-4xl text-4xl font-extralight tracking-wide text-foreground sm:text-6xl">
           Close crypto-to-fiat deals without trusting the counterparty
-        </h1>
+        </p>
         <p className="max-w-3xl text-lg text-muted-foreground sm:text-xl">
-          Dual deposits enforce honest settlement. Makers control rails and availability, takers exit with funds secured - all through audited smart contracts.
+          Dual deposits enforce honest settlement. Makers control rails and availability, takers exit with funds secured - all through secure smart contracts.
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Button size="lg" onClick={onBrowseOffers} className="rounded-full px-10 py-5 text-base">
@@ -438,7 +437,7 @@ function IntroSection({ onShowTerms }: { onShowTerms: () => void }) {
           </button>
         </div>
       </div>
-      <Card className="mt-12 rounded-3xl bg-card/70 pt-8 shadow-[0_28px_64px_-40px_rgba(8,47,73,0.55)]">
+      <Card className="mt-12 rounded-3xl pt-8 bg-gradient-to-br from-primary/10 via-card to-background shadow-[0_28px_60px_-40px_rgba(14,116,144,0.45)]">
         <CardContent className="space-y-6">
           <h3 className="text-2xl font-semibold text-foreground">Why teams adopt Swap2p</h3>
           <dl className="space-y-5 text-sm text-muted-foreground">
