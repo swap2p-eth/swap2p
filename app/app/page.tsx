@@ -20,10 +20,13 @@ import type { LucideIcon } from "lucide-react";
 import {
   BadgeCheck,
   BellRing,
+  Briefcase,
   CalendarCheck2,
   ClipboardCheck,
   CreditCard,
   HandCoins,
+  Package,
+  ScrollText,
   Send,
   Share2,
   Shield,
@@ -163,6 +166,24 @@ const HOME_AFFILIATE: ReadonlyArray<HomeHighlight> = [
     icon: Share2,
     title: "Scale with warm introductions",
     description: "Send clients, influencers, or OTC desks. The contract tracks your referrals automatically.",
+  },
+];
+
+const HOME_USE_CASES: ReadonlyArray<HomeHighlight> = [
+  {
+    icon: Briefcase,
+    title: "Service retainers stay accountable",
+    description: "Lock the quoted amount while milestones deliver; both sides release once deliverables are approved.",
+  },
+  {
+    icon: Package,
+    title: "Goods ship with escrow assurance",
+    description: "Escrow backs in-person or courier deliveries so payment clears only when the buyer confirms receipt.",
+  },
+  {
+    icon: ScrollText,
+    title: "Custom agreements, same safety",
+    description: "Run OTC financing, revenue shares, or any bilateral contract where funds move after documented proof.",
   },
 ];
 
@@ -373,6 +394,18 @@ function HomeLanding({
           >
             See live inventory
           </Button>
+        </div>
+      </SectionShell>
+      <SectionShell>
+        <SectionHeading
+          eyebrow="Flexible escrow"
+          title="Beyond fiat swaps, cover any off-chain promise"
+          description="Swap2p’s double-collateral flow secures physical goods, service milestones, and bespoke agreements—set deposits once and let the contract enforce every checkpoint."
+        />
+        <div className="grid gap-6 md:grid-cols-3">
+          {HOME_USE_CASES.map(item => (
+            <HighlightCard key={item.title} highlight={item} />
+          ))}
         </div>
       </SectionShell>
       <SectionShell>
