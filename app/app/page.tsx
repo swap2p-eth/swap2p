@@ -504,8 +504,8 @@ function SectionHeading({
 function HeroHighlight({ highlight }: { highlight: HomeHighlight }) {
   const Icon = highlight.icon;
   return (
-    <div className="flex flex-col gap-3 rounded-3xl bg-background/80 p-6 shadow-[0_18px_42px_-30px_rgba(59,130,246,0.35)]">
-      <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+    <div className="flex flex-col items-center gap-3 rounded-3xl bg-background/80 p-6 text-center shadow-[0_18px_42px_-30px_rgba(59,130,246,0.35)]">
+      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
         <Icon className="h-5 w-5" />
       </span>
       <h3 className="text-base font-semibold text-foreground">{highlight.title}</h3>
