@@ -18,12 +18,17 @@ import { usePartnerReferralCapture } from "@/hooks/use-partner-referral";
 import { normalizeEvmAddress } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import {
-  AlertOctagon,
-  CheckCircle2,
+  BadgeCheck,
+  BellRing,
+  CalendarCheck2,
+  ClipboardCheck,
+  CreditCard,
   HandCoins,
-  Lock,
-  ShieldCheck,
-  Users,
+  Send,
+  Share2,
+  Shield,
+  Sparkles,
+  Vault,
 } from "lucide-react";
 
 type LegalPage = "terms" | "policy";
@@ -96,17 +101,17 @@ interface HomeHighlight {
 
 const HOME_HIGHLIGHTS: ReadonlyArray<HomeHighlight> = [
   {
-    icon: AlertOctagon,
+    icon: BadgeCheck,
     title: "Escrow that enforces honesty",
     description: "Smart contracts hold both sides accountable. Your funds never touch a custodial wallet.",
   },
   {
-    icon: Lock,
+    icon: CreditCard,
     title: "Choose your ideal payment rail",
     description: "Bank transfer, fintech, or cash-in-hand—filter and match with the rail that suits you.",
   },
   {
-    icon: Users,
+    icon: CalendarCheck2,
     title: "Stay organized as volume grows",
     description: "Track deals, automate windows, and keep repeat trades flowing without spreadsheets.",
   },
@@ -114,17 +119,17 @@ const HOME_HIGHLIGHTS: ReadonlyArray<HomeHighlight> = [
 
 const HOME_STEPS: ReadonlyArray<HomeHighlight> = [
   {
-    icon: Lock,
+    icon: Vault,
     title: "1. Both lock escrow deposits",
     description: "Maker stakes 2x, taker stakes 1x of the trade. The contract guards the deal from kickoff.",
   },
   {
-    icon: CheckCircle2,
+    icon: Send,
     title: "2. Fiat moves off-chain",
     description: "The payer sends fiat via the agreed rail. Maker confirms once funds are visible.",
   },
   {
-    icon: ShieldCheck,
+    icon: Sparkles,
     title: "3. Crypto settles instantly",
     description: "Confirmation triggers on-chain release and both deposits return to their owners immediately after.",
   },
@@ -132,19 +137,19 @@ const HOME_STEPS: ReadonlyArray<HomeHighlight> = [
 
 const HOME_USER_FEATURES: ReadonlyArray<HomeHighlight> = [
   {
-    icon: CheckCircle2,
+    icon: ClipboardCheck,
     title: "Guided checklists stay ahead",
     description: "Spell out exactly what to submit and when so every swap stays on track.",
   },
   {
-    icon: Lock,
+    icon: Shield,
     title: "Dual escrow enforces settlement",
     description: "Locks both deposits and only releases once confirmations match the agreed milestones.",
   },
   {
-    icon: Users,
-    title: "Realtime updates keep teams synced",
-    description: "Status alerts and evidence uploads live in one view, eliminating chat and spreadsheet scramble.",
+    icon: BellRing,
+    title: "Realtime updates keep you in control",
+    description: "Status alerts and evidence uploads keep you in the loop without juggling chats or spreadsheets.",
   },
 ];
 
@@ -155,7 +160,7 @@ const HOME_AFFILIATE: ReadonlyArray<HomeHighlight> = [
     description: "0.25% revenue share on every trade: 0.10% from taker volume and 0.15% from maker fills—for example, earn $25 on a $10k swap.",
   },
   {
-    icon: Users,
+    icon: Share2,
     title: "Scale with warm introductions",
     description: "Send clients, influencers, or OTC desks. The contract tracks your referrals automatically.",
   },
@@ -505,9 +510,7 @@ function HeroHighlight({ highlight }: { highlight: HomeHighlight }) {
   const Icon = highlight.icon;
   return (
     <div className="flex flex-col items-center gap-3 rounded-3xl bg-background/80 p-6 text-center shadow-[0_18px_42px_-30px_rgba(59,130,246,0.35)]">
-      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-        <Icon className="h-5 w-5" />
-      </span>
+      <Icon className="h-10 w-10 text-primary" />
       <h3 className="text-base font-semibold text-foreground">{highlight.title}</h3>
       <p className="text-sm text-muted-foreground">{highlight.description}</p>
     </div>
@@ -517,13 +520,9 @@ function HeroHighlight({ highlight }: { highlight: HomeHighlight }) {
 function HighlightCard({ highlight }: { highlight: HomeHighlight }) {
   const Icon = highlight.icon;
   return (
-    <div className="group relative overflow-hidden rounded-3xl bg-card/70 p-6 shadow-[0_22px_50px_-40px_rgba(15,23,42,0.8)] transition hover:-translate-y-1 hover:shadow-[0_28px_60px_-38px_rgba(59,130,246,0.45)]">
-      <div className="flex items-start gap-4">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Icon className="h-6 w-6" />
-        </span>
-      </div>
-      <div className="mt-6 space-y-3">
+    <div className="group relative flex flex-col items-center gap-6 overflow-hidden rounded-3xl bg-card/70 p-6 text-center shadow-[0_22px_50px_-40px_rgba(15,23,42,0.8)] transition hover:-translate-y-1 hover:shadow-[0_28px_60px_-38px_rgba(59,130,246,0.45)]">
+      <Icon className="h-12 w-12 text-primary" />
+      <div className="space-y-3">
         <h3 className="text-lg font-semibold text-foreground">{highlight.title}</h3>
         <p className="text-sm text-muted-foreground">{highlight.description}</p>
       </div>
