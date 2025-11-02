@@ -59,7 +59,8 @@ export function useChatMessages({
       setDraftState(
         sanitizeUserText(value, {
           maxLength,
-          allowLineBreaks: false,
+          allowLineBreaks: true,
+          trimEdges: false,
         }),
       );
     },
@@ -80,7 +81,7 @@ export function useChatMessages({
       const decoded = safeDecode(entry.payload);
       const content = sanitizeDisplayText(decoded, {
         maxLength,
-        allowLineBreaks: false,
+        allowLineBreaks: true,
       });
       const state = CHAT_MESSAGE_STATE_LABELS[entry.state];
       return {
@@ -104,7 +105,8 @@ export function useChatMessages({
     try {
       const sanitizedText = sanitizeUserText(text, {
         maxLength,
-        allowLineBreaks: false,
+        allowLineBreaks: true,
+        trimEdges: true,
       });
       if (!sanitizedText) {
         setSending(false);

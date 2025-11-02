@@ -33,7 +33,7 @@ export function ChatWidget({
   onSendMessage
 }: ChatWidgetProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
   const {
     messages,
     draft,
@@ -62,18 +62,20 @@ export function ChatWidget({
     });
   }, []);
 
+  const handleSend = React.useCallback(async () => {
+    await submitMessage();
+    scrollToBottom();
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, [submitMessage, scrollToBottom]);
+
   const onSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      void (async () => {
-        await submitMessage();
-        scrollToBottom();
-        requestAnimationFrame(() => {
-          inputRef.current?.focus();
-        });
-      })();
+      void handleSend();
     },
-    [submitMessage, scrollToBottom]
+    [handleSend]
   );
 
   const handleInputChange = (value: string) => {
@@ -106,7 +108,7 @@ export function ChatWidget({
               >
                 <div className="flex flex-col gap-0 rounded-3xl bg-background/70 px-3 py-3 ">
                   {message.content ? (
-                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
                   ) : null}
                   <div className="mt-1 flex items-center gap-2 text-[0.65rem] text-muted-foreground/70">
                     {message.state ? <DealStatusBadge status={message.state} size="sm" /> : null}
@@ -127,16 +129,22 @@ export function ChatWidget({
           className="border-0 px-0 pb-0 pt-2"
         >
           <div className="flex w-full items-center gap-3 rounded-2xl bg-background/70 px-3 py-2 shadow-[0_12px_30px_-28px_rgba(15,23,42,0.6)]">
-            <input
+            <textarea
               ref={inputRef}
-              type="text"
               name="message"
               autoComplete="off"
               placeholder="Enter your message here…"
               value={draft}
               onChange={event => handleInputChange(event.target.value)}
               maxLength={maxLength}
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+              onKeyDown={event => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void handleSend();
+                }
+              }}
+              rows={1}
+              className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground/60 whitespace-pre-wrap"
             />
             <Button
               type="submit"

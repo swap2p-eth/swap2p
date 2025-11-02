@@ -12,11 +12,16 @@ const CONTROL_CHARS_ALL = /[\u0000-\u001F\u007F]/g;
 type SanitizeOptions = {
   maxLength?: number;
   allowLineBreaks?: boolean;
+  trimEdges?: boolean;
 };
 
 export function sanitizeUserText(value: string, options: SanitizeOptions = {}) {
   if (typeof value !== "string") return "";
-  const { maxLength = 512, allowLineBreaks = true } = options;
+  const {
+    maxLength = 512,
+    allowLineBreaks = true,
+    trimEdges = true,
+  } = options;
   const controlPattern = allowLineBreaks ? CONTROL_CHARS_WITH_NEWLINE : CONTROL_CHARS_ALL;
   let sanitized = value.replace(controlPattern, "");
   if (allowLineBreaks) {
@@ -25,7 +30,9 @@ export function sanitizeUserText(value: string, options: SanitizeOptions = {}) {
   } else {
     sanitized = sanitized.replace(/\s+/g, " ");
   }
-  sanitized = sanitized.trim();
+  if (trimEdges) {
+    sanitized = sanitized.trim();
+  }
   if (sanitized.length > maxLength) {
     sanitized = sanitized.slice(0, maxLength);
   }
