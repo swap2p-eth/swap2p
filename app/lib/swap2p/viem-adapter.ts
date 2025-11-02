@@ -8,6 +8,7 @@ import {
   type Transport,
   type WalletClient,
   getAddress,
+  stringToHex,
 } from "viem";
 import { swap2pAbi } from "@/lib/swap2p/generated";
 import { DEFAULT_PARTNER_ADDRESS } from "@/config";
@@ -66,6 +67,16 @@ type ReadArgs<Fn extends string, Args extends readonly unknown[]> = {
 };
 
 const DEFAULT_LIMIT = 100;
+
+const toBytesData = (value?: string | null): Hex => {
+  if (!value) {
+    return "0x";
+  }
+  if (value.startsWith("0x") || value.startsWith("0X")) {
+    return value as Hex;
+  }
+  return stringToHex(value);
+};
 
 type Swap2pWriteFunctionName = Extract<
   (typeof swap2pAbi)[number],
@@ -737,7 +748,7 @@ export const createSwap2pViemAdapter = (
           fiat,
           expectedPrice,
           paymentMethod ?? "",
-          details ?? "",
+          toBytesData(details),
           partner ?? DEFAULT_PARTNER_ADDRESS,
         ] as const,
         sender,
@@ -758,7 +769,7 @@ export const createSwap2pViemAdapter = (
         publicClient,
         address,
         "maker_acceptRequest",
-        [id, asHex(args.message) ?? "0x"] as const,
+        [id, toBytesData(args.message)] as const,
         sender,
       );
     },
@@ -777,7 +788,7 @@ export const createSwap2pViemAdapter = (
         publicClient,
         address,
         "cancelRequest",
-        [id, asHex(args.reason) ?? "0x"] as const,
+        [id, toBytesData(args.reason)] as const,
         sender,
       );
     },
@@ -796,7 +807,7 @@ export const createSwap2pViemAdapter = (
         publicClient,
         address,
         "cancelDeal",
-        [id, asHex(args.reason) ?? "0x"] as const,
+        [id, toBytesData(args.reason)] as const,
         sender,
       );
     },
@@ -815,7 +826,7 @@ export const createSwap2pViemAdapter = (
         publicClient,
         address,
         "markFiatPaid",
-        [id, asHex(args.message) ?? "0x"] as const,
+        [id, toBytesData(args.message)] as const,
         sender,
       );
     },
@@ -832,7 +843,7 @@ export const createSwap2pViemAdapter = (
         publicClient,
         address,
         "release",
-        [id, asHex(args.message) ?? "0x"] as const,
+        [id, toBytesData(args.message)] as const,
         sender,
       );
     },
@@ -851,7 +862,7 @@ export const createSwap2pViemAdapter = (
         publicClient,
         address,
         "sendMessage",
-        [id, asHex(args.message) ?? "0x"] as const,
+        [id, toBytesData(args.message)] as const,
         sender,
       );
     },
