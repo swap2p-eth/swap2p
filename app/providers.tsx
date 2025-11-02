@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RainbowKitProvider, lightTheme, midnightTheme } from "@rainbow-me/rainbowkit";
@@ -110,8 +110,18 @@ function RainbowKitThemeProvider({
   initialChain: Chain;
 }) {
   const { resolvedTheme } = useTheme();
-  const theme = useMemo(() => {
+  const [colorMode, setColorMode] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
     if (resolvedTheme === "dark") {
+      setColorMode("dark");
+    } else {
+      setColorMode("light");
+    }
+  }, [resolvedTheme]);
+
+  const theme = useMemo(() => {
+    if (colorMode === "dark") {
       const base = midnightTheme({
         accentColor: "#4f46e5",
         accentColorForeground: "#f8fafc",
@@ -161,7 +171,7 @@ function RainbowKitThemeProvider({
         menuItemBackground: "rgba(37,99,235,0.08)"
       }
     };
-  }, [resolvedTheme]);
+  }, [colorMode]);
 
   return (
     <RainbowKitProvider initialChain={initialChain} modalSize="compact" theme={theme}>
