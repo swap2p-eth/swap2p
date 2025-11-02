@@ -12,6 +12,7 @@ import {
 } from "viem";
 import { swap2pAbi } from "@/lib/swap2p/generated";
 import { DEFAULT_PARTNER_ADDRESS } from "@/config";
+import { sanitizeUserText } from "@/lib/utils";
 import { error as logError, warn as logWarn } from "@/lib/logger";
 import type {
   CancelDealArgs,
@@ -72,10 +73,14 @@ const toBytesData = (value?: string | null): Hex => {
   if (!value) {
     return "0x";
   }
-  if (value.startsWith("0x") || value.startsWith("0X")) {
-    return value as Hex;
+  const sanitized = sanitizeUserText(String(value), {
+    maxLength: 512,
+    allowLineBreaks: true,
+  });
+  if (!sanitized) {
+    return "0x";
   }
-  return stringToHex(value);
+  return stringToHex(sanitized);
 };
 
 type Swap2pWriteFunctionName = Extract<
