@@ -19,18 +19,35 @@ export function useDeal(dealId?: string | null) {
   const [notFound, setNotFound] = React.useState(false);
   const refreshMarkerRef = React.useRef<string | null>(null);
 
+  const baseMarker = React.useMemo(() => {
+    if (!baseDeal) return null;
+    const updatedAt = baseDeal.updatedAt ?? "";
+    const chat = baseDeal.contract?.chat ?? [];
+    const chatLength = chat.length;
+    const lastChat = chatLength > 0 ? chat[chatLength - 1] : null;
+    const lastTimestamp = lastChat?.timestamp ?? "";
+    const lastPayload = lastChat?.payload ?? "";
+    return `${baseDeal.id}:${updatedAt}:${chatLength}:${lastTimestamp}:${lastPayload}`;
+  }, [baseDeal]);
+
   React.useEffect(() => {
-    setDeal(baseDeal ?? null);
+    if (!baseDeal) {
+      setDeal(null);
+      setNotFound(false);
+      refreshMarkerRef.current = null;
+      return;
+    }
+    setDeal(baseDeal);
     setNotFound(false);
-    refreshMarkerRef.current = null;
-  }, [baseDeal?.id]);
+  }, [baseDeal]);
 
   React.useEffect(() => {
     if (!baseDeal || !dealId) return;
-    if (refreshMarkerRef.current === baseDeal.id) return;
+    const marker = baseMarker ?? baseDeal.id;
+    if (refreshMarkerRef.current === marker) return;
 
     let cancelled = false;
-    refreshMarkerRef.current = baseDeal.id;
+    refreshMarkerRef.current = marker;
     setIsRefreshing(true);
 
     refreshDeal(baseDeal)
@@ -58,7 +75,7 @@ export function useDeal(dealId?: string | null) {
     return () => {
       cancelled = true;
     };
-  }, [baseDeal, dealId, refreshDeal]);
+  }, [baseDeal, dealId, refreshDeal, baseMarker]);
 
   const refresh = React.useCallback(async () => {
     if (!baseDeal) {
