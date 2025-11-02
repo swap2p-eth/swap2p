@@ -131,6 +131,7 @@ export function ChatWidget({
               ref={inputRef}
               type="text"
               name="message"
+              autoComplete="off"
               placeholder="Enter your message here…"
               value={draft}
               onChange={event => handleInputChange(event.target.value)}
