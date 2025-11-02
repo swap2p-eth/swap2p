@@ -80,8 +80,17 @@ export function setHash(next: string, fallback = DEFAULT_FALLBACK) {
   updateCurrentHash(normalized);
 
   if (typeof window !== "undefined") {
+    const needsBaseReset = window.location.pathname !== "/" || window.location.search;
     if (normalized === DEFAULT_FALLBACK) {
+      if (needsBaseReset) {
+        window.location.replace("/#home");
+        return;
+      }
       clearHashFromWindow();
+      return;
+    }
+    if (window.location.pathname !== "/" || window.location.search) {
+      window.location.replace(`/#${normalized}`);
       return;
     }
     if (window.location.hash !== `#${normalized}`) {
