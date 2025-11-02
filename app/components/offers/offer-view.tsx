@@ -697,7 +697,7 @@ export function OfferView({
           <div className="space-y-2">
             <CardTitle className="text-xl">Offer parameters</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Do you want to buy or sell crypto?
+              Do you want to buy or sell crypto? Buyer fee 0.5%
             </p>
           </div>
           <div className="flex flex-col items-end gap-3">

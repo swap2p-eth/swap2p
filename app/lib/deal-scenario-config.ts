@@ -93,7 +93,7 @@ export const DEAL_SCENARIO_MAP: ScenarioMap = {
     BUY: {
       NEW: {
         instructions:
-          "Enter the trade amount. The contract locks tokens equal to the trade amount as your collateral. The collateral returns after the deal completes or if it is canceled.",
+          "Enter the trade amount. The contract locks tokens equal to the trade amount as your collateral. The collateral returns after the deal completes or if it is canceled. Buyer fee 0.5%",
         comment: {
           label: "Comment (optional)",
           placeholder: "Add a note for the merchant (optional)"

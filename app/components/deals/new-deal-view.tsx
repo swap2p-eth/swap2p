@@ -444,12 +444,12 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
     );
   const conversionDisplay = (() => {
     if (!tokenAmount || tokenAmount <= 0) {
-      return amountKind === "crypto" ? `≈ 0 ${offer.currencyCode}` : `≈ 0 ${offer.token}`;
+      return amountKind === "crypto" ? `0 ${offer.currencyCode}` : `0 ${offer.token}`;
     }
     if (amountKind === "crypto") {
-      return `≈ ${formatFiatAmount(tokenAmount * offer.price)} ${offer.currencyCode}`;
+      return `${formatFiatAmount(tokenAmount * offer.price)} ${offer.currencyCode}`;
     }
-    return `≈ ${formatTokenAmount(tokenAmount, displayTokenDecimals)} ${offer.token}`;
+    return `${formatTokenAmount(tokenAmount, displayTokenDecimals)} ${offer.token}`;
   })();
 
   const summaryTokenAmount = tokenAmount ?? offer.minAmount;
@@ -529,7 +529,7 @@ export function NewDealView({ offerId, onCancel, onCreated, returnHash = "offers
               {amountLabel}
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">{conversionDisplay}</p>
+          <p className="text-xs text-muted-foreground">{conversionDisplay} {tokenAmount && userAction === "buy" ? "(Fee 0.5% from crypto amount, you will receive "+tokenAmount*0.995+" "+offer.token+")":""}</p>
           {amountError ? <p className="text-xs text-orange-500">{amountError}</p> : null}
         </div>
 
