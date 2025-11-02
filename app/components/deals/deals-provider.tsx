@@ -60,6 +60,8 @@ interface DealsContextValue {
 const DealsContext = React.createContext<DealsContextValue | null>(null);
 
 const DEAL_FETCH_LIMIT = 100;
+const CHAT_TOAST_STORAGE_PREFIX = "swap2p:seen-chat-toasts";
+const CHAT_TOAST_STORAGE_LIMIT = 200;
 
 const stateMap: Record<SwapDealState, DealState> = {
   [SwapDealState.NONE]: "REQUESTED",
@@ -214,11 +216,21 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   const [chainDeals, setChainDeals] = React.useState<DealRow[]>([]);
   const [draftDeals, setDraftDeals] = React.useState<DealRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
-  const seenChatToastsRef = React.useRef<Set<string>>(new Set());
   const tokenConfigs = React.useMemo(
     () => network.tokens.map(token => ({ ...token, address: getAddress(token.address) })),
     [network.tokens]
   );
+  const normalizedUserAddress = React.useMemo(() => {
+    if (!currentUserAddress) return null;
+    try {
+      return getAddress(currentUserAddress).toLowerCase();
+    } catch {
+      return null;
+    }
+  }, [currentUserAddress]);
+  const seenChatToastsRef = React.useRef<Set<string>>(new Set());
+  const persistedChatToastsRef = React.useRef<Set<string>>(new Set());
+  const chatToastStorageKeyRef = React.useRef<string | null>(null);
 
   const updateDealInState = React.useCallback((updated: DealRow) => {
     setChainDeals(prev => {
@@ -257,6 +269,26 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
       maxLength: MAX_MESSAGE_LENGTH,
       allowLineBreaks: false,
     });
+  }, []);
+
+  const persistChatToastKey = React.useCallback((key: string) => {
+    if (typeof window === "undefined") return;
+    const storageKey = chatToastStorageKeyRef.current;
+    if (!storageKey) return;
+    const store = persistedChatToastsRef.current;
+    store.add(key);
+    if (store.size > CHAT_TOAST_STORAGE_LIMIT) {
+      const trimmed = Array.from(store).slice(-CHAT_TOAST_STORAGE_LIMIT);
+      store.clear();
+      for (const entry of trimmed) {
+        store.add(entry);
+      }
+    }
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(Array.from(store)));
+    } catch (error) {
+      logError("deals-provider", "failed to persist chat toast state", error);
+    }
   }, []);
 
   const showChatToast = React.useCallback(
@@ -337,6 +369,28 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
     },
     [decodeChatPayload]
   );
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storageKey = `${CHAT_TOAST_STORAGE_PREFIX}:${chainId ?? 0}:${normalizedUserAddress ?? "anonymous"}`;
+    chatToastStorageKeyRef.current = storageKey;
+    let restored: string[] = [];
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          restored = parsed.map(value => String(value));
+        }
+      }
+    } catch {
+      restored = [];
+    }
+    const trimmed = restored.slice(-CHAT_TOAST_STORAGE_LIMIT);
+    const restoredSet = new Set(trimmed);
+    persistedChatToastsRef.current = restoredSet;
+    seenChatToastsRef.current = new Set(trimmed);
+  }, [chainId, normalizedUserAddress]);
 
   const fetchAndSetDeals = React.useCallback(async () => {
     if (!adapter || !currentUserAddress) {
@@ -507,10 +561,15 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
                         : undefined;
                     if (!deal || !message) continue;
                     const toastKey = `${dealId}:${index}:${message.timestamp}:${message.payload ?? ""}`;
-                    if (seenChatToastsRef.current.has(toastKey)) continue;
+                    if (
+                      seenChatToastsRef.current.has(toastKey) ||
+                      persistedChatToastsRef.current.has(toastKey)
+                    )
+                      continue;
 
                     seenChatToastsRef.current.add(toastKey);
                     showChatToast(deal, message, toastKey);
+                    persistChatToastKey(toastKey);
                   }
                 })
                 .catch(error => {
@@ -543,7 +602,7 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
         }
       }
     };
-  }, [publicClient, currentUserAddress, network.swap2pAddress, fetchAndSetDeals, showChatToast]);
+  }, [publicClient, currentUserAddress, network.swap2pAddress, fetchAndSetDeals, showChatToast, persistChatToastKey]);
 
   React.useEffect(() => {
     setChainDeals([]);
@@ -553,10 +612,6 @@ export function DealsProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     setDraftDeals([]);
   }, [currentUserAddress]);
-
-  React.useEffect(() => {
-    seenChatToastsRef.current.clear();
-  }, [currentUserAddress, chainId]);
 
   const deals = React.useMemo(
     () => [...chainDeals, ...draftDeals],
