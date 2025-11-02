@@ -447,7 +447,7 @@ function Hero({
   onCreateOffer: () => void;
 }) {
   return (
-    <section className="relative isolate overflow-hidden bg-gradient-to-b from-white via-background/40 to-background">
+    <section className="relative isolate overflow-hidden bg-gradient-to-b from-accent via-background/40 to-background">
       <div className="absolute inset-0 -z-10 opacity-80" aria-hidden="true">
         <div className="absolute inset-x-0 top-[-20%] h-[520px] bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.28),_transparent_65%)]" />
         <div className="absolute left-1/2 top-20 h-[480px] w-[480px] -translate-x-1/2 rounded-full bg-slate-400/20 blur-[160px]" />
