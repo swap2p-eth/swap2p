@@ -755,10 +755,12 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       const fiatLabel = fiatMeta.fiatLabel;
       const currencyCode = fiatMeta.currencyCode;
       const paymentMethodsValue = formatMethodList(validated.paymentMethods);
+      const makerAccount = getAddress(address);
+      const sideValue = validated.side === "SELL" ? SwapSide.SELL : SwapSide.BUY;
       const fallbackEntry: OfferRow = {
         id: generateOfferId(),
         side: validated.side,
-        maker: address,
+        maker: makerAccount,
         token: tokenMeta.symbol || validated.token,
         tokenDecimals: decimals,
         fiat: fiatLabel,
@@ -771,11 +773,14 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
         requirements: validated.requirements,
         updatedAt: new Date().toISOString(),
         contractFiatCode: fiatMeta.encodedFiat,
+        contractKey: {
+          maker: makerAccount,
+          token: tokenMeta.address,
+          side: sideValue,
+          fiat: fiatMeta.encodedFiat,
+        },
         online: makerProfile?.online,
       };
-
-      const makerAccount = getAddress(address);
-      const sideValue = validated.side === "SELL" ? SwapSide.SELL : SwapSide.BUY;
       const priceScaled = scalePrice(validated.price);
       const minAmountScaled = parseUnits(String(validated.minAmount), decimals);
       const maxAmountScaled = parseUnits(String(validated.maxAmount), decimals);
@@ -802,10 +807,41 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       setCacheVersion(version => version + 1);
       makerCacheRef.current = null;
 
+      const makerEntries = await loadMakerOffers(true);
+      try {
+        await refresh();
+      } catch (error) {
+        logError("offers-provider", "failed to refresh market after create", error);
+      }
+
+      const normalizedMaker = makerAccount.toLowerCase();
+      const normalizedTokenAddress = tokenMeta.address.toLowerCase();
+      const onchainOffer =
+        makerEntries.find(entry => {
+          const key = entry.contractKey;
+          if (!key) return false;
+          return (
+            key.maker.toLowerCase() === normalizedMaker &&
+            key.token.toLowerCase() === normalizedTokenAddress &&
+            key.side === sideValue &&
+            key.fiat === fiatMeta.encodedFiat
+          );
+        }) ??
+        makerEntries.reduce<OfferRow | null>((latest, entry) => {
+          if (!latest) return entry;
+          const latestTs = new Date(latest.updatedAt).getTime();
+          const entryTs = new Date(entry.updatedAt).getTime();
+          return entryTs > latestTs ? entry : latest;
+        }, null);
+
+      if (onchainOffer) {
+        return onchainOffer;
+      }
+
       const refreshed = await refreshOffer(fallbackEntry);
       return refreshed ?? fallbackEntry;
     },
-    [adapter, address, isSupported, makerProfile, publicClient, refreshOffer, tokenConfigs],
+    [adapter, address, isSupported, loadMakerOffers, makerProfile, publicClient, refresh, refreshOffer, tokenConfigs],
   );
 
   const updateOffer = React.useCallback(
@@ -988,12 +1024,17 @@ export function OffersProvider({ children }: { children: React.ReactNode }) {
       cacheRef.current.clear();
       setCacheVersion(version => version + 1);
       makerCacheRef.current = null;
+      removeOfferFromCaches(offer.id);
       setDraftOffers(current => current.filter(entry => entry.id !== offer.id));
 
       await loadMakerOffers(true);
-      await refresh();
+      try {
+        await refresh();
+      } catch (error) {
+        logError("offers-provider", "failed to refresh market after delete", error);
+      }
     },
-    [adapter, address, isSupported, loadMakerOffers, publicClient, refresh],
+    [adapter, address, isSupported, loadMakerOffers, publicClient, refresh, removeOfferFromCaches],
   );
 
   const contextValue = React.useMemo<OffersContextValue>(
